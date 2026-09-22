@@ -166,3 +166,21 @@ class TestInstallServiceCommand:
         assert "ExecStart" in result.output
         assert "redis-server" in result.output
         assert "systemd" in result.output.lower() or "[Unit]" in result.output
+
+
+def test_uprof_process_request_fails_before_collection_or_storage(tmp_path, monkeypatch):
+    from topdown.config import TopdownConfig
+
+    monkeypatch.setattr("topdown.cli.get_config", lambda path: TopdownConfig(
+        db_path=tmp_path / "unused.db", collector="uprof_pcm"))
+    monkeypatch.setattr("topdown.collector.toplev.check_perf_permissions", lambda: (True, "ok"))
+    monkeypatch.setattr("topdown.collector.uprof_pcm.check_uprof_pcm_available", lambda path: (True, "ok"))
+    monkeypatch.setattr("topdown.collector.process_resolver.resolve_pids", lambda process: [1234])
+    monkeypatch.setattr("topdown.cli.collect_auto_labels", lambda *args, **kwargs: {})
+    monkeypatch.setattr("topdown.cli.get_backend", lambda *args: pytest.fail("must not store a run"))
+    monkeypatch.setattr("topdown.collector.uprof_pcm.subprocess.Popen",
+                        lambda *args, **kwargs: pytest.fail("must not launch system-wide collection"))
+    result = runner.invoke(app, ["collect", "--process", "redis-server", "--duration", "1s"])
+    assert result.exit_code == 1
+    assert "only supports explicit system-wide" in result.output
+    assert not (tmp_path / "unused.db").exists()

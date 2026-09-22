@@ -107,10 +107,9 @@ class UprofPcmRunner:
     """Wraps AMDuProfPcm as a subprocess.
 
     AMDuProfPcm does not have a direct per-PID mode for time-series metric
-    collection (that path is AMDuProfCLI with symbol sampling). For Phase 1
-    we support system-wide collection only — on dedicated benchmark runners
-    this is equivalent to per-process. If PIDs are provided, we log a
-    warning and fall back to system-wide.
+    collection (that path is AMDuProfCLI with symbol sampling). Collection
+    must explicitly request system-wide scope: other processes, including
+    benchmark clients, contribute even on dedicated benchmark runners.
     """
 
     def __init__(self, options: UprofPcmOptions):
@@ -173,18 +172,12 @@ class UprofPcmRunner:
         return cmd
 
     def run(self, duration_seconds: int) -> str:
-        """Run AMDuProfPcm for a duration and return the CSV output path.
-
-        If PIDs were specified (not supported by AMDuProfPcm system-wide
-        metric collection), log a warning and still run system-wide.
-        """
-        if self.options.pids:
-            logger.warning(
-                "AMDuProfPcm does not support per-PID time-series metric "
-                "collection for group %r; running system-wide instead. "
-                "PIDs requested: %s",
-                self.options.metric_group,
-                self.options.pids,
+        """Run explicitly system-wide collection and return the CSV output path."""
+        if self.options.pids or not self.options.system_wide:
+            raise RuntimeError(
+                "AMDuProfPcm only supports explicit system-wide collection. "
+                "Use system_wide=True without PIDs; its metrics cannot be "
+                "attributed to an individual process."
             )
 
         tmp = tempfile.NamedTemporaryFile(

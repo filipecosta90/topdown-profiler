@@ -496,21 +496,20 @@ class TestRunSubprocess:
         fake.write_text("#!/bin/sh\n")
         fake.chmod(0o755)
         kwargs.setdefault("uprof_pcm_path", str(fake))
+        kwargs.setdefault("system_wide", True)
         return UprofPcmRunner(UprofPcmOptions(**kwargs))
 
-    def test_run_logs_pid_mode_and_falls_back_system_wide(self, tmp_path, caplog):
-        """PIDs requested → logs warning + continues system-wide."""
-        runner = self._make_runner(tmp_path, pids=[1234, 5678])
-        fake_proc = MagicMock()
-        fake_proc.returncode = 0
-        fake_proc.communicate.return_value = ("", "")
-        with patch("topdown.collector.uprof_pcm.subprocess.Popen", return_value=fake_proc), \
-             patch("topdown.collector.uprof_pcm.tempfile.NamedTemporaryFile") as nt:
-            nt.return_value.name = str(tmp_path / "out.csv")
-            import logging
-            with caplog.at_level(logging.WARNING, logger="topdown.collector.uprof_pcm"):
-                runner.run(5)
-            assert any("does not support per-PID" in r.message for r in caplog.records)
+    @pytest.mark.parametrize("pids,system_wide", [
+        (None, False), ([], False), ([1234], False), ([1234, 5678], True),
+    ])
+    def test_run_rejects_unsupported_process_scope(self, tmp_path, pids, system_wide):
+        runner = self._make_runner(tmp_path, pids=pids, system_wide=system_wide)
+        with patch("topdown.collector.uprof_pcm.subprocess.Popen") as popen, \
+             patch("topdown.collector.uprof_pcm.tempfile.NamedTemporaryFile") as temporary:
+            with pytest.raises(RuntimeError, match="only supports explicit system-wide"):
+                runner.run_and_parse(5)
+            popen.assert_not_called()
+            temporary.assert_not_called()
 
     def test_run_nonzero_returncode_raises_with_permission_hint(self, tmp_path):
         runner = self._make_runner(tmp_path)
