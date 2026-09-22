@@ -36,12 +36,11 @@ class ToplevRunner:
         ]
 
         if self.options.pids:
-            # Use -C 0 (CPU-pinned) instead of --pid for processes running
-            # inside Docker containers with cgroup namespaces. toplev's
-            # --pid mode fails to find threads for cgroup-scoped processes
-            # on many-core systems. -C 0 monitors the CPU where the server
-            # process is pinned (coordinator pins redis-server to CPU 0).
-            cmd.extend(["-C", "0"])
+            raise ValueError(
+                "Toplev PID collection is not process-scoped in this adapter. "
+                "CPU 0 cannot substitute for the requested PIDs; use explicit "
+                "system-wide collection only when that scope is intended."
+            )
         elif self.options.system_wide:
             cmd.append("-a")
 
