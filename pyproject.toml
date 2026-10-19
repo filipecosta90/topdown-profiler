@@ -15,7 +15,8 @@ topdown = "topdown.cli:app_main"
 python = "^3.10"
 typer = ">=0.9.0"
 rich = ">=13.0.0"
-mcp = {version = ">=1.0.0", extras = ["cli"]}
+# MCP 2 moved FastMCP; 1.24 avoids removed Pydantic internal APIs.
+mcp = {version = ">=1.24.0,<2", extras = ["cli"]}
 
 [tool.poetry.extras]
 postgresql = ["psycopg"]
