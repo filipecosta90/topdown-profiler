@@ -1,0 +1,253 @@
+"""Process-accounted Apple fixed counters, independent of Instruments/KPC setup."""
+
+import ctypes
+import errno
+import math
+import os
+import platform
+import signal
+import subprocess
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+
+from topdown.collector.apple import AppleProfileError, TMA_ROOTS, _sha256, _write_json
+
+
+class _RusageInfoV4(ctypes.Structure):
+    _fields_ = [("ri_uuid", ctypes.c_uint8 * 16)] + [
+        (name, ctypes.c_uint64) for name in """
+        ri_user_time ri_system_time ri_pkg_idle_wkups ri_interrupt_wkups ri_pageins
+        ri_wired_size ri_resident_size ri_phys_footprint ri_proc_start_abstime ri_proc_exit_abstime
+        ri_child_user_time ri_child_system_time ri_child_pkg_idle_wkups ri_child_interrupt_wkups
+        ri_child_pageins ri_child_elapsed_abstime ri_diskio_bytesread ri_diskio_byteswritten
+        ri_cpu_time_qos_default ri_cpu_time_qos_maintenance ri_cpu_time_qos_background
+        ri_cpu_time_qos_utility ri_cpu_time_qos_legacy ri_cpu_time_qos_user_initiated
+        ri_cpu_time_qos_user_interactive ri_billed_system_time ri_serviced_system_time
+        ri_logical_writes ri_lifetime_max_phys_footprint ri_instructions ri_cycles
+        ri_billed_energy ri_serviced_energy ri_interval_max_phys_footprint ri_runnable_time
+        """.split()
+    ]
+
+
+class _Timebase(ctypes.Structure):
+    _fields_ = [("numer", ctypes.c_uint32), ("denom", ctypes.c_uint32)]
+
+
+class _DarwinSiginfo(ctypes.Structure):
+    _fields_ = [("si_signo", ctypes.c_int), ("si_errno", ctypes.c_int), ("si_code", ctypes.c_int),
+                ("si_pid", ctypes.c_int), ("si_uid", ctypes.c_uint), ("si_status", ctypes.c_int),
+                ("si_addr", ctypes.c_void_p), ("si_value", ctypes.c_void_p),
+                ("si_band", ctypes.c_long), ("reserved", ctypes.c_ulong * 7)]
+
+
+class _UsageReader:
+    def __init__(self):
+        self.libproc = ctypes.CDLL("/usr/lib/libproc.dylib", use_errno=True)
+        self.libproc.proc_pid_rusage.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_void_p]
+        self.libproc.proc_pid_rusage.restype = ctypes.c_int
+        libsystem = ctypes.CDLL("/usr/lib/libSystem.B.dylib", use_errno=True)
+        libsystem.mach_timebase_info.argtypes = [ctypes.POINTER(_Timebase)]
+        libsystem.mach_timebase_info.restype = ctypes.c_int
+        self.timebase = _Timebase()
+        if libsystem.mach_timebase_info(ctypes.byref(self.timebase)) or not self.timebase.denom:
+            raise AppleProfileError("Cannot determine Mach timebase")
+
+    def read(self, pid):
+        info = _RusageInfoV4()
+        ctypes.set_errno(0)
+        if self.libproc.proc_pid_rusage(pid, 4, ctypes.byref(info)):
+            error = ctypes.get_errno()
+            raise AppleProfileError(f"proc_pid_rusage({pid}) failed: {os.strerror(error)}")
+        numer, denom = self.timebase.numer, self.timebase.denom
+        return {
+            "instructions": info.ri_instructions,
+            "cycles": info.ri_cycles,
+            "user_time_ns": info.ri_user_time * numer // denom,
+            "system_time_ns": info.ri_system_time * numer // denom,
+            "process_start_mach": info.ri_proc_start_abstime,
+            "process_exit_mach": info.ri_proc_exit_abstime,
+        }
+
+
+def _peek_exit(pid):
+    if hasattr(os, "waitid"):
+        return os.waitid(os.P_PID, pid, os.WEXITED | os.WNOWAIT | os.WNOHANG)
+    # Python exposed macOS waitid only in 3.13; call the same libc API on 3.10–3.12.
+    libsystem = ctypes.CDLL("/usr/lib/libSystem.B.dylib", use_errno=True)
+    libsystem.waitid.argtypes = [ctypes.c_int, ctypes.c_uint, ctypes.POINTER(_DarwinSiginfo), ctypes.c_int]
+    libsystem.waitid.restype = ctypes.c_int
+    info = _DarwinSiginfo()
+    ctypes.set_errno(0)
+    if libsystem.waitid(1, pid, ctypes.byref(info), 0x4 | 0x20 | 0x1):
+        error = ctypes.get_errno()
+        if error == errno.ECHILD:
+            raise ChildProcessError(error, os.strerror(error))
+        raise OSError(error, os.strerror(error))
+    return info if info.si_pid else None
+
+
+def _wait_for_exit(pid, deadline):
+    while True:
+        # Keep the child as a zombie until libproc reads its final counters; wait()/poll() would reap it.
+        observed = _peek_exit(pid)
+        if observed is not None:
+            return observed
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return None
+        time.sleep(min(0.01, remaining))
+
+
+def _terminate(process):
+    try:
+        if _wait_for_exit(process.pid, time.monotonic()) is not None:
+            return
+    except ChildProcessError as exc:
+        raise AppleProfileError("Target child ownership was lost; no cleanup signal sent") from exc
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        pass
+    observed = _wait_for_exit(process.pid, time.monotonic() + 2)
+    if observed is None:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        observed = _wait_for_exit(process.pid, time.monotonic() + 2)
+    if observed is None:
+        raise AppleProfileError("Target exit remains unverified after SIGKILL")
+
+
+def _report(reader):
+    return {
+        "schema_version": 1, "measurement_kind": "process-accounted-fixed-counters",
+        "started_at": datetime.now(timezone.utc).isoformat(),
+        "collector_sha256": _sha256(Path(__file__)),
+        "environment": {"system": platform.system(), "arch": platform.machine(), "os_version": platform.mac_ver()[0]},
+        "source": {"api": "proc_pid_rusage", "flavor": "RUSAGE_INFO_V4", "flavor_id": 4,
+                   "mach_timebase": {"numer": reader.timebase.numer, "denom": reader.timebase.denom}},
+        "status": "failed", "exit_code": 1, "counters": None,
+        "tma_available": False, "tma": dict.fromkeys(TMA_ROOTS),
+        "limitations": [
+            "All threads and user/kernel execution of one PID, excluding descendants.",
+            "Counters aggregate heterogeneous cores; frequency, residency and measurement bias remain unvalidated.",
+            "Fixed cycles/instructions do not provide programmable events, stacks or a TMA decomposition.",
+        ],
+    }
+
+
+def _require_host():
+    if platform.system() != "Darwin" or platform.machine() != "arm64":
+        raise AppleProfileError("Native Apple counters require macOS on Apple silicon (arm64).")
+
+
+def stat_pid(output: Path, pid: int, duration: float = 5) -> dict:
+    """Read a bounded interval of one existing PID without controlling its lifetime."""
+    _require_host()
+    if pid <= 0 or not math.isfinite(duration) or duration <= 0:
+        raise AppleProfileError("Require a positive PID and a positive, finite duration")
+    reader = _UsageReader()
+    output = output.resolve()
+    output.mkdir(parents=True, exist_ok=False)
+    result = _report(reader)
+    result.update(duration_seconds=duration, scope={"pid": pid, "threads": "all", "descendants": False,
+                                                  "window": "observed-interval", "execution_levels": "user-and-kernel"})
+    try:
+        before = reader.read(pid)
+        result["snapshot_before"] = before
+        if before["process_exit_mach"]:
+            raise AppleProfileError("Target process has already exited")
+        started = time.monotonic_ns()
+        interrupted = False
+        try:
+            time.sleep(duration)
+        except KeyboardInterrupt:
+            interrupted = True
+        after = reader.read(pid)
+        result["observed_duration_ns"] = time.monotonic_ns() - started
+        result["snapshot_after"] = after
+        if not before["process_start_mach"] or before["process_start_mach"] != after["process_start_mach"]:
+            raise AppleProfileError("Process identity changed or could not be established; no interval counters reported")
+        fields = ("instructions", "cycles", "user_time_ns", "system_time_ns")
+        if any(after[field] < before[field] for field in fields):
+            raise AppleProfileError("Process counters decreased; no interval counters reported")
+        result["counters"] = {field: after[field] - before[field] for field in fields}
+        result["target_exited"] = bool(after["process_exit_mach"])
+        available = after["instructions"] > 0 and after["cycles"] > 0
+        result["counters_available"] = available
+        if interrupted:
+            result.update(status="interrupted", exit_code=130)
+        else:
+            result.update(status="completed" if available else "counters_unavailable", exit_code=0 if available else 3)
+    except (OSError, AppleProfileError) as exc:
+        result["error"] = str(exc)
+    finally:
+        result["ended_at"] = datetime.now(timezone.utc).isoformat()
+        _write_json(output / "stat.json", result)
+    return result
+
+
+def stat_process(output: Path, command: list[str], timeout: float = 30) -> dict:
+    """Launch one PID and read its full-lifetime counters before reaping it.
+
+    Counts include all threads and user/kernel execution, exclude descendants,
+    and include executable startup/shutdown. No programmable events are enabled.
+    """
+    _require_host()
+    if not math.isfinite(timeout) or timeout <= 0:
+        raise AppleProfileError("Require a positive, finite timeout")
+    if not command or not Path(command[0]).is_file() or not os.access(command[0], os.X_OK):
+        raise AppleProfileError("Supply an executable path after '--'")
+    reader = _UsageReader()
+    output = output.resolve()
+    output.mkdir(parents=True, exist_ok=False)
+    result = _report(reader)
+    result.update(command=command, executable_sha256=_sha256(Path(command[0])), timeout_seconds=timeout,
+                  target_completed=False, target_exit_code=None)
+    result["limitations"].append("Process lifetime includes executable startup and shutdown.")
+    _write_json(output / "command.json", command)
+    process = None
+    reaped = False
+    try:
+        with (output / "target.stdout").open("w") as stdout, (output / "target.stderr").open("w") as stderr:
+            process = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=stdout, stderr=stderr,
+                                       start_new_session=True)
+            result["scope"] = {"pid": process.pid, "threads": "all", "descendants": False,
+                               "window": "process-lifetime", "execution_levels": "user-and-kernel"}
+            interrupted, timed_out = False, False
+            try:
+                timed_out = _wait_for_exit(process.pid, time.monotonic() + timeout) is None
+            except KeyboardInterrupt:
+                interrupted = True
+            if timed_out or interrupted:
+                _terminate(process)
+            result["counters"] = reader.read(process.pid)
+            target_exit = process.wait(timeout=2)
+            reaped = True
+            result.update(target_exit_code=target_exit,
+                          target_completed=target_exit == 0 and not timed_out and not interrupted)
+            counters = result["counters"]
+            available = counters["instructions"] > 0 and counters["cycles"] > 0
+            result["counters_available"] = available
+            if interrupted:
+                result.update(status="interrupted", exit_code=130)
+            elif timed_out:
+                result.update(status="timeout", exit_code=5)
+            elif not available:
+                result.update(status="counters_unavailable", exit_code=3)
+            else:
+                result.update(status="completed", exit_code=target_exit if target_exit >= 0 else 128 - target_exit)
+    except (OSError, AppleProfileError, subprocess.SubprocessError) as exc:
+        result["error"] = str(exc)
+    finally:
+        if process is not None and not reaped:
+            try:
+                _terminate(process)
+                result["target_exit_code"] = process.wait(timeout=2)
+            except (OSError, AppleProfileError, subprocess.TimeoutExpired) as exc:
+                result["cleanup_error"] = str(exc)
+        result["ended_at"] = datetime.now(timezone.utc).isoformat()
+        _write_json(output / "stat.json", result)
+    return result

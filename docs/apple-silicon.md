@@ -1,8 +1,87 @@
 # Apple silicon profiles
 
-Native Instruments capture/export is available through `topdown apple`. This is an
-experimental path separate from the Linux slot-TMA database and funnel. It adds no
-runtime dependencies and does not invoke `sudo` or change host settings.
+Native CLI profiling is available through `topdown apple`. Process-accounted
+instruction/cycle totals and fixed-counter samples with stacks work on the tested
+M6. These experimental paths remain separate from the Linux slot-TMA database and
+funnel. They add no runtime dependencies and do not invoke `sudo` or change host
+settings. Programmable events and four-category TMA remain unavailable.
+
+## Process instruction and cycle totals
+
+`stat` uses macOS `proc_pid_rusage` accounting. It needs neither root nor Xcode and
+supports Python 3.10–3.13. Use a new output directory:
+
+```sh
+# Capture the complete lifetime of one launched program.
+poetry run topdown apple stat --output /tmp/apple-stat-001 \
+  -- /path/to/program args
+
+# Observe an existing process for five seconds without stopping it.
+poetry run topdown apple stat --pid 1234 --duration 5 \
+  --output /tmp/apple-stat-pid-001
+```
+
+The command prints JSON and retains `stat.json`. Launched targets also retain
+`target.stdout`, `target.stderr`, executable/collector hashes and exit status.
+`counters` contains unsigned integer instruction/cycle counts and user/system
+times converted from Mach time to nanoseconds. Counts cover all threads in one
+PID, exclude descendant processes, and retain the source API's semantics.
+
+For launched commands, startup and shutdown are included. The final read occurs
+after exit while the child is still waitable, before reaping it; short programs
+therefore retain their counts. `--timeout` defaults to 30 seconds. On timeout or
+interrupt, the owned process group receives SIGTERM, with a two-second grace
+period before SIGKILL. Counts include any shutdown work during that grace period.
+Timeout exits 5, interruption 130; ordinary target exit codes are propagated.
+`target_completed` requires an observed successful exit without timeout/interrupt.
+
+With `--pid`, counts are differences between snapshots. Process start identity is
+checked to reject PID reuse, and the command never signals or waits for the target.
+An idle interval can validly contain zero deltas when cumulative native counts
+establish counter access. If the process disappears before the final read, the
+command reports failure and retains the initial snapshot without inventing totals.
+
+The implementation uses the macOS accounting interface described in Apple's
+[Recount documentation](https://github.com/apple-oss-distributions/xnu/blob/main/doc/observability/recount.md).
+The totals are not a TMA decomposition, and no IPC, frequency or residency estimate
+is derived. macOS also exposes basic instruction/cycle totals through
+`/usr/bin/time -l /path/to/program`; `stat` adds structured output and PID intervals.
+
+## Fixed-counter samples and stacks
+
+`fixed` mode requests only `FIXED_CYCLES` and `FIXED_INSTRUCTIONS`, with a timer
+trigger. It avoids the programmable-event configuration rejected on this M6:
+
+```sh
+poetry run topdown apple probe --mode fixed --output /tmp/m6-fixed-check-001
+
+xcrun clang -O3 -g examples/apple-probe.c -o /tmp/topdown-apple-probe
+poetry run topdown apple record --mode fixed --duration 4 \
+  --output /tmp/apple-fixed-001 -- /tmp/topdown-apple-probe
+
+poetry run topdown apple export /path/to/fixed-recording.trace \
+  --mode fixed --output /tmp/apple-fixed-export-001
+```
+
+This mode requires Xcode's `instrumentbuilder` and `xctrace`. The bundled package
+is compiled into the new capture directory and supplied through `--package`;
+nothing is installed into Instruments or the OS. The capture keeps the package
+source, its hash, build commands/logs, raw trace, XML, and `profile.json`.
+
+Each exported sample contains `event_values`, stack frames, PID/TID, timestamp and
+the native core label. Values are read from the native `counters-profile` vector;
+the event order and timer trigger must match the trace's metadata. A timer stack
+alone cannot satisfy this mode. Rows with absent counter vectors are counted as
+`unmeasured_rows`, rather than filled with zero. Other PIDs and rows outside the
+requested interval are excluded. Native values remain integers and are neither
+summed nor treated as calibrated instruction costs, IPC or slot-TMA shares.
+
+The final CLI probe completed with its expected checksum and 370 scoped
+fixed-counter samples, 367 containing `alu_work`. A separate reconstruction from
+the raw XML matched every exported counter row. These establish counter observations and stack
+association; sampling loss, per-core accounting and exact cost attribution remain
+unvalidated. See [CLI validation](apple-m6-cli-validation.json) for the controls,
+root experiments, hashes and test results.
 
 ## Unattended capability probe
 
@@ -11,12 +90,14 @@ known checksum, inspects the exported native data, and prints **only JSON** to
 stdout. The output directory must be new:
 
 ```sh
-.venv/bin/topdown apple probe --output /tmp/m6-counter-check-001
+.venv/bin/topdown apple probe --mode fixed --output /tmp/m6-counter-check-001
 ```
 
 The same JSON is retained as `probe.json` beside the source, compiler logs and
-capture artifacts. Use `--mode cpu` for cycle sampling or `--mode time` for a
-timer-profile check. Default mode is `counters`. Each invocation performs at most
+capture artifacts. Use `--mode fixed` for the working fixed-counter path,
+`--mode cpu` for cycle sampling or `--mode time` for a timer-profile check.
+Default mode remains `counters`, which requests the standard CPU Counters
+template and is still blocked on this machine. Each invocation performs at most
 one recording; there are no automatic retries, GUI interactions or permission
 changes. The target has an independent eight-second alarm. Tool calls also have
 timeouts, including compile (30 seconds) and record (four seconds plus 30 seconds
@@ -40,7 +121,7 @@ Permission classification requires an explicit tool error; an empty counter tabl
 is not silently relabelled as a permissions failure. Evidence is preserved even
 when the command returns a nonzero exit status.
 `target_completed` means both the expected checksum and successful target exit
-were verified; false means unverified. All three modes were checked on M6:
+were verified; false means unverified. The original three modes were checked on M6:
 counters exited 3, CPU Profiler exited 2, and time mode exited 0 with 368 samples.
 [Probe validation](apple-probe-validation.json) records hashes and the 419 passing
 tests; the original capture validation below remains unchanged.
@@ -48,7 +129,42 @@ tests; the original capture validation below remains unchanged.
 This automates the CLI capability check. It does not establish whether a separate
 interactive Instruments launch would behave differently or fix the macOS KPC issue.
 
-## Status on the tested M6
+## OS-level follow-up on the tested M6
+
+Rechecked on macOS 27.0.1 (26A434), Xcode 27.0 (27A266a), with Developer Tools
+Security already enabled. Root CLI recordings still failed in CPU Profiler and
+produced no PMU table with the standard CPU Counters template. Direct KPC fixed
+counts worked as root. All 134 installed programmable events were rejected in
+both execution scopes through both manual KPC and KPEP apply paths (536 tests),
+as were four fully populated configurations. An empty configurable-counter
+configuration was accepted.
+
+Offline disassembly of `kernel.release.t8152`, whose UUID matches the running
+kernel, shows the setter checking each selected event word's low 16 bits and
+returning EPERM for a nonzero selector. That establishes the compiled restriction
+behind these failures; the source/build omission that produced this policy remains
+unproven. The binary hash and inspection details are retained in the validation
+summary. The other shipped `t8132` kernel contains a 104-entry selector lookup
+where this `t8152` path rejects nonzero selectors. A custom fixed-cycle PMI request
+also failed with `event unavailable`;
+the supported fixed-counter sampled path uses a timer trigger.
+
+`kern.cpc.secure` is 1 and its live sysctl flags lack write permission. Apple's
+published source makes the control writable only in DEVELOPMENT/DEBUG builds,
+and its ARM KPC path returns EPERM for disallowed events. Developer Tools
+authorization does not change those build-time restrictions.
+[CPC build control](https://github.com/apple-oss-distributions/xnu/blob/main/osfmk/kern/cpc.h),
+[sysctl implementation](https://github.com/apple-oss-distributions/xnu/blob/main/bsd/kern/kern_cpc.c),
+[KPC event check](https://github.com/apple-oss-distributions/xnu/blob/main/osfmk/arm64/kpc.c).
+
+SIP and authenticated-root protection remain enabled. No development KDK/kernel
+is installed. Booting a custom kernel would require a compatible kernel and
+changes to startup security; enabling Developer Tools alone does not provide
+that environment. [Apple's startup-security description](https://support.apple.com/guide/security/startup-disk-security-policy-control-sec7d92dc49f/web)
+explains that custom XNU kernels use Permissive Security. No kernel, boot-policy,
+permission or security-setting change was used for the working CLI paths above.
+
+## Original Instruments template validation
 
 Checked 20 October 2026 on Apple M6, macOS 27.0, Xcode/xctrace 27.0 (27A266a):
 
@@ -135,10 +251,11 @@ backend-bound claim. [Apple's analysis workflow](https://developer.apple.com/doc
 and [Instruments presentation](https://developer.apple.com/videos/play/wwdc2025/308/)
 are the primary methodology references.
 
-The raw PMU and cycle importers are tested against schema-shaped synthetic rows,
-based on the installed Xcode schema declarations. Positive M6 hardware-counter
-export remains **unvalidated**. Before enabling derived bottleneck shares, obtain
-a successful native capture, identify the actual formulas and denominators, and
+The `cpu-pmc-value` and cycle importers are tested against schema-shaped synthetic
+rows, based on the installed Xcode declarations. The fixed `counters-profile`
+importer also has a measured M6 fixture and successful native captures.
+Programmable-event export remains **unvalidated**. Before enabling derived
+bottleneck shares, identify the actual formulas and denominators, and
 run scoped idle/N/2N controls with known checksums and matched conditions. Verify
 sampling, loss and heterogeneous-core semantics rather than renaming native metrics.
 

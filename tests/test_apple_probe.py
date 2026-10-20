@@ -19,10 +19,13 @@ def fake_capture(output, command, duration, mode):
     (output / "target.stdout").write_text(f"checksum={EXPECTED_CHECKSUM}\n")
     (output / "toc.xml").write_text('<trace-toc><run number="1"><info><target><process pid="42" '
                                     'return-exit-status="0"/></target></info></run></trace-toc>')
-    return {"sample_count": 1, "measurement_kind": "native-test", "samples": [{"value": 123, "frames": [{"name": "alu_work"}]}]}
+    return {"sample_count": 1, "measurement_kind": "native-test", "samples": [
+        {"value": 123, "event_values": {"FIXED_CYCLES": 100, "FIXED_INSTRUCTIONS": 150},
+         "frames": [{"name": "alu_work"}]}]}
 
 
-@pytest.mark.parametrize("mode,status", [("counters", "counters_present"), ("time", "profile_present"), ("cpu", "profile_present")])
+@pytest.mark.parametrize("mode,status", [("counters", "counters_present"), ("fixed", "counters_present"),
+                                      ("time", "profile_present"), ("cpu", "profile_present")])
 def test_validated_probe_success(tmp_path, mode, status):
     with patch("topdown.collector.apple_probe.doctor", return_value=ENVIRONMENT), \
          patch("topdown.collector.apple_probe._run") as compile_mock, \
@@ -88,6 +91,27 @@ def test_stack_profile_must_observe_probe_work(tmp_path):
         result = probe(tmp_path / "new", "time")
     assert result["status"] == "probe_failed"
     assert "No observed probe work" in result["reason"]
+
+
+@pytest.mark.parametrize("change", ["zero", "missing", "wrong-work"])
+def test_fixed_probe_requires_both_counters_and_observed_probe_work(tmp_path, change):
+    def bad(*args, **kwargs):
+        profile = fake_capture(*args, **kwargs)
+        sample = profile["samples"][0]
+        if change == "zero":
+            sample["event_values"]["FIXED_CYCLES"] = 0
+        elif change == "missing":
+            sample["event_values"] = {}
+        else:
+            sample["frames"] = [{"name": "unrelated"}]
+        return profile
+
+    with patch("topdown.collector.apple_probe.doctor", return_value=ENVIRONMENT), \
+         patch("topdown.collector.apple_probe._run"), \
+         patch("topdown.collector.apple_probe.record_profile", side_effect=bad):
+        result = probe(tmp_path / "fixed", "fixed")
+    assert result["status"] == "probe_failed"
+    assert result["tma_available"] is False
 
 
 @pytest.mark.parametrize("env,status", [({"error": "requires macOS"}, "unsupported_host"),

@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 from pathlib import Path
 
-from topdown.collector.apple import AppleProfileError, MODES, TMA_ROOTS, _run, _write_json, _xml, doctor, record_profile
+from topdown.collector.apple import AppleProfileError, FIXED_EVENTS, MODES, TMA_ROOTS, _run, _write_json, _xml, doctor, record_profile
 
 EXPECTED_CHECKSUM = "9087321014236724183"
 PROBE_SOURCE = r'''#include <stdint.h>
@@ -72,7 +72,7 @@ def probe(output: Path, mode: str = "counters") -> dict:
     created = False
     try:
         if mode not in MODES:
-            raise AppleProfileError("Choose counters, cpu or time mode")
+            raise AppleProfileError("Choose counters, fixed, cpu or time mode")
         output.mkdir(parents=True, exist_ok=False)
         created = True
         environment = doctor()
@@ -81,8 +81,8 @@ def probe(output: Path, mode: str = "counters") -> dict:
             result.update(status="unsupported_host", reason=environment["error"])
             return result
         template = MODES[mode][0]
-        if not environment.get("xctrace") or template not in environment.get("templates", []):
-            result.update(status="tool_unavailable", reason=f"xctrace or {template} template unavailable")
+        if not environment.get("xctrace") or (template and template not in environment.get("templates", [])):
+            result.update(status="tool_unavailable", reason=f"xctrace or {template or 'fixed-counter tooling'} unavailable")
             return result
         source = output / "probe.c"
         executable = output / "probe"
@@ -92,8 +92,15 @@ def probe(output: Path, mode: str = "counters") -> dict:
         result["target_completed"] = _target_completed(output / "capture")
         if not result["target_completed"]:
             raise AppleProfileError("Probe completion and expected checksum were not verified")
-        if mode == "counters":
-            if not any(sample["value"] > 0 for sample in profile["samples"]):
+        if mode in {"counters", "fixed"}:
+            if mode == "fixed":
+                positive = any(set(sample["event_values"]) == set(FIXED_EVENTS)
+                               and all(value > 0 for value in sample["event_values"].values())
+                               and any(frame["name"] == "alu_work" for frame in sample["frames"])
+                               for sample in profile["samples"])
+            else:
+                positive = any(sample["value"] > 0 for sample in profile["samples"])
+            if not positive:
                 raise AppleProfileError("PMC rows contain no positive values; access remains unqualified")
             result["status"] = "counters_present"
         else:

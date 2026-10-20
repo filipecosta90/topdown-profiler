@@ -4,11 +4,12 @@ CPU Top-Down Microarchitecture Analysis (TMA) collector for Intel, AMD Zen, and 
 
 Wraps [pmu-tools/toplev](https://github.com/andikleen/pmu-tools) on Intel, [AMD uProf](https://www.amd.com/en/developer/uprof.html) (`AMDuProfPcm`) on AMD Zen, or `perf stat --topdown` on ARM to collect, store, and query CPU performance data — like [Polar Signals](https://www.polarsignals.com/) but for hardware performance counters.
 
-**Apple silicon:** experimental [native Instruments capture/export](docs/apple-silicon.md)
-via `topdown apple`. M6 timer stack profiles work; hardware counters currently hit
-an OS/tooling blocker. Apple slot-TMA percentages remain unavailable.
+**Apple silicon:** experimental [native CLI profiling](docs/apple-silicon.md)
+via `topdown apple`. M6 supports process instruction/cycle totals (`stat`),
+fixed-counter samples with stacks (`record --mode fixed`), and timer profiles.
+Programmable events and Apple slot-TMA percentages remain unavailable.
 For an unattended JSON result and stable exit code, run
-`topdown apple probe --output /tmp/m6-probe-001`.
+`topdown apple probe --mode fixed --output /tmp/m6-probe-001`.
 
 [![CI](https://github.com/redis-performance/topdown-profiler/actions/workflows/ci.yml/badge.svg)](https://github.com/redis-performance/topdown-profiler/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/topdown-profiler)](https://pypi.org/project/topdown-profiler/)
@@ -44,6 +45,9 @@ poetry install
 ```
 
 ### Prerequisites
+
+The following prerequisites apply to Linux TMA. For macOS, see the
+[Apple silicon CLI instructions](docs/apple-silicon.md).
 
 - Linux with `perf` tools installed
 - Intel CPU (Sandy Bridge or newer), AMD Zen (EPYC 7xx1 / 7xx2 / 7xx3 / 9xx4), **or** ARM Neoverse (Graviton3/4)
