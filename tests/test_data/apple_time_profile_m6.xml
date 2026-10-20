@@ -1,0 +1,138 @@
+<!-- Measured M6 timer excerpt, 2026-10-20. XML refs expanded; local paths omitted. -->
+<trace-query-result>
+  <node>
+    <schema name="time-profile" documentation="When combined with other time-profile samples, creates a statistical picture of where your application is spending its time.">
+      <col>
+        <mnemonic>time</mnemonic>
+        <name>Sample Time</name>
+        <engineering-type>sample-time</engineering-type>
+      </col>
+      <col>
+        <mnemonic>thread</mnemonic>
+        <name>Thread</name>
+        <engineering-type>thread</engineering-type>
+      </col>
+      <col>
+        <mnemonic>process</mnemonic>
+        <name>Process</name>
+        <engineering-type>process</engineering-type>
+      </col>
+      <col>
+        <mnemonic>core</mnemonic>
+        <name>Core</name>
+        <engineering-type>core</engineering-type>
+      </col>
+      <col>
+        <mnemonic>thread-state</mnemonic>
+        <name>State</name>
+        <engineering-type>thread-state</engineering-type>
+      </col>
+      <col>
+        <mnemonic>weight</mnemonic>
+        <name>Weight</name>
+        <engineering-type>weight</engineering-type>
+      </col>
+      <col>
+        <mnemonic>stack</mnemonic>
+        <name>Backtrace</name>
+        <engineering-type>tagged-backtrace</engineering-type>
+      </col>
+    </schema>
+    <row>
+      <sample-time fmt="00:00.859.537">859537041</sample-time>
+      <thread fmt="Main Thread (0x108df1) (probe, pid: 98210)">
+        <tid fmt="0x108df1">1084913</tid>
+        <process fmt="probe (98210)">
+          <pid fmt="98210">98210</pid>
+          <device-session fmt="TODO">TODO</device-session>
+        </process>
+      </thread>
+      <process fmt="probe (98210)">
+        <pid fmt="98210">98210</pid>
+        <device-session fmt="TODO">TODO</device-session>
+      </process>
+      <core fmt="CPU 2 (E Core)">2</core>
+      <thread-state fmt="Running">Running</thread-state>
+      <weight fmt="1.00 ms">1000000</weight>
+      <tagged-backtrace>
+        <frame name="alu_work" addr="0x1049384bd">
+          <binary name="probe" UUID="439929ED-A333-3158-A050-E8563E2ADE97" arch="arm64" load-addr="0x104938000" />
+          <source line="6">
+            </source>
+        </frame>
+        <frame name="main" addr="0x104938577">
+          <binary name="probe" UUID="439929ED-A333-3158-A050-E8563E2ADE97" arch="arm64" load-addr="0x104938000" />
+          <source line="13">
+            </source>
+        </frame>
+        <frame name="start" addr="0x1867fd157">
+          <binary name="dyld" UUID="8831382F-3800-372B-99C1-B23F876C0DA9" arch="arm64e.x1" load-addr="0x1867cd000" />
+        </frame>
+      </tagged-backtrace>
+    </row>
+    <row>
+      <sample-time fmt="00:00.860.534">860534500</sample-time>
+      <thread fmt="Main Thread (0x108df1) (probe, pid: 98210)">
+        <tid fmt="0x108df1">1084913</tid>
+        <process fmt="probe (98210)">
+          <pid fmt="98210">98210</pid>
+          <device-session fmt="TODO">TODO</device-session>
+        </process>
+      </thread>
+      <process fmt="probe (98210)">
+        <pid fmt="98210">98210</pid>
+        <device-session fmt="TODO">TODO</device-session>
+      </process>
+      <core fmt="CPU 2 (E Core)">2</core>
+      <thread-state fmt="Running">Running</thread-state>
+      <weight fmt="1.00 ms">1000000</weight>
+      <tagged-backtrace>
+        <frame name="alu_work" addr="0x1049384bd">
+          <binary name="probe" UUID="439929ED-A333-3158-A050-E8563E2ADE97" arch="arm64" load-addr="0x104938000" />
+          <source line="6">
+            </source>
+        </frame>
+        <frame name="main" addr="0x104938577">
+          <binary name="probe" UUID="439929ED-A333-3158-A050-E8563E2ADE97" arch="arm64" load-addr="0x104938000" />
+          <source line="13">
+            </source>
+        </frame>
+        <frame name="start" addr="0x1867fd157">
+          <binary name="dyld" UUID="8831382F-3800-372B-99C1-B23F876C0DA9" arch="arm64e.x1" load-addr="0x1867cd000" />
+        </frame>
+      </tagged-backtrace>
+    </row>
+    <row>
+      <sample-time fmt="00:00.861.548">861548583</sample-time>
+      <thread fmt="Main Thread (0x108df1) (probe, pid: 98210)">
+        <tid fmt="0x108df1">1084913</tid>
+        <process fmt="probe (98210)">
+          <pid fmt="98210">98210</pid>
+          <device-session fmt="TODO">TODO</device-session>
+        </process>
+      </thread>
+      <process fmt="probe (98210)">
+        <pid fmt="98210">98210</pid>
+        <device-session fmt="TODO">TODO</device-session>
+      </process>
+      <core fmt="CPU 2 (E Core)">2</core>
+      <thread-state fmt="Running">Running</thread-state>
+      <weight fmt="1.00 ms">1000000</weight>
+      <tagged-backtrace>
+        <frame name="alu_work" addr="0x1049384bd">
+          <binary name="probe" UUID="439929ED-A333-3158-A050-E8563E2ADE97" arch="arm64" load-addr="0x104938000" />
+          <source line="6">
+            </source>
+        </frame>
+        <frame name="main" addr="0x104938577">
+          <binary name="probe" UUID="439929ED-A333-3158-A050-E8563E2ADE97" arch="arm64" load-addr="0x104938000" />
+          <source line="13">
+            </source>
+        </frame>
+        <frame name="start" addr="0x1867fd157">
+          <binary name="dyld" UUID="8831382F-3800-372B-99C1-B23F876C0DA9" arch="arm64e.x1" load-addr="0x1867cd000" />
+        </frame>
+      </tagged-backtrace>
+    </row>
+  </node>
+</trace-query-result>
