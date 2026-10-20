@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import pytest
+from unittest.mock import patch
 
 from topdown.collector.perf_stat import (
     PerfStatOptions,
@@ -194,7 +195,8 @@ class TestPerfStatRunner:
         assert "-I1000" in cmd
         assert "-x," in cmd
 
-    def test_build_command_with_pids(self):
+    @patch("platform.machine", return_value="x86_64")
+    def test_build_command_with_pids(self, _mock):
         options = PerfStatOptions(pids=[1234, 5678])
         runner = PerfStatRunner(options)
         cmd = runner.build_command()
@@ -220,10 +222,17 @@ class TestPerfStatRunner:
         cmd = runner.build_command()
         assert "--verbose" in cmd
 
-    def test_pids_mutually_exclusive_with_system_wide(self):
+    @patch("platform.machine", return_value="x86_64")
+    def test_pids_mutually_exclusive_with_system_wide(self, _mock):
         """When pids are set, -a should not be in the command."""
         options = PerfStatOptions(pids=[1234], system_wide=True)
         runner = PerfStatRunner(options)
         cmd = runner.build_command()
         assert "-p" in cmd
         assert "-a" not in cmd
+
+    @patch("platform.machine", return_value="aarch64")
+    def test_arm_pids_use_documented_system_wide_scope(self, _mock):
+        cmd = PerfStatRunner(PerfStatOptions(pids=[1234])).build_command()
+        assert "-a" in cmd
+        assert "-p" not in cmd

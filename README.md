@@ -4,6 +4,12 @@ CPU Top-Down Microarchitecture Analysis (TMA) collector for Intel, AMD Zen, and 
 
 Wraps [pmu-tools/toplev](https://github.com/andikleen/pmu-tools) on Intel, [AMD uProf](https://www.amd.com/en/developer/uprof.html) (`AMDuProfPcm`) on AMD Zen, or `perf stat --topdown` on ARM to collect, store, and query CPU performance data — like [Polar Signals](https://www.polarsignals.com/) but for hardware performance counters.
 
+**Apple silicon:** experimental [native Instruments capture/export](docs/apple-silicon.md)
+via `topdown apple`. M6 timer stack profiles work; hardware counters currently hit
+an OS/tooling blocker. Apple slot-TMA percentages remain unavailable.
+For an unattended JSON result and stable exit code, run
+`topdown apple probe --output /tmp/m6-probe-001`.
+
 [![CI](https://github.com/redis-performance/topdown-profiler/actions/workflows/ci.yml/badge.svg)](https://github.com/redis-performance/topdown-profiler/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/topdown-profiler)](https://pypi.org/project/topdown-profiler/)
 
@@ -101,6 +107,7 @@ AMDuProfPcm --help  # sanity check
 | `x86_64` + `AuthenticAMD` (uProf installed) | `uprof_pcm` | `TOPDOWN_COLLECTOR=uprof_pcm` |
 | `x86_64` + `AuthenticAMD` (no uProf) | `perf_stat_amd` | `TOPDOWN_COLLECTOR=perf_stat_amd` |
 | `aarch64` | `perf_stat` | `TOPDOWN_COLLECTOR=perf_stat` |
+| macOS `arm64` | Native `topdown apple` commands; slot TMA unavailable | — |
 
 `/proc/cpuinfo` `vendor_id` drives the Intel vs AMD split on x86_64.
 On AMD, the presence of `AMDuProfPcm` in `PATH` (or `TOPDOWN_UPROF_PCM_PATH`)
