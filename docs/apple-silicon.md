@@ -4,6 +4,50 @@ Native Instruments capture/export is available through `topdown apple`. This is 
 experimental path separate from the Linux slot-TMA database and funnel. It adds no
 runtime dependencies and does not invoke `sudo` or change host settings.
 
+## Unattended capability probe
+
+One command compiles and launches the fixed-work probe, checks completion and the
+known checksum, inspects the exported native data, and prints **only JSON** to
+stdout. The output directory must be new:
+
+```sh
+.venv/bin/topdown apple probe --output /tmp/m6-counter-check-001
+```
+
+The same JSON is retained as `probe.json` beside the source, compiler logs and
+capture artifacts. Use `--mode cpu` for cycle sampling or `--mode time` for a
+timer-profile check. Default mode is `counters`. Each invocation performs at most
+one recording; there are no automatic retries, GUI interactions or permission
+changes. The target has an independent eight-second alarm. Tool calls also have
+timeouts, including compile (30 seconds) and record (four seconds plus 30 seconds
+for tool completion).
+
+| Exit | JSON `status` | Meaning |
+|---|---|---|
+| 0 | `counters_present` | Scoped, nonzero native PMC values and probe completion observed |
+| 0 | `profile_present` | Selected stack profile contains probe work; checksum/exit verified |
+| 1 | `probe_failed` | Build, data, checksum, output or other probe failure |
+| 2 | `permission_denied` | Tool explicitly reports a permission denial |
+| 3 | `counter_data_missing` | Recorder completed but the required counter table is absent |
+| 4 | `tool_unavailable` / `unsupported_host` | Required tooling/template absent or host unsupported |
+| 5 | `timeout` | A bounded tool call exceeded its deadline |
+| 130 | `interrupted` | Probe interrupted |
+
+Automation should inspect `status`, `exit_code`, `target_completed` and
+`sample_count`. Exit zero establishes native observations, not calibrated event
+semantics or TMA. `tma_available` remains false and the four TMA values remain null.
+Permission classification requires an explicit tool error; an empty counter table
+is not silently relabelled as a permissions failure. Evidence is preserved even
+when the command returns a nonzero exit status.
+`target_completed` means both the expected checksum and successful target exit
+were verified; false means unverified. All three modes were checked on M6:
+counters exited 3, CPU Profiler exited 2, and time mode exited 0 with 368 samples.
+[Probe validation](apple-probe-validation.json) records hashes and the 419 passing
+tests; the original capture validation below remains unchanged.
+
+This automates the CLI capability check. It does not establish whether a separate
+interactive Instruments launch would behave differently or fix the macOS KPC issue.
+
 ## Status on the tested M6
 
 Checked 20 October 2026 on Apple M6, macOS 27.0, Xcode/xctrace 27.0 (27A266a):

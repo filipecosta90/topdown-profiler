@@ -7,6 +7,8 @@ Wraps [pmu-tools/toplev](https://github.com/andikleen/pmu-tools) on Intel, [AMD 
 **Apple silicon:** experimental [native Instruments capture/export](docs/apple-silicon.md)
 via `topdown apple`. M6 timer stack profiles work; hardware counters currently hit
 an OS/tooling blocker. Apple slot-TMA percentages remain unavailable.
+For an unattended JSON result and stable exit code, run
+`topdown apple probe --output /tmp/m6-probe-001`.
 
 [![CI](https://github.com/redis-performance/topdown-profiler/actions/workflows/ci.yml/badge.svg)](https://github.com/redis-performance/topdown-profiler/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/topdown-profiler)](https://pypi.org/project/topdown-profiler/)

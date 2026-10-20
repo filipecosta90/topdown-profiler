@@ -27,6 +27,10 @@ APPLE_COLLECTION_MESSAGE = (
 class AppleProfileError(RuntimeError):
     """A capture or export cannot supply the requested native measurement."""
 
+    def __init__(self, message: str, *, code: str = "invalid_data"):
+        super().__init__(message)
+        self.code = code
+
 
 def _write_json(path: Path, value):
     path.write_text(json.dumps(value, indent=2) + "\n")
@@ -61,15 +65,19 @@ def _run(cmd: list[str], output: Path, name: str, timeout: int):
             if isinstance(value, bytes):
                 value = value.decode(errors="replace")
             (output / f"{name}.{suffix}").write_text(value or "")
-        raise AppleProfileError(f"{name} timed out after {timeout}s; retained partial artifacts in {output}") from exc
+        raise AppleProfileError(f"{name} timed out after {timeout}s; retained partial artifacts in {output}",
+                                code="timeout") from exc
     except OSError as exc:
-        raise AppleProfileError(f"Cannot execute {cmd[0]}: {exc}") from exc
+        code = "tool_unavailable" if isinstance(exc, FileNotFoundError) else "tool_error"
+        raise AppleProfileError(f"Cannot execute {cmd[0]}: {exc}", code=code) from exc
     (output / f"{name}.stdout").write_text(result.stdout)
     (output / f"{name}.stderr").write_text(result.stderr)
     text = result.stdout + result.stderr
     if result.returncode or "[Error]" in text:
         detail = result.stderr.strip() or result.stdout.strip()
-        raise AppleProfileError(f"{name} failed (exit {result.returncode}): {detail}. Artifacts: {output}")
+        denied = any(word in text.lower() for word in ("operation not permitted", "permission denied"))
+        raise AppleProfileError(f"{name} failed (exit {result.returncode}): {detail}. Artifacts: {output}",
+                                code="permission_denied" if denied else "tool_error")
     return result
 
 
@@ -263,7 +271,8 @@ def export_profile(trace: Path, output: Path, mode: str, pid: int | None = None,
         raise AppleProfileError(
             f"Expected one {schema} table; found {len(tables)}. Available schemas: {', '.join(found)}. "
             "A successful recording or timer samples do not establish PMU access. "
-            "Check the trace in Instruments; no automatic retry, privilege change or fallback was performed."
+            "Check the trace in Instruments; no automatic retry, privilege change or fallback was performed.",
+            code="counter_data_missing" if not tables and mode == "counters" else "invalid_data",
         )
     if pid is None:
         target = selected.find("./info/target/process")

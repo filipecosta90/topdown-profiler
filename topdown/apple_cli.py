@@ -11,6 +11,19 @@ from topdown.collector.apple import AppleProfileError, doctor, export_profile, r
 app = typer.Typer(help="Capture/export native Apple silicon profiles; slot TMA remains unavailable.")
 
 
+@app.command(name="probe")
+def probe_host(
+    output: Annotated[Path, typer.Option(help="New directory for probe result and all raw artifacts")],
+    mode: Annotated[str, typer.Option(help="counters, cpu or time")] = "counters",
+):
+    """Compile/run a bounded probe and emit JSON with a stable status and exit code."""
+    from topdown.collector.apple_probe import probe
+
+    result = probe(output, mode)
+    typer.echo(json.dumps(result, indent=2))
+    raise typer.Exit(result["exit_code"])
+
+
 @app.command(name="doctor")
 def check():
     """Check installed tools without recording or changing host settings."""
