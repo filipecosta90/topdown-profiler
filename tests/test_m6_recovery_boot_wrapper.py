@@ -1,7 +1,10 @@
 """Exercise the Recovery wrapper without changing host boot policy."""
 
 import os
+import pty
+import select
 import subprocess
+import time
 from pathlib import Path
 
 
@@ -20,7 +23,7 @@ def _command(directory: Path, name: str, body: str) -> None:
 
 def _environment(tmp_path: Path, *, group_match: bool = True, data_locked: bool = False,
                  recovery_hash_fails: bool = False,
-                 helper_hash: str = HELPER_SHA) -> tuple[dict, Path, Path]:
+                 helper_hash: str = HELPER_SHA, sync_fails: bool = False) -> tuple[dict, Path, Path]:
     commands = tmp_path / "bin"
     commands.mkdir()
     data = tmp_path / "Data"
@@ -74,8 +77,9 @@ printf '%s\\n' "$TD_TEST_OWNER"
 """)
     _command(commands, "chown", "exit 0\n")
     _command(commands, "wc", "printf '133431296\\n'\n")
-    for name in ("sw_vers", "csrutil", "bputil", "sync"):
+    for name in ("sw_vers", "csrutil", "bputil"):
         _command(commands, name, "exit 0\n")
+    _command(commands, "sync", "exit 1\n" if sync_fails else "exit 0\n")
     data_state = tmp_path / "data-unlocked"
     if not data_locked:
         data_state.touch()
@@ -113,7 +117,8 @@ def test_recovery_wrapper_logs_and_runs_reviewed_helper(tmp_path):
     assert len(logs) == 1
     content = logs[0].read_text()
     assert "Verified helper and collection SHA-256" in content
-    assert "helper-ran" in content
+    assert "Starting the reviewed M6 helper" in content
+    assert "helper-ran" in result.stdout
     assert list(artifacts.glob("recovery-boot-*.status"))[0].read_text() == "helper-exit=0\n"
 
 
@@ -139,6 +144,36 @@ def test_recovery_wrapper_rejects_changed_helper(tmp_path):
     assert result.returncode != 0
     assert not marker.exists()
     assert "Staged helper differs" in next(artifacts.glob("recovery-boot-*.log")).read_text()
+
+
+def test_recovery_wrapper_stops_if_log_cannot_be_flushed(tmp_path):
+    result, artifacts, marker = _run(tmp_path, sync_fails=True)
+    assert result.returncode != 0
+    assert not marker.exists()
+    assert "Cannot flush the persistent log" in result.stderr
+    assert "phase=activation-pending\n" == next(artifacts.glob("recovery-boot-*.status")).read_text()
+
+
+def test_recovery_wrapper_keeps_native_terminal_for_helper(tmp_path):
+    env, artifacts, marker = _environment(tmp_path)
+    helper = tmp_path / "Data" / "Users" / "oly" / "m6-boot.sh"
+    _command(helper.parent, helper.name, "[ -t 0 ] && [ -t 1 ] && [ -t 2 ] || exit 14\n"
+             ': > "$TD_TEST_MARKER"\n')
+    master, slave = pty.openpty()
+    try:
+        process = subprocess.Popen(["sh", str(SCRIPT)], stdin=slave, stdout=slave,
+                                   stderr=slave, env=env)
+        os.write(master, b"disk3s5\ndisk3s1\n")
+        deadline = time.monotonic() + 20
+        while process.poll() is None and time.monotonic() < deadline:
+            if select.select([master], [], [], 0.2)[0]:
+                os.read(master, 4096)
+        assert process.wait(timeout=1) == 0
+    finally:
+        os.close(master)
+        os.close(slave)
+    assert marker.exists()
+    assert "helper-exit=0\n" == next(artifacts.glob("recovery-boot-*.status")).read_text()
 
 
 def test_recovery_wrapper_shasum_mode_matches_sha256(tmp_path):

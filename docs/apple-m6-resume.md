@@ -39,7 +39,11 @@ and gives the log to the normal account. The same file is available from
 Recovery under Data's mount point if the experimental boot fails. The staged
 helper still owns the exact machine-specific checks, native owner prompts,
 `csrutil disable`, `kmutil configure-boot`, and reboot. The wrapper only runs
-that helper after the checks above pass.
+that helper after the checks above pass. Its preflight checks are written and
+flushed to the persistent log before activation. Native authentication prompts
+and helper output remain on the Recovery terminal; the staged helper saves its
+own noncredential checkpoints for the activation steps. An immediate reboot can
+leave the wrapper status at `phase=activation-pending`.
 
 The helper verifies the Mac model, System/Data UUIDs and volume group, target OS
 build, and collection SHA256. It mounts the verified System volume, runs the

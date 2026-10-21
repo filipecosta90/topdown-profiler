@@ -153,7 +153,7 @@ choose_hash_backend() {
     return 1
 }
 
-audit_and_run() {
+audit_and_prepare() {
     printf 'Recovery boot wrapper started (UTC): %s\n' "$(date -u)"
     printf 'Data disk: %s; mount: %s\n' "$TD_DATA_ID" "$TD_DATA_MOUNT"
     printf 'System disk: %s\n' "$TD_SYSTEM_ID"
@@ -225,30 +225,37 @@ SHIM
     export TD_WRAPPER_SCRIPT
     PATH="$TD_SHIM_DIR:$PATH"
     export PATH
-    printf 'phase=helper-started\n' > "$TD_STATUS"
-    chown "$TD_OWNER" "$TD_STATUS" || return 1
-    printf 'Starting the reviewed M6 helper; its native authentication prompts remain interactive.\n'
-    printf 'The helper controls csrutil, kmutil configure-boot, and reboot.\n'
-    sync
-    sh -c 'shasum() { /bin/sh "$TD_WRAPPER_SCRIPT" --shasum "$@"; }; . "$0"' "$TD_HELPER"
+    printf 'Preflight complete; the reviewed helper is ready to run.\n'
 }
 
-(
-    audit_and_run
-    td_rc=$?
-    printf 'helper-exit=%s\n' "$td_rc" > "$TD_STATUS"
+printf 'Verifying the M6 handoff; results will appear in %s\n' "$TD_LOG"
+if audit_and_prepare >> "$TD_LOG" 2>&1; then
+    cat "$TD_LOG" || { error "Cannot read persistent log"; exit 1; }
+else
+    TD_RESULT=$?
+    cat "$TD_LOG" || :
+    printf 'preflight-exit=%s\n' "$TD_RESULT" > "$TD_STATUS" || :
     chown "$TD_OWNER" "$TD_STATUS" || :
-    printf 'Recovery wrapper finished with status %s\n' "$td_rc"
-    sync
-    exit "$td_rc"
-) 2>&1 | tee -a "$TD_LOG"
-
-if [ -f "$TD_STATUS" ]; then
-    TD_RESULT=$(sed -n 's/^helper-exit=//p' "$TD_STATUS")
-    case "$TD_RESULT" in
-        ''|*[!0-9]*) error "Invalid status file"; exit 1 ;;
-        *) exit "$TD_RESULT" ;;
-    esac
+    exit "$TD_RESULT"
 fi
-error "The helper did not return a status; inspect $TD_LOG and its own checkpoints"
-exit 1
+
+printf 'phase=activation-pending\n' > "$TD_STATUS" ||
+    { error "Cannot write persistent status"; exit 1; }
+chown "$TD_OWNER" "$TD_STATUS" ||
+    { error "Cannot make status readable by the normal account"; exit 1; }
+printf 'Starting the reviewed M6 helper with native terminal prompts.\n' | tee -a "$TD_LOG" ||
+    { error "Cannot append to persistent log"; exit 1; }
+printf 'The helper controls csrutil, kmutil configure-boot, and reboot.\n' | tee -a "$TD_LOG" ||
+    { error "Cannot append to persistent log"; exit 1; }
+sync || { error "Cannot flush the persistent log"; exit 1; }
+
+sh -c 'shasum() { /bin/sh "$TD_WRAPPER_SCRIPT" --shasum "$@"; }; . "$0"' "$TD_HELPER"
+TD_RESULT=$?
+printf 'helper-exit=%s\n' "$TD_RESULT" > "$TD_STATUS" ||
+    { error "Cannot write helper result to persistent status"; exit 1; }
+chown "$TD_OWNER" "$TD_STATUS" ||
+    { error "Cannot make helper result readable by the normal account"; exit 1; }
+printf 'Recovery wrapper finished with status %s\n' "$TD_RESULT" | tee -a "$TD_LOG" ||
+    { error "Cannot append helper result to persistent log"; exit 1; }
+sync || { error "Cannot flush helper result"; exit 1; }
+exit "$TD_RESULT"
