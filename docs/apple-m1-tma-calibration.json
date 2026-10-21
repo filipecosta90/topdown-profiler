@@ -1286,5 +1286,59 @@
     "hardware_access_verified": false,
     "note": "KPEP accepts the eight programmable events on distinct hardware counters. Its event-to-counter assignment is not the order of the combined Instruments raw vector."
   },
-  "simd_control_source": "examples/apple-m1-simd.c"
+  "simd_control_source": "examples/apple-m1-simd.c",
+  "mixed_core_capture": {
+    "source": "examples/apple-m1-mixed-core.c",
+    "command": [
+      "/tmp/apple-m1-mixed-core",
+      "3000000000",
+      "300000000"
+    ],
+    "target_exit_status": "0",
+    "pid": 66124,
+    "guided_by_core_kind": {
+      "P": {
+        "cycles": 6845217131,
+        "sample_count": 2437,
+        "shares": {
+          "useful": 0.5719297738928972,
+          "processing": 0.10963293982037557,
+          "discarded": 0.11226082308950866,
+          "delivery": 0.20617795080551496
+        }
+      },
+      "E": {
+        "cycles": 1638768517,
+        "sample_count": 2320,
+        "shares": {
+          "useful": 0.1426461156726309,
+          "processing": 0.0002583355471141358,
+          "discarded": 0.36913342605105154,
+          "delivery": 0.4879621246882451
+        }
+      }
+    },
+    "e_core_cycle_fraction": 0.19316021796740315,
+    "overall_cycle_weighted_guided_shares": {
+      "delivery": 0.26060744325246776,
+      "discarded": 0.1618783910674145,
+      "processing": 0.08850611741885392,
+      "useful": 0.4890092489012264
+    },
+    "formula_validation": {
+      "raw_samples_with_active_cycles": 3558,
+      "matched_intervals": 2721,
+      "max_absolute_difference_percentage_points": {
+        "useful": 9.999694405848913e-08,
+        "processing": 9.998741556938029e-08,
+        "discarded": 9.999325726965918e-08,
+        "delivery": 9.998790684306869e-08
+      },
+      "matches_exported_rounding": true
+    },
+    "toc_sha256": "42a7d9b09de03d695d61068077967e8ea1df0e0edfe3cdf2f4bac7dabbd75562",
+    "counter_xml_sha256": "43e86387390677cccc89fde15e459b47d9a3bbe1fef08bd923bdcca9e0daa176",
+    "metric_xml_sha256": "315d6e9da2dee0272886f095808c8b915bfe1eaafaf9b23e9b88cd42050c99ad",
+    "note": "One process ran a foreground P-core ALU thread and a background E-core random-branch thread. The validator selected width 8 or 4 by each matched interval core, not by process-level weighting."
+  }
 }

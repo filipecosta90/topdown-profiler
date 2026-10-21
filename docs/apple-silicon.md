@@ -470,6 +470,12 @@ intended core kind. The P/E SIMD controls counted 7.9 and 3.8 billion in the
 inferred `MAP_SIMD_UOP` position. The requested order, inferred position
 sums, XML hashes, matched counts, and errors are in
 [M1 TMA calibration](apple-m1-tma-calibration.json).
+In a separate [mixed-core control](../examples/apple-m1-mixed-core.c), one
+process ran a foreground ALU thread and a background random-branch thread.
+Its guided cycles split 80.7% P and 19.3% E. Applying the width for each
+matched interval's actual core reproduced all four shares for another 2,721
+intervals to export precision. This supports keeping P/E denominators
+separate within one process; the overall CLI summary remains cycle-weighted.
 
 The nonnegative clamp matters: a plain `M - RETIRE_UOP` term produces a
 strongly negative Discarded value for eliminated NOPs. In the 16-NOP mixed

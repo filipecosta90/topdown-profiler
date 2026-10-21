@@ -16,6 +16,7 @@ ICACHE_SOURCE = Path(__file__).resolve().parents[1] / "examples/apple-m1-icache.
 PLANNER = Path(__file__).resolve().parents[1] / "examples/apple-m1-kpep-plan.py"
 BRANCH_NOP_SOURCE = Path(__file__).resolve().parents[1] / "examples/apple-m1-branch-nop.c"
 SIMD_SOURCE = Path(__file__).resolve().parents[1] / "examples/apple-m1-simd.c"
+MIXED_CORE_SOURCE = Path(__file__).resolve().parents[1] / "examples/apple-m1-mixed-core.c"
 
 
 @pytest.fixture(scope="module")
@@ -65,6 +66,16 @@ def test_simd_control_compiles_and_completes(tmp_path):
     subprocess.run(["clang", "-O3", str(SIMD_SOURCE), "-o", str(output)], check=True, timeout=30)
     result = subprocess.run([str(output), "1000"], capture_output=True, text=True, timeout=5, check=True)
     assert result.stdout.strip() == "1000"
+
+
+def test_mixed_core_control_compiles_and_completes(tmp_path):
+    if platform.system() != "Darwin" or platform.machine() != "arm64" or not shutil.which("clang"):
+        pytest.skip("M1 workload controls require Apple silicon and clang")
+    output = tmp_path / "mixed-core"
+    subprocess.run(["clang", "-O3", str(MIXED_CORE_SOURCE), "-o", str(output)], check=True, timeout=30)
+    result = subprocess.run([str(output), "1000", "1000"], capture_output=True, text=True,
+                            timeout=5, check=True)
+    assert result.stdout.strip() == "795230588156917206"
 
 
 def test_calibration_uses_map_bubble_delivery_floor(tmp_path):
