@@ -39,7 +39,8 @@
     "kpc_access_gate": "XNU kern_kpc.c calls ktrace_read_check (root or blessed PID) before configuration/reads; public counter-count queries bypass the access check.",
     "sme_supported": false,
     "event_description_limit": "MAP_LDST_UOP description mentions SME, but hw.optional.arm.FEAT_SME is 0 on this M1; names/selectors need runtime calibration.",
-    "page_size_bytes": 16384
+    "page_size_bytes": 16384,
+    "developer_mode_enabled": true
   },
   "kpep_offline_plan": {
     "cpu_family": "0x1b588bb3",

@@ -86,7 +86,8 @@ reads returned `EPERM`; root was unavailable. Apple's
 [KPC sysctl implementation](https://github.com/apple-oss-distributions/xnu/blob/main/bsd/kern/kern_kpc.c)
 checks ktrace access (root or the blessed PID) before those operations, while
 counter-count queries are public. The unprivileged `EPERM` therefore does not
-show that the M1 event selector itself was rejected. The host has Command Line
+show that the M1 event selector itself was rejected. Developer mode was enabled
+on this host, but it did not satisfy the KPC access gate. The host has Command Line
 Tools but no full Xcode, so `xctrace` and `instrumentbuilder` could not be run.
 An authorized root KPC/PET collector is a second way to measure these events;
 the original [mperf implementation](https://github.com/tmcgilchrist/mperf)
