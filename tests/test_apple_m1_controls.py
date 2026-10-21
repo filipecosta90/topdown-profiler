@@ -115,6 +115,9 @@ def test_calibration_uses_map_bubble_delivery_floor(tmp_path):
     metrics.write_text(metrics.read_text().replace("<fixed-decimal>0.105</fixed-decimal>",
                                                    "<fixed-decimal>0.1</fixed-decimal>"))
     assert validate(counters, metrics, 42)["matches_exported_rounding"] is False
+    counters.write_text(counters.read_text().replace("4000 0 105 0 0", "4000 0 105"))
+    with pytest.raises(ValueError, match="vector layout"):
+        validate(counters, metrics, 42)
 
 
 def test_icache_control_matches_hot_and_large_instruction_streams(tmp_path):
