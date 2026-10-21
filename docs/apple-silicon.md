@@ -72,6 +72,19 @@ and the count of incomplete or inconsistent intervals. A legacy `cpu-pmc-value`
 table remains supported where Xcode exports one. This is an Apple-native
 four-category analysis; the `tma` object remains null because the Intel slot
 classification and Apple's formulas have not been shown equivalent.
+Xcode also exports `CounterMetricByThread` arrays. Matching 1,767 intervals
+against `MetricTable` identified their four positions as rounded
+Useful/Processing/Delivery/Discarded shares scaled by 10,000; the best
+permutation's mean absolute four-category error was 0.00020 in fractional
+units, versus 0.0080 for the next best. These arrays are derived shares,
+not raw programmable PMU event counts. The profiler reads the named
+`MetricTable` ratios instead.
+Across the eleven P/E control captures, 49,276 intervals passed the complete
+four-ratio and near-unity checks. Thirty-seven inconsistent intervals were
+excluded; they represented 0.00058% of reported cycles. Every control's
+cycle-weighted shares summed to within 0.0002% of one. This demonstrates a
+near-disjoint Apple partition in the exported data, while leaving the exact
+hardware formulas and Intel slot equivalence unresolved.
 
 ```sh
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
@@ -419,6 +432,18 @@ The Firestorm NOP throughput control counted 100 scheduled uops beside 80,204
 retired uops; the Icestorm control likewise counted about 100 beside 80,204
 ([P-core](https://dougallj.github.io/applecpu/measurements/firestorm/NOP.html),
 [E-core](https://dougallj.github.io/applecpu/measurements/icestorm/NOP.html)).
+Our compact NOP captures reinforce this: the requested `SCHEDULE_EMPTY`
+position was about 84% of sampled cycles on P cores and 94% on E cores, while
+Xcode's separate guided captures reported about 99.8% Useful on both. A high
+scheduler-empty count is therefore not an instruction-delivery bottleneck by
+itself when the processor retires eliminated NOPs.
+For the compact NOP controls, `RETIRE_UOP / (8 × CORE_ACTIVE_CYCLE)` on P cores
+was 99.83%, versus 99.82% guided Useful; the corresponding four-wide E-core
+estimate was 99.85%, versus 99.84% guided Useful. These are separate captures,
+so the close agreement supports an interpretation of Useful as normalized
+retired-uop throughput but does not certify Xcode's formula or the other
+categories. The five P/E footprint comparisons are retained in the Xcode
+validation JSON.
 The same research finds an eight-uop P-core pipeline limit and [up to four
 retired uops per E-core cycle](https://dougallj.github.io/applecpu/icestorm.html).
 These black-box throughput limits do not establish which pipeline stage defines

@@ -823,5 +823,69 @@
       "target_exit_status": "0",
       "toc_sha256": "ec3fdad8e84f01630686d837c90235f61bb51453d7dadf36fc4296ee02c8fcb8"
     }
+  },
+  "guided_array_crosscheck": {
+    "schema": "CounterMetricByThread",
+    "raw_xml_sha256": "4806108c79d785281df85560a39748a31a8bd673cd53bdfb5d23c98b39859964",
+    "matched_intervals": 1767,
+    "inferred_array_order": [
+      "useful",
+      "processing",
+      "delivery",
+      "discarded"
+    ],
+    "array_scale": 10000,
+    "mean_absolute_fraction_error_sum_four_categories": 0.00019816823089983327,
+    "next_best_permutation_error": 0.008037059203169217,
+    "interpretation": "The four array positions are rounded guided shares, not raw programmable-event counts."
+  },
+  "guided_partition_quality": {
+    "captures": 11,
+    "valid_intervals": 49276,
+    "rejected_intervals": 37,
+    "rejected_interval_cycles": 435567,
+    "rejected_cycle_fraction": 5.819897307522583e-06,
+    "aggregated_share_sum_min": 0.9999999979875817,
+    "aggregated_share_sum_max": 1.000001833457269
+  },
+  "useful_formula_checks": {
+    "note": "Separate runs; position mapping and exact formula are not independently certified.",
+    "cases": {
+      "p_hot": {
+        "guided_useful": 0.9981960072679571,
+        "raw_retire_uop_position": 51809955269,
+        "raw_core_active_cycle_position": 6487481540,
+        "assumed_peak_width": 8,
+        "inferred_retire_over_active_width": 0.9982678746281257
+      },
+      "p_cold": {
+        "guided_useful": 0.9980788236406588,
+        "raw_retire_uop_position": 51863447327,
+        "raw_core_active_cycle_position": 6494943247,
+        "assumed_peak_width": 8,
+        "inferred_retire_over_active_width": 0.998150510224928
+      },
+      "p_large": {
+        "guided_useful": 0.2716753964197092,
+        "raw_retire_uop_position": 12834571111,
+        "raw_core_active_cycle_position": 5934641089,
+        "assumed_peak_width": 8,
+        "inferred_retire_over_active_width": 0.2703316619851954
+      },
+      "e_hot": {
+        "guided_useful": 0.9983775358476702,
+        "raw_retire_uop_position": 13603379148,
+        "raw_core_active_cycle_position": 3405900725,
+        "assumed_peak_width": 4,
+        "inferred_retire_over_active_width": 0.9985155357104544
+      },
+      "e_large": {
+        "guided_useful": 0.521732609823289,
+        "raw_retire_uop_position": 11234572837,
+        "raw_core_active_cycle_position": 5420853320,
+        "assumed_peak_width": 4,
+        "inferred_retire_over_active_width": 0.5181182820216947
+      }
+    }
   }
 }
