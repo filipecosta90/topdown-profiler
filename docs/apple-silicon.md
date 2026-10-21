@@ -190,23 +190,35 @@ For the instruction-cache event, compile a separate large-code control:
 
 ```sh
 xcrun clang -O3 -g examples/apple-m1-icache.c -o /tmp/apple-m1-icache
+xcrun clang -O3 -g -DTOPDOWN_SMALL_ICACHE examples/apple-m1-icache.c \
+  -o /tmp/apple-m1-icache-hot
 poetry run topdown apple stat --output /tmp/m1-icache-stat-001 \
   -- /tmp/apple-m1-icache 200000
+poetry run topdown apple stat --output /tmp/m1-icache-hot-stat-001 \
+  -- /tmp/apple-m1-icache-hot 200000
 poetry run topdown apple record --mode m1 --duration 5 \
   --output /tmp/m1-icache-events-001 -- /tmp/apple-m1-icache 200000
 ```
 
-The compiled function contains 65,536 `nop` instructions, with a 262,396-byte
-text section. This host reports 196,608 bytes of P-core L1I and 131,072 bytes
-of E-core L1I through `hw.perflevel*.l1icachesize`. Three P-core stat runs
-completed the 200,000-repetition stream, retired roughly 13.12 billion total
-instructions each, and had a median P-core IPC of 2.151. Repeating it through
-`taskpolicy -b` gave 99.92% or more of cycles on `other` cores and a median
-other-core IPC of 2.074. These observations validate the instruction footprint
-and execution on both core kinds; an L1I miss count still needs
-an authorized programmable-counter capture. [M1 validation](apple-m1-validation.json)
-retains each run and the compiled binary hash. The `nop` stream is a fetch
-footprint control. [Firestorm measurements](https://dougallj.github.io/applecpu/firestorm.html)
+The default function contains 65,536 `nop` instructions, with a 262,396-byte
+text section. The compact build repeats a 256-`nop` block 256 times, giving
+the same nominal 65,536 `nop` instructions per requested repetition in a
+1,292-byte text section. This host reports 196,608 bytes of P-core L1I and
+131,072 bytes of E-core L1I through `hw.perflevel*.l1icachesize`.
+In three fresh matched runs of each build at 200,000 repetitions, median P-core
+IPC was 7.940 for compact code versus 2.155 for the large stream; median
+other-core IPC under `taskpolicy -b` was 3.963 versus 1.944. Each run printed
+the same checksum, retired roughly 13.1–13.2 billion instructions, and kept
+more than 99.8% of counted cycles on the intended core kind. The compact
+build executes additional loop branches; process startup, frequency and thermal
+state also affect these fixed counts. The large footprint clearly reduces
+throughput, but an L1I miss count still needs an authorized programmable-counter
+capture. [M1 validation](apple-m1-validation.json) retains all runs and binary
+hashes. The `nop` stream is a fetch footprint control.
+The compact throughputs are consistent with the independently measured eight-
+and four-uop P/E limits; fixed *instruction* counts and process overhead do not
+prove a slot denominator or four-way partition.
+[Firestorm measurements](https://dougallj.github.io/applecpu/firestorm.html)
 find that `nop` retires without issuing to an execution unit, so this workload
 must not calibrate useful work from scheduler issues or retired instructions.
 

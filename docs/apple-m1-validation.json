@@ -501,5 +501,168 @@
         "completed": true
       }
     ]
+  },
+  "matched_icache_control": {
+    "purpose": "Matched compact/large NOP footprint; fixed-counter throughput direction only, no PMU L1I misses or TMA",
+    "source_sha256": "5b5380f7d70b744b0fc94b03f338c076218857a1e57016d9125ad431322e1dd7",
+    "compile_commands": [
+      "clang -O3 -g examples/apple-m1-icache.c -o <large>",
+      "clang -O3 -g -DTOPDOWN_SMALL_ICACHE examples/apple-m1-icache.c -o <small>"
+    ],
+    "text_bytes": {
+      "small": 1292,
+      "large": 262396
+    },
+    "nop_instructions_per_repetition": 65536,
+    "repetitions": 200000,
+    "nominal_nop_instructions": 13107200000,
+    "runs": {
+      "p_small": {
+        "executable_sha256": "96e7bbd28b8a87c47ab21ba393df1d91b86f82a49441dba32d369cfc0de3c243",
+        "ipc_median": 7.94,
+        "core_kind_cycle_fraction_min": 0.999905,
+        "measurements": [
+          {
+            "instructions": 13222458373,
+            "cycles": 1666542298,
+            "performance_instructions": 13221904184,
+            "performance_cycles": 1666384102,
+            "other_instructions": 554189,
+            "other_cycles": 158196,
+            "checksum": "2073005"
+          },
+          {
+            "instructions": 13222262138,
+            "cycles": 1665274459,
+            "performance_instructions": 13222262138,
+            "performance_cycles": 1665274459,
+            "other_instructions": 0,
+            "other_cycles": 0,
+            "checksum": "2073005"
+          },
+          {
+            "instructions": 13222272971,
+            "cycles": 1664846756,
+            "performance_instructions": 13221735412,
+            "performance_cycles": 1664692380,
+            "other_instructions": 537559,
+            "other_cycles": 154376,
+            "checksum": "2073005"
+          }
+        ]
+      },
+      "p_large": {
+        "executable_sha256": "76044fd7a5a5ccb02ca7df59f0b766f191e58bcd68cde8025c85cdd948d89a32",
+        "ipc_median": 2.155,
+        "core_kind_cycle_fraction_min": 0.999889,
+        "measurements": [
+          {
+            "instructions": 13121831497,
+            "cycles": 6081962791,
+            "performance_instructions": 13121236655,
+            "performance_cycles": 6081295534,
+            "other_instructions": 594842,
+            "other_cycles": 667257,
+            "checksum": "2073005"
+          },
+          {
+            "instructions": 13121973570,
+            "cycles": 6088519625,
+            "performance_instructions": 13121821307,
+            "performance_cycles": 6088170362,
+            "other_instructions": 152263,
+            "other_cycles": 349263,
+            "checksum": "2073005"
+          },
+          {
+            "instructions": 13121542451,
+            "cycles": 6089702261,
+            "performance_instructions": 13120863198,
+            "performance_cycles": 6089025610,
+            "other_instructions": 679253,
+            "other_cycles": 676651,
+            "checksum": "2073005"
+          }
+        ]
+      },
+      "e_small": {
+        "executable_sha256": "96e7bbd28b8a87c47ab21ba393df1d91b86f82a49441dba32d369cfc0de3c243",
+        "ipc_median": 3.963,
+        "core_kind_cycle_fraction_min": 0.998479,
+        "measurements": [
+          {
+            "instructions": 13244392081,
+            "cycles": 3346967478,
+            "performance_instructions": 9141877,
+            "performance_cycles": 5011114,
+            "other_instructions": 13235250204,
+            "other_cycles": 3341956364,
+            "checksum": "2073005"
+          },
+          {
+            "instructions": 13243417211,
+            "cycles": 3344485539,
+            "performance_instructions": 9102795,
+            "performance_cycles": 5057635,
+            "other_instructions": 13234314416,
+            "other_cycles": 3339427904,
+            "checksum": "2073005"
+          },
+          {
+            "instructions": 13242475649,
+            "cycles": 3344719472,
+            "performance_instructions": 9091660,
+            "performance_cycles": 5086490,
+            "other_instructions": 13233383989,
+            "other_cycles": 3339632982,
+            "checksum": "2073005"
+          }
+        ]
+      },
+      "e_large": {
+        "executable_sha256": "76044fd7a5a5ccb02ca7df59f0b766f191e58bcd68cde8025c85cdd948d89a32",
+        "ipc_median": 1.944,
+        "core_kind_cycle_fraction_min": 0.999244,
+        "measurements": [
+          {
+            "instructions": 13154434667,
+            "cycles": 6752383828,
+            "performance_instructions": 9110289,
+            "performance_cycles": 5102514,
+            "other_instructions": 13145324378,
+            "other_cycles": 6747281314,
+            "checksum": "2073005"
+          },
+          {
+            "instructions": 13170168426,
+            "cycles": 6775657744,
+            "performance_instructions": 9161768,
+            "performance_cycles": 5069461,
+            "other_instructions": 13161006658,
+            "other_cycles": 6770588283,
+            "checksum": "2073005"
+          },
+          {
+            "instructions": 13179079047,
+            "cycles": 6798609933,
+            "performance_instructions": 9163092,
+            "performance_cycles": 4757944,
+            "other_instructions": 13169915955,
+            "other_cycles": 6793851989,
+            "checksum": "2073005"
+          }
+        ]
+      }
+    },
+    "p_small_to_large_ipc_ratio": 3.684,
+    "e_small_to_large_ipc_ratio": 2.039,
+    "limit": "Small variant executes extra inner-loop branch/integer instructions; stat includes startup and kernel work. Clock, thermal state and scheduling vary. These fixed counts establish footprint-sensitive throughput, not a counted L1I miss or slot attribution.",
+    "independent_time_check": {
+      "command": "/usr/bin/time -l /tmp/m1-icache-small-new 200000",
+      "instructions_retired": 13221758110,
+      "cycles_elapsed": 1663605125,
+      "checksum": "2073005",
+      "interpretation": "Matches the scale of stat V6 small-code P-core process counts; separate run, not synchronized."
+    }
   }
 }

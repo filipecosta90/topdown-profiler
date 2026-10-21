@@ -4,12 +4,25 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#ifdef TOPDOWN_SMALL_ICACHE
+#define NOP_BLOCK 256
+#define NOP_GROUPS 256
+#else
+#define NOP_BLOCK 65536
+#define NOP_GROUPS 1
+#endif
+
+#define STRINGIFY_INNER(value) #value
+#define STRINGIFY(value) STRINGIFY_INNER(value)
+
 __attribute__((noinline)) static uint64_t icache_stream(uint64_t repetitions) {
     for (uint64_t i = 0; i < repetitions; ++i) {
-        __asm__ volatile(
-            ".rept 65536\n"
-            "nop\n"
-            ".endr\n");
+        for (unsigned chunk = 0; chunk < NOP_GROUPS; ++chunk) {
+            __asm__ volatile(
+                ".rept " STRINGIFY(NOP_BLOCK) "\n"
+                "nop\n"
+                ".endr\n");
+        }
     }
     return repetitions ^ 0x1cacedULL;
 }
