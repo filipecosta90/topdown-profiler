@@ -1,0 +1,186 @@
+{
+  "schema_version": 1,
+  "checked_utc": "2026-10-21T09:26:03.213769+00:00",
+  "artifact_root": ".local-runs/m6-kdk-20261021T091524Z",
+  "host": {
+    "model": "Mac18,5",
+    "board": "T8152",
+    "macOS": "27.0.1",
+    "build": "26A434",
+    "running_variant": "RELEASE_ARM64_T8152"
+  },
+  "acquisition": {
+    "file": "KDK_27.0.1_26A434.dmg",
+    "source": "https://github.com/dortania/KdkSupportPkg/releases/download/26A434/Kernel_Debug_Kit_27.0.1_build_26A434.dmg",
+    "bytes": 1245349997,
+    "sha256": "9d0122b21427a78b4659da16d4363ec859bb2058a7a666332191e79a5a6ac96e",
+    "catalog_checksum_matches": true,
+    "Apple_signature_verified": true,
+    "elapsed_seconds": 49.2672708329992,
+    "Apple_package_signature": "signed Apple Software; Software Update -> Apple Software Update Certification Authority -> Apple Root CA",
+    "expanded_without_installing": true
+  },
+  "package": {
+    "verification": "pkgutil --check-signature: signed Apple Software",
+    "chain": [
+      "Software Update",
+      "Apple Software Update Certification Authority",
+      "Apple Root CA"
+    ],
+    "Apple_package_identifier": "com.apple.pkg.KDK.26A434",
+    "installer_scripts_present": false,
+    "system_installation_performed": true,
+    "payload_install_KiB": 5370446,
+    "installation_actor": "User ran the Apple installer in their own terminal and reported success; installed path verified",
+    "installed_path": "/Library/Developer/KDKs/KDK_27.0.1_26A434.kdk"
+  },
+  "matching_release": {
+    "sha256": "bee8d08efa5b6edd6cdc166bc77a8f8689b2734dd17f47343dd63cf4cc7a2a57",
+    "installed_release_sha256": "bee8d08efa5b6edd6cdc166bc77a8f8689b2734dd17f47343dd63cf4cc7a2a57",
+    "byte_identical_to_installed_release": true,
+    "uuid": "77F5F1F1-C717-3A42-A5FA-487ACF280495"
+  },
+  "development": {
+    "file": "kernel.development.t8152",
+    "bytes": 26305992,
+    "sha256": "091f312889ff021c4915c8118f9dfa4c3e4c1f2d246597dba4ab81a26b0f4eec",
+    "uuid": "DB731926-AEDA-363D-A653-49575E91EE34",
+    "version": "Darwin Kernel Version 27.0.0: Tue Aug 11 21:00:55 PDT 2026; root:xnu_development-13432.1.9~1/DEVELOPMENT_ARM64_T8152",
+    "Mach_O_code_signature": "codesign reports not signed; provenance verified through enclosing Apple-signed installer",
+    "independent_native_bytes": {
+      "development_kernel_sha256": "091f312889ff021c4915c8118f9dfa4c3e4c1f2d246597dba4ab81a26b0f4eec",
+      "sysctl_oid_address": "0xfffffe000732a208",
+      "sysctl_kind_address": "0xfffffe000732a21c",
+      "sysctl_kind": "0xc0600002",
+      "sysctl_writable_flag_present": true,
+      "event_policy_address": "0xfffffe00080d1d08",
+      "event_policy_initial_file_value": 1,
+      "interpretation": "Independent Mach-O segment/file-offset decode confirms writable sysctl flags and initial enum value 1; this does not establish runtime policy or bootability."
+    },
+    "disassembly_sha256": "ca868fb96365b0753be34563daf869cdecfeb1f9011932c373c43b9d082a2a77",
+    "observed_control_flow": [
+      "kern.cpc.secure sysctl metadata includes CTLFLAG_WR, flags 0xc0600002.",
+      "Changed secure=0 writes policy enum 1; changed nonzero writes enum 2.",
+      "Counter setter reads the policy: nonzero selectors can proceed under enum 1, while restricted policy rejects them on this board."
+    ],
+    "runtime_tested": false,
+    "booted": false
+  },
+  "boot_feasibility": {
+    "current_KDK_ReadMe": "Payload/KDK_ReadMe.rtfd, extracted with textutil",
+    "vendor_caveat": "Apple silicon does not support installing the kernel and kernel extension variants from the KDK.",
+    "older_resource_HTML_is_not_current_instructions": true,
+    "offline_collection_attempts": [
+      {
+        "name": "collection-create",
+        "result": {
+          "exit_code": 34,
+          "elapsed_seconds": 0.0173953750054352,
+          "artifacts": []
+        }
+      },
+      {
+        "name": "collection-local-create",
+        "result": {
+          "exit_code": 71,
+          "elapsed_seconds": 0.01019066700246185,
+          "artifacts": []
+        }
+      },
+      {
+        "name": "collection-explicit-sdk",
+        "result": {
+          "exit_code": 71,
+          "elapsed_seconds": 0.014063707996683661,
+          "artifacts": []
+        }
+      },
+      {
+        "name": "collection-local-bundle",
+        "result": {
+          "exit_code": 71,
+          "elapsed_seconds": 0.010337792002246715,
+          "artifacts": []
+        }
+      },
+      {
+        "name": "collection-isolated-root",
+        "result": {
+          "exit_code": 71,
+          "elapsed_seconds": 0.013778125001408625,
+          "artifacts": []
+        }
+      }
+    ],
+    "activation_requirements": "A generated/inspected custom collection plus a reviewed Recovery/custom-boot procedure. kmutil configure-boot is Recovery-only and changes the selected volume to Permissive Security.",
+    "custom_collection_created": true,
+    "host_boot_or_security_settings_changed": false,
+    "local_build_script": {
+      "file": "build-local-collection.py",
+      "sha256": "5120364cbcb7e6d84f72f8458531ba787e93c9ea94d43dcc0571ea40982f95f2",
+      "current_preflight": "Matching installed KDK and kernel hashes verified; local collection build/inspection succeeded",
+      "activation_commands_present": false
+    },
+    "resolved_builder_blocker": "Native kmutil requires a matching installed KDK/SDK even with an explicit local KDK, explicit SDK and isolated volume-root; root CLI authentication is unavailable in this tool session.",
+    "current_blocker": "Recovery activation of an unboot-tested custom kernel requires physical presence and explicit authorization for startup security changes/reboot.",
+    "collection": {
+      "status": "built",
+      "exit_code": 0,
+      "elapsed_seconds": 4.735929166003189,
+      "changes_to_boot_or_security": false,
+      "bytes": 133431296,
+      "sha256": "714872ac8f6eb514056790110b635bb90bc1c0a1122cbe21940687d09191f112",
+      "inspect_exit": 0,
+      "expected_development_uuid_observed": true,
+      "boot_tested": false,
+      "relative_path": "M6-development-26A434.kc"
+    },
+    "independent_collection_audit": {
+      "file": "collection-installed-20261021T093716Z/BootKernelExtensions.kc",
+      "bytes": 133431296,
+      "sha256": "714872ac8f6eb514056790110b635bb90bc1c0a1122cbe21940687d09191f112",
+      "Mach_O_file_type": 12,
+      "fileset_entry_count": 361,
+      "embedded_kernel_uuid": "DB731926-AEDA-363D-A653-49575E91EE34",
+      "embedded_kernel_uuid_matches_development": true,
+      "prelink_driver_count": 387,
+      "manifest_required_identifiers": 308,
+      "required_identifiers_not_in_prelink": [],
+      "absent_prelink_bundle_metadata": {},
+      "native_link_succeeded": true,
+      "bootability_not_established": true
+    },
+    "stock_driver_comparison": {
+      "stock_prelink_identifiers": 387,
+      "development_prelink_identifiers": 387,
+      "missing_from_development": [],
+      "added_to_development": [],
+      "bundle_version_differences": [],
+      "meaning": "Driver identity/version comparison only; does not validate successful boot, driver execution, code identity or secure-key availability."
+    },
+    "runtime_event_tested": false,
+    "recovery_boot_plan": {
+      "file": "RECOVERY-BOOT-PLAN.txt",
+      "sha256": "16f53b9689e34bab16a349b9fd25e13ce5458c941798818fd092455cf73e3138",
+      "executed": false,
+      "activation_authorized": false,
+      "requires_physical_Recovery": true,
+      "proposed_changes": [
+        "Disable SIP for the selected OS; enter Permissive Security",
+        "Select the verified development custom boot collection",
+        "Reboot"
+      ],
+      "planned_restoration": "Recovery: enable SIP and restore Full Security for the selected volume group; restoration not tested here"
+    }
+  },
+  "sources": {
+    "KDK_download_catalog": "https://github.com/dortania/KdkSupportPkg/releases/tag/26A434",
+    "Apple_KDK_documentation": "https://developer.apple.com/documentation/apple-silicon/debugging-a-custom-kernel-extension",
+    "current_readme_sha256": "74e50f62faf1106e4fe42bc72a77ae2704181e4fa0512f5c0a6ce4d78012f532",
+    "installed_kmutil_manpage": "kmutil(8), configure-boot/create sections",
+    "source_CPC_build_variants": "https://github.com/apple-oss-distributions/xnu/blob/f6217f891ac0bb64f3d375211650a4c1ff8ca1ea/osfmk/kern/cpc.h",
+    "Apple_custom_boot_policy": "https://support.apple.com/guide/security/startup-disk-security-policy-control-sec7d92dc49f/web"
+  },
+  "conclusion": "An exact matching unmodified M6 development kernel and a custom collection have been obtained/generated and independently inspected. All 387 driver identities and versions match the stock collection. The writable CPC control is a concrete potential route around the release-kernel selector rejection. Boot success, actual programmable event measurements and TMA remain unvalidated.",
+  "tma_available": false
+}

@@ -245,6 +245,39 @@ retrieved 27.1/27.2 release notes supplied no M6/KPC fix. Newer Xcode/OS builds 
 not installed or tested here. Absence of a release-note entry does not establish
 whether a newer build changes behavior.
 
+## Matching M6 development kernel
+
+The follow-up obtained the exact macOS 27.0.1 / 26A434 KDK through a mirror and
+verified its enclosing installer as signed Apple Software. Its T8152 release kernel
+is byte-for-byte identical to the installed kernel. The package also contains
+`kernel.development.t8152`, UUID `DB731926-AEDA-363D-A653-49575E91EE34`.
+
+Offline disassembly and a separate Mach-O byte decoder confirm that this development
+binary exposes `kern.cpc.secure` with writable flags (`0xc0600002`). The file
+initializes its event policy to enum 1, and its handler can switch between enums
+1 and 2. The counter configuration path permits nonzero selectors under enum 1.
+This is a concrete development-kernel candidate for removing the observed policy
+barrier, without modifying the supplied binary. It has not been booted or shown to
+produce programmable counts.
+
+The current KDK README explicitly says installing its kernel variants on Apple
+silicon is unsupported. The older HTML resource contains obsolete Intel/High Sierra
+instructions; those are not a procedure for this M6. Native `kmutil` collection
+build attempts using the extracted KDK, explicit SDK paths and an isolated volume
+root required a matching installed KDK/SDK. After the user installed the signed KDK
+from their terminal, the local collection build succeeded. A separate Mach-O parser
+verified the embedded development-kernel UUID, and all 308 manifest-required driver
+identities are present. The resulting 127 MiB collection contains the same 387
+driver identities and versions as the stock collection. No kernel binary was
+patched; five DriverKit entries were supplied from the matching running OS.
+
+The installed `kmutil(8)` manual describes a separate custom-boot mechanism that
+requires Recovery and Permissive Security. That does not establish compatibility
+of this development kernel with a custom collection. No kernel was activated,
+startup policy changed, or reboot performed. See the
+[KDK validation record](apple-m6-kdk-validation.json) for hashes, binary evidence,
+builder errors and remaining steps.
+
 ## Unattended capability probe
 
 One command compiles and launches the fixed-work probe, checks completion and the
