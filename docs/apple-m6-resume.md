@@ -12,15 +12,38 @@ repository on another machine does not install or transfer them. The instruction
 below cover Recovery entry, unlocking Data, activation and planned restoration
 without needing to open a local handoff file from the other computer.
 
-## One command in Recovery
+## Recovery boot with a persistent log
 
-On this Mac, the local helper is staged at `/Users/oly/m6-boot.sh`.
-Shut down, hold the power button to enter the paired Recovery environment, and
-open Terminal. With Data unlocked and mounted at `/Volumes/Data`, run:
+On this Mac, the reviewed local activation helper is staged at
+`/Users/oly/m6-boot.sh`. Recovery lacks the `shasum` tool it expects. Put the
+[Recovery wrapper](../examples/m6-recovery-boot-wrapper.sh) on a USB drive or
+download it into Recovery's `/tmp` from the reviewed commit. Shut down, hold
+the power button to enter the paired Recovery environment, open Terminal,
+and run:
 
 ```sh
-sh /Volumes/Data/Users/oly/m6-boot.sh
+sh /path/to/m6-recovery-boot-wrapper.sh
 ```
+
+The wrapper can start before Data is mounted.
+It asks for the Data and System disk identifiers, unlocks or mounts Data with
+Apple's native prompt, and verifies that the volumes share a group. It then
+mounts System, self-tests a SHA-256 tool from Recovery or the installed OS,
+checks the reviewed helper and collection hashes, and calls the staged local
+helper with a compatible `shasum -a 256` command. Any unavailable tool or
+mismatch stops before the staged helper changes boot policy.
+
+The wrapper prints its persistent log path under
+`/Users/oly/redislabs/topdown-profiler/.local-runs/m6-kdk-20261021T091524Z/`
+and gives the log to the normal account. The same file is available from
+Recovery under Data's mount point if the experimental boot fails. The staged
+helper still owns the exact machine-specific checks, native owner prompts,
+`csrutil disable`, `kmutil configure-boot`, and reboot. The wrapper only runs
+that helper after the checks above pass. Its preflight checks are written and
+flushed to the persistent log before activation. Native authentication prompts
+and helper output remain on the Recovery terminal; the staged helper saves its
+own noncredential checkpoints for the activation steps. An immediate reboot can
+leave the wrapper status at `phase=activation-pending`.
 
 The helper verifies the Mac model, System/Data UUIDs and volume group, target OS
 build, and collection SHA256. It mounts the verified System volume, runs the
