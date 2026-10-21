@@ -1,0 +1,827 @@
+{
+  "host": {
+    "model": "MacBookAir10,1",
+    "cpu": "Apple M1",
+    "macos": "27.0.1",
+    "xcode": "27.1 (27A9275)",
+    "capture_date_utc": "2026-10-21"
+  },
+  "guided_schema": "MetricTable",
+  "guided_category_order": [
+    "delivery",
+    "discarded",
+    "processing",
+    "useful"
+  ],
+  "guided_controls": {
+    "wide_alu": {
+      "command": [
+        "/tmp/apple-m1-controls-xcode271",
+        "alu_wide",
+        "6000000000"
+      ],
+      "executable_sha256": "9991733de73a6129db8480400f97f8cf6bb69aae3bfcd20897465ea6ff60fce0",
+      "metric_xml_sha256": "468aabc487704c782c65a538b607106c29d3c4bc6002a22c084d41f1ba0d1fee",
+      "valid_intervals": 3219,
+      "invalid_intervals": 0,
+      "p_core_cycle_fraction": 0.9999124913382461,
+      "cycles": 9003108769,
+      "sample_count": 3219,
+      "shares": {
+        "delivery": 0.00013511255694759452,
+        "discarded": 6.207517092984896e-05,
+        "processing": 0.166657201608666,
+        "useful": 0.8331473806673
+      },
+      "target_exit_status": "0",
+      "toc_sha256": "6979bf83c8196e4cb79b1a48aebdb381b3b4638dfc4273ace268de2d2cc26c6d"
+    },
+    "random_branch": {
+      "command": [
+        "/tmp/apple-m1-controls-xcode271",
+        "branch_random",
+        "700000000"
+      ],
+      "executable_sha256": "9991733de73a6129db8480400f97f8cf6bb69aae3bfcd20897465ea6ff60fce0",
+      "metric_xml_sha256": "5f95bed3fbe1ef4a220f0be57e7585cae072ba73c2d75d40ad701589e8fd01ab",
+      "valid_intervals": 3485,
+      "invalid_intervals": 0,
+      "p_core_cycle_fraction": 0.9998354536911649,
+      "cycles": 9722642892,
+      "sample_count": 3485,
+      "shares": {
+        "delivery": 0.5748445645394645,
+        "discarded": 0.34853962730022386,
+        "processing": 4.564808765665236e-05,
+        "useful": 0.0765701580602366
+      },
+      "target_exit_status": "0",
+      "toc_sha256": "7f53f690ae082d1fbd23bd963b842f3678eb69ec39a9ae91958d7474f21bb0cb"
+    },
+    "pointer_chase": {
+      "command": [
+        "/tmp/apple-m1-controls-xcode271",
+        "memory",
+        "40000000",
+        "8388608"
+      ],
+      "executable_sha256": "9991733de73a6129db8480400f97f8cf6bb69aae3bfcd20897465ea6ff60fce0",
+      "metric_xml_sha256": "baef2bb753f9fc62b834390a5106a3a58db1d00d50c142c628e2ea20b30603bf",
+      "valid_intervals": 2926,
+      "invalid_intervals": 3,
+      "p_core_cycle_fraction": 0.9998969075195627,
+      "cycles": 8197270998,
+      "sample_count": 2926,
+      "shares": {
+        "delivery": 0.0007376011395344412,
+        "discarded": 8.19687381174511e-05,
+        "processing": 0.9943535560696345,
+        "useful": 0.004827986798984024
+      },
+      "target_exit_status": "0",
+      "toc_sha256": "4995d6473647f275b1dfa1f05f5af2352128e8d1176a92c9b2829de0b0133a31"
+    },
+    "small_hot_nops": {
+      "command": [
+        "/tmp/apple-m1-icache-hot-xcode271",
+        "800000"
+      ],
+      "executable_sha256": "fa2b3446838ff52c7bc1ebf9354aab41e365fc3ef28dd61d579322831a583ecb",
+      "metric_xml_sha256": "7f73e3779d938463fe92321a85ef9946f5c565af698f2714efaa553e19194722",
+      "valid_intervals": 2375,
+      "invalid_intervals": 0,
+      "p_core_cycle_fraction": 0.99991909667028,
+      "cycles": 6617972361,
+      "sample_count": 2375,
+      "shares": {
+        "delivery": 0.001683583444745332,
+        "discarded": 4.928135188259787e-05,
+        "processing": 7.112640955252171e-05,
+        "useful": 0.9981960072679571
+      },
+      "target_exit_status": "0",
+      "toc_sha256": "33f6e2a24d0ebe8d13eed48d1f5950efce595514fe45b461494264ca6500f536"
+    },
+    "small_hot_nops_large_cold_text": {
+      "command": [
+        "/tmp/apple-m1-icache-cold-xcode271",
+        "800000"
+      ],
+      "executable_sha256": "1ef568de4e4ecedddca7a4b1440c3c33f53cce48450e1bcac4f42ee2dfa2f515",
+      "metric_xml_sha256": "ba125f68de988f085d4316058b535adc57fac0134dbd077ee730c6669e23603c",
+      "valid_intervals": 2365,
+      "invalid_intervals": 0,
+      "p_core_cycle_fraction": 0.9999108048473306,
+      "cycles": 6618778962,
+      "sample_count": 2365,
+      "shares": {
+        "delivery": 0.0018013705774075168,
+        "discarded": 5.0047882812787605e-05,
+        "processing": 6.97564616259743e-05,
+        "useful": 0.9980788236406588
+      },
+      "target_exit_status": "0",
+      "toc_sha256": "b1b76ec1a8c458e5171622c2163595a57622665a2d970e5bbba6d075523fe886"
+    },
+    "large_hot_nops": {
+      "command": [
+        "/tmp/apple-m1-icache-xcode271",
+        "200000"
+      ],
+      "executable_sha256": "abb8981bc957551df1f7ee3bb4745aa91a415930408b51fbe0c284a0c90b9688",
+      "metric_xml_sha256": "d467c9466c799967435dd37a9cdf2ffe169b137bcf66e9c0e20c7f15e24f34d7",
+      "valid_intervals": 2176,
+      "invalid_intervals": 0,
+      "p_core_cycle_fraction": 0.9998980723201307,
+      "cycles": 6033513181,
+      "sample_count": 2176,
+      "shares": {
+        "delivery": 0.7282060848350697,
+        "discarded": 5.2722640900680584e-05,
+        "processing": 6.579484718745508e-05,
+        "useful": 0.2716753964197092
+      },
+      "target_exit_status": "0",
+      "toc_sha256": "07dfd1fa5a3a8e701c56717805efe248070e93e6cf4b7963c0418edc0928dcdd"
+    }
+  },
+  "custom_event_captures": {
+    "m1_probe": {
+      "configured_events": [
+        "FIXED_CYCLES",
+        "FIXED_INSTRUCTIONS",
+        "RETIRE_UOP",
+        "BRANCH_MISPRED_NONSPEC",
+        "SCHEDULE_UOP",
+        "CORE_ACTIVE_CYCLE",
+        "MAP_DISPATCH_BUBBLE",
+        "MAP_STALL_DISPATCH",
+        "L1D_CACHE_MISS_LD",
+        "L1I_CACHE_MISS_DEMAND"
+      ],
+      "target_exit_status": "0",
+      "sample_count": 547,
+      "excluded_rows": 27,
+      "raw_xml_sha256": "2f7e5b26db781c2c3419a6f0d34e7fe468a4321ad0e9793e9da5e861481f3e95",
+      "vector_position_sums": [
+        1584205057,
+        1327759803,
+        1317965351,
+        16064,
+        1877421410,
+        1579150205,
+        298956,
+        1413240467,
+        30288,
+        4364
+      ]
+    },
+    "m1_wide_alu": {
+      "configured_events": [
+        "FIXED_CYCLES",
+        "FIXED_INSTRUCTIONS",
+        "RETIRE_UOP",
+        "BRANCH_MISPRED_NONSPEC",
+        "SCHEDULE_UOP",
+        "CORE_ACTIVE_CYCLE",
+        "MAP_DISPATCH_BUBBLE",
+        "MAP_STALL_DISPATCH",
+        "L1D_CACHE_MISS_LD",
+        "L1I_CACHE_MISS_DEMAND"
+      ],
+      "target_exit_status": "0",
+      "sample_count": 2836,
+      "excluded_rows": 115,
+      "raw_xml_sha256": "1dc1900454cea2d8afa0d44ace54d7e89be50f73ccc5f352c0098844f22fa149",
+      "vector_position_sums": [
+        8882198501,
+        59040301001,
+        59007376790,
+        21150,
+        53108606336,
+        8852979773,
+        726717,
+        1475309122,
+        40084,
+        6468
+      ]
+    },
+    "m1_random_branch": {
+      "configured_events": [
+        "FIXED_CYCLES",
+        "FIXED_INSTRUCTIONS",
+        "RETIRE_UOP",
+        "BRANCH_MISPRED_NONSPEC",
+        "SCHEDULE_UOP",
+        "CORE_ACTIVE_CYCLE",
+        "MAP_DISPATCH_BUBBLE",
+        "MAP_STALL_DISPATCH",
+        "L1D_CACHE_MISS_LD",
+        "L1I_CACHE_MISS_DEMAND"
+      ],
+      "target_exit_status": "0",
+      "sample_count": 3055,
+      "excluded_rows": 125,
+      "raw_xml_sha256": "cd8957ce1db229d1d4eef1d945d7aa8464bc256e75e11620a306b6ae1da866a5",
+      "vector_position_sums": [
+        9583050325,
+        5891905259,
+        5862130038,
+        344564996,
+        13792307745,
+        9571644834,
+        2881849357,
+        212379,
+        39742,
+        6774
+      ]
+    },
+    "m1_pointer_chase": {
+      "configured_events": [
+        "FIXED_CYCLES",
+        "FIXED_INSTRUCTIONS",
+        "RETIRE_UOP",
+        "BRANCH_MISPRED_NONSPEC",
+        "SCHEDULE_UOP",
+        "CORE_ACTIVE_CYCLE",
+        "MAP_DISPATCH_BUBBLE",
+        "MAP_STALL_DISPATCH",
+        "L1D_CACHE_MISS_LD",
+        "L1I_CACHE_MISS_DEMAND"
+      ],
+      "target_exit_status": "0",
+      "sample_count": 2673,
+      "excluded_rows": 88,
+      "raw_xml_sha256": "f529faf168664039127f5cecc5b447a614db74a1e28cc6211dd1975b6e52523e",
+      "vector_position_sums": [
+        8298251622,
+        376670088,
+        312555970,
+        20956,
+        383102175,
+        8268068307,
+        419324,
+        8164494785,
+        65606233,
+        6288
+      ]
+    },
+    "map_probe": {
+      "configured_events": [
+        "FIXED_CYCLES",
+        "FIXED_INSTRUCTIONS",
+        "RETIRE_UOP",
+        "MAP_DISPATCH_BUBBLE",
+        "MAP_STALL",
+        "MAP_REWIND",
+        "MAP_STALL_DISPATCH",
+        "MAP_INT_UOP",
+        "MAP_LDST_UOP",
+        "MAP_SIMD_UOP"
+      ],
+      "target_exit_status": "0",
+      "sample_count": 540,
+      "excluded_rows": 77,
+      "raw_xml_sha256": "357bb8c0e132fb59e3fbe417eb27e21a209b7ddb25dbb0602b6349ed48268eff",
+      "vector_position_sums": [
+        1560674677,
+        1308335698,
+        1298321814,
+        390570,
+        1391180334,
+        120696,
+        1391026332,
+        1298679668,
+        1782761,
+        363120
+      ]
+    },
+    "map_wide_alu": {
+      "configured_events": [
+        "FIXED_CYCLES",
+        "FIXED_INSTRUCTIONS",
+        "RETIRE_UOP",
+        "MAP_DISPATCH_BUBBLE",
+        "MAP_STALL",
+        "MAP_REWIND",
+        "MAP_STALL_DISPATCH",
+        "MAP_INT_UOP",
+        "MAP_LDST_UOP",
+        "MAP_SIMD_UOP"
+      ],
+      "target_exit_status": "0",
+      "sample_count": 2833,
+      "excluded_rows": 119,
+      "raw_xml_sha256": "0c103ff749550b6e19ef75d1d27d0f2a54691ad6443186851f1966e64cebe9f2",
+      "vector_position_sums": [
+        8868241663,
+        59063649081,
+        59034892408,
+        686317,
+        1476155895,
+        137920,
+        1475983553,
+        59035415958,
+        2095426,
+        379712
+      ]
+    },
+    "map_random_branch": {
+      "configured_events": [
+        "FIXED_CYCLES",
+        "FIXED_INSTRUCTIONS",
+        "RETIRE_UOP",
+        "MAP_DISPATCH_BUBBLE",
+        "MAP_STALL",
+        "MAP_REWIND",
+        "MAP_STALL_DISPATCH",
+        "MAP_INT_UOP",
+        "MAP_LDST_UOP",
+        "MAP_SIMD_UOP"
+      ],
+      "target_exit_status": "0",
+      "sample_count": 3061,
+      "excluded_rows": 145,
+      "raw_xml_sha256": "c24b9103f19aafca48271f8d9a2da428ef0b012b3fe0c001f1e57d09b7c7113d",
+      "vector_position_sums": [
+        9544844981,
+        5867511080,
+        5838564732,
+        2867051165,
+        337655,
+        1527153458,
+        203428,
+        20210474785,
+        1922595,
+        364388
+      ]
+    },
+    "map_pointer_chase": {
+      "configured_events": [
+        "FIXED_CYCLES",
+        "FIXED_INSTRUCTIONS",
+        "RETIRE_UOP",
+        "MAP_DISPATCH_BUBBLE",
+        "MAP_STALL",
+        "MAP_REWIND",
+        "MAP_STALL_DISPATCH",
+        "MAP_INT_UOP",
+        "MAP_LDST_UOP",
+        "MAP_SIMD_UOP"
+      ],
+      "target_exit_status": "0",
+      "sample_count": 2538,
+      "excluded_rows": 67,
+      "raw_xml_sha256": "c21140670ed9e45b37c4faabfd95c35f000d234e07a4b2f63b72110a7f6874f6",
+      "vector_position_sums": [
+        7983722633,
+        369898909,
+        311086958,
+        420944,
+        7909521846,
+        159192,
+        7849861480,
+        210930386,
+        102610078,
+        2671191
+      ]
+    },
+    "fetch_probe": {
+      "configured_events": [
+        "FIXED_CYCLES",
+        "FIXED_INSTRUCTIONS",
+        "RETIRE_UOP",
+        "CORE_ACTIVE_CYCLE",
+        "MAP_DISPATCH_BUBBLE",
+        "SCHEDULE_EMPTY",
+        "L1I_CACHE_MISS_DEMAND",
+        "L1I_TLB_MISS_DEMAND",
+        "L2_TLB_MISS_INSTRUCTION",
+        "FETCH_RESTART"
+      ],
+      "target_exit_status": "0",
+      "sample_count": 545,
+      "excluded_rows": 26,
+      "raw_xml_sha256": "693cca9d109f9cf5f559e6870267859d98688eec8570ede057cd3193ff739e47",
+      "vector_position_sums": [
+        1585716154,
+        1328087575,
+        1317113439,
+        1578467417,
+        197118,
+        171914,
+        2941,
+        977,
+        622,
+        45737
+      ]
+    },
+    "fetch_small_hot_nops": {
+      "configured_events": [
+        "FIXED_CYCLES",
+        "FIXED_INSTRUCTIONS",
+        "RETIRE_UOP",
+        "CORE_ACTIVE_CYCLE",
+        "MAP_DISPATCH_BUBBLE",
+        "SCHEDULE_EMPTY",
+        "L1I_CACHE_MISS_DEMAND",
+        "L1I_TLB_MISS_DEMAND",
+        "L2_TLB_MISS_INSTRUCTION",
+        "FETCH_RESTART"
+      ],
+      "target_exit_status": "0",
+      "sample_count": 2085,
+      "excluded_rows": 100,
+      "raw_xml_sha256": "7acef70304db93d4d3e4191fc2c2bc561e83befd52aada4c086639ba957c44a2",
+      "vector_position_sums": [
+        6496727790,
+        51833420177,
+        51809955269,
+        6487481540,
+        1225069,
+        5477272839,
+        6586,
+        4680,
+        2555,
+        90234
+      ]
+    },
+    "fetch_small_hot_nops_large_cold_text": {
+      "configured_events": [
+        "FIXED_CYCLES",
+        "FIXED_INSTRUCTIONS",
+        "RETIRE_UOP",
+        "CORE_ACTIVE_CYCLE",
+        "MAP_DISPATCH_BUBBLE",
+        "SCHEDULE_EMPTY",
+        "L1I_CACHE_MISS_DEMAND",
+        "L1I_TLB_MISS_DEMAND",
+        "L2_TLB_MISS_INSTRUCTION",
+        "FETCH_RESTART"
+      ],
+      "target_exit_status": "0",
+      "sample_count": 2086,
+      "excluded_rows": 95,
+      "raw_xml_sha256": "8e002221d3db3763f5ce9ce4af92cdc5b8977f2d7fe57658f95b5b25d55eae38",
+      "vector_position_sums": [
+        6504900634,
+        51888899701,
+        51863447327,
+        6494943247,
+        1219190,
+        5383228555,
+        6563,
+        4818,
+        2602,
+        90897
+      ]
+    },
+    "fetch_large_hot_nops": {
+      "configured_events": [
+        "FIXED_CYCLES",
+        "FIXED_INSTRUCTIONS",
+        "RETIRE_UOP",
+        "CORE_ACTIVE_CYCLE",
+        "MAP_DISPATCH_BUBBLE",
+        "SCHEDULE_EMPTY",
+        "L1I_CACHE_MISS_DEMAND",
+        "L1I_TLB_MISS_DEMAND",
+        "L2_TLB_MISS_INSTRUCTION",
+        "FETCH_RESTART"
+      ],
+      "target_exit_status": "0",
+      "sample_count": 1910,
+      "excluded_rows": 93,
+      "raw_xml_sha256": "96bfd82f5dd62e69039fe124829083d36c2f7fe633cc288a4b3bf99f291b38fc",
+      "vector_position_sums": [
+        5944510247,
+        12856069452,
+        12834571111,
+        5934641089,
+        4329158365,
+        5931698324,
+        772845,
+        60196,
+        88284,
+        255359
+      ]
+    },
+    "m1_e_wide_alu": {
+      "configured_events": [
+        "FIXED_CYCLES",
+        "FIXED_INSTRUCTIONS",
+        "RETIRE_UOP",
+        "BRANCH_MISPRED_NONSPEC",
+        "SCHEDULE_UOP",
+        "CORE_ACTIVE_CYCLE",
+        "MAP_DISPATCH_BUBBLE",
+        "MAP_STALL_DISPATCH",
+        "L1D_CACHE_MISS_LD",
+        "L1I_CACHE_MISS_DEMAND"
+      ],
+      "target_exit_status": "0",
+      "sample_count": 4092,
+      "excluded_rows": 1898,
+      "raw_xml_sha256": "a797a83633a9c077f4f4766f43b54428602e1fe09ec6618fc089f5f671b2a1fc",
+      "e_core_cycle_fraction": 0.9993234041925801,
+      "vector_position_sums": [
+        5327100701,
+        17599290827,
+        17531052972,
+        32089,
+        15779172784,
+        5261522351,
+        1034971,
+        362054,
+        53491,
+        8585
+      ]
+    },
+    "m1_e_random_branch": {
+      "configured_events": [
+        "FIXED_CYCLES",
+        "FIXED_INSTRUCTIONS",
+        "RETIRE_UOP",
+        "BRANCH_MISPRED_NONSPEC",
+        "SCHEDULE_UOP",
+        "CORE_ACTIVE_CYCLE",
+        "MAP_DISPATCH_BUBBLE",
+        "MAP_STALL_DISPATCH",
+        "L1D_CACHE_MISS_LD",
+        "L1I_CACHE_MISS_DEMAND"
+      ],
+      "target_exit_status": "0",
+      "sample_count": 2760,
+      "excluded_rows": 1496,
+      "raw_xml_sha256": "d2c9c698383dda398b9d2e6ef30f7c7d155fe121b84162c5b4faae9aa3626d51",
+      "e_core_cycle_fraction": 0.9991092562739277,
+      "vector_position_sums": [
+        3610901661,
+        2235291041,
+        2192166928,
+        128519380,
+        4368212205,
+        3568036141,
+        870360963,
+        8933614,
+        69336,
+        12376
+      ]
+    },
+    "m1_e_pointer_chase": {
+      "configured_events": [
+        "FIXED_CYCLES",
+        "FIXED_INSTRUCTIONS",
+        "RETIRE_UOP",
+        "BRANCH_MISPRED_NONSPEC",
+        "SCHEDULE_UOP",
+        "CORE_ACTIVE_CYCLE",
+        "MAP_DISPATCH_BUBBLE",
+        "MAP_STALL_DISPATCH",
+        "L1D_CACHE_MISS_LD",
+        "L1I_CACHE_MISS_DEMAND"
+      ],
+      "target_exit_status": "0",
+      "sample_count": 4757,
+      "excluded_rows": 1847,
+      "raw_xml_sha256": "ffaa482c608909d5ca2ed5f8451010be80053ad765e960e7469e7bb480d7c698",
+      "e_core_cycle_fraction": 0.9994789238708139,
+      "vector_position_sums": [
+        6297851343,
+        326063239,
+        235494922,
+        35655,
+        280471153,
+        6214248787,
+        1523587,
+        5791018793,
+        26672133,
+        11286
+      ]
+    },
+    "fetch_e_small_hot_nops": {
+      "configured_events": [
+        "FIXED_CYCLES",
+        "FIXED_INSTRUCTIONS",
+        "RETIRE_UOP",
+        "CORE_ACTIVE_CYCLE",
+        "MAP_DISPATCH_BUBBLE",
+        "SCHEDULE_EMPTY",
+        "L1I_CACHE_MISS_DEMAND",
+        "L1I_TLB_MISS_DEMAND",
+        "L2_TLB_MISS_INSTRUCTION",
+        "FETCH_RESTART"
+      ],
+      "target_exit_status": "0",
+      "sample_count": 2906,
+      "excluded_rows": 7510,
+      "raw_xml_sha256": "324bcc750e440f0a80ec8b3f38b630af279c0752a83446d38c172c93e3887b51",
+      "e_core_cycle_fraction": 0.9991886686687489,
+      "vector_position_sums": [
+        3438923030,
+        13634639397,
+        13603379148,
+        3405900725,
+        1371598,
+        3245216097,
+        11118,
+        5039,
+        2894,
+        67894
+      ]
+    },
+    "fetch_e_large_hot_nops": {
+      "configured_events": [
+        "FIXED_CYCLES",
+        "FIXED_INSTRUCTIONS",
+        "RETIRE_UOP",
+        "CORE_ACTIVE_CYCLE",
+        "MAP_DISPATCH_BUBBLE",
+        "SCHEDULE_EMPTY",
+        "L1I_CACHE_MISS_DEMAND",
+        "L1I_TLB_MISS_DEMAND",
+        "L2_TLB_MISS_INSTRUCTION",
+        "FETCH_RESTART"
+      ],
+      "target_exit_status": "0",
+      "sample_count": 4148,
+      "excluded_rows": 6823,
+      "raw_xml_sha256": "59d7cbed4bc8e563d3ce4b13615d8e8369e13dc96012969bba3896391fe74e1f",
+      "e_core_cycle_fraction": 0.9992695912043288,
+      "vector_position_sums": [
+        5483541578,
+        11290044002,
+        11234572837,
+        5420853320,
+        2610586451,
+        5417070050,
+        175274637,
+        28696,
+        46804,
+        114448
+      ]
+    }
+  },
+  "independent_process_accounting": {
+    "wide": {
+      "instructions": 60016893444,
+      "cycles": 9036426077,
+      "performance_instructions": 60013856713,
+      "performance_cycles": 9034967609
+    },
+    "branch": {
+      "instructions": 5966809768,
+      "cycles": 9750162480,
+      "performance_instructions": 5965309096,
+      "performance_cycles": 9747708812
+    },
+    "memory": {
+      "instructions": 355450909,
+      "cycles": 8177509288,
+      "performance_instructions": 355322601,
+      "performance_cycles": 8176771719
+    },
+    "fetchhot": {
+      "instructions": 52856267504,
+      "cycles": 6639383526,
+      "performance_instructions": 52854194554,
+      "performance_cycles": 6638737671
+    },
+    "fetchcold": {
+      "instructions": 52856882814,
+      "cycles": 6639563215,
+      "performance_instructions": 52850456075,
+      "performance_cycles": 6637607871
+    },
+    "fetchlarge": {
+      "instructions": 13123366679,
+      "cycles": 6029821504,
+      "performance_instructions": 13123047848,
+      "performance_cycles": 6029182305
+    }
+  },
+  "interpretation": [
+    "Guided categories are Apple native ratios, weighted by Xcode interval cycles; Intel slot-TMA equivalence is unvalidated.",
+    "The custom event vectors have no per-position name metadata. Positions are listed in requested order but left unverified by the profiler.",
+    "The large executed NOP stream raises instruction-cache misses and Delivery share; large unexecuted text does not.",
+    "Independent stat values are separate executions and include process startup and shutdown.",
+    "taskpolicy -b captures were at least 99.95% E-core cycles; Apple guided shares remained a near-unity four-way partition with core-specific attribution.",
+    "The E-core large executed stream produced 175,274,637 requested L1I-demand-miss position counts versus 11,118 for the compact stream, with different instruction totals; compare normalized rates."
+  ],
+  "guided_e_core_controls": {
+    "wide_alu": {
+      "command": [
+        "/usr/sbin/taskpolicy",
+        "-b",
+        "/tmp/apple-m1-controls-xcode271",
+        "alu_wide",
+        "2000000000"
+      ],
+      "metric_xml_sha256": "ef698ddad862ef55cd687a45001221bbaec1dac6f63f39436fbe44a48b854d99",
+      "valid_intervals": 6915,
+      "invalid_intervals": 3,
+      "e_core_cycle_fraction": 0.9997096178429321,
+      "cycles": 6006426213,
+      "sample_count": 6915,
+      "shares": {
+        "delivery": 0.1669140629984019,
+        "discarded": 0.00015878961310515128,
+        "processing": 0.0001995487808437243,
+        "useful": 0.8327275966717623
+      },
+      "target_exit_status": "0",
+      "toc_sha256": "33b3b2831edab31331cd3aac55cb13e1719879d135b5b531afc607c15060e187"
+    },
+    "random_branch": {
+      "command": [
+        "/usr/sbin/taskpolicy",
+        "-b",
+        "/tmp/apple-m1-controls-xcode271",
+        "branch_random",
+        "300000000"
+      ],
+      "metric_xml_sha256": "41ffad60ce756379b407ee114dd12561470f18d0c66a1926560a86921efcdc49",
+      "valid_intervals": 4762,
+      "invalid_intervals": 5,
+      "e_core_cycle_fraction": 0.9995832560121204,
+      "cycles": 4166973131,
+      "sample_count": 4762,
+      "shares": {
+        "delivery": 0.4379074734003893,
+        "discarded": 0.4059045927626351,
+        "processing": 0.002785678376422608,
+        "useful": 0.15340225346473213
+      },
+      "target_exit_status": "0",
+      "toc_sha256": "b35d75bc002fcd5d649c832cdd9a1fe348847ba57f2b792ec02d4cfe903d6cdc"
+    },
+    "pointer_chase": {
+      "command": [
+        "/usr/sbin/taskpolicy",
+        "-b",
+        "/tmp/apple-m1-controls-xcode271",
+        "memory",
+        "20000000",
+        "8388608"
+      ],
+      "metric_xml_sha256": "94ef8fab464a0558fcc5858ed168905aa61101ac912617881124ce35d3b27888",
+      "valid_intervals": 7895,
+      "invalid_intervals": 18,
+      "e_core_cycle_fraction": 0.9997607647549491,
+      "cycles": 7225854199,
+      "sample_count": 7895,
+      "shares": {
+        "delivery": 0.0009562180445259443,
+        "discarded": 0.00016005867555443876,
+        "processing": 0.9900631170110314,
+        "useful": 0.008822439726157047
+      },
+      "target_exit_status": "0",
+      "toc_sha256": "50d15440cd02e10e4adb290b1f281a1a01804540fbffc5a9fa18371eb0e05839"
+    },
+    "small_hot_nops": {
+      "command": [
+        "/usr/sbin/taskpolicy",
+        "-b",
+        "/tmp/apple-m1-icache-hot-xcode271",
+        "300000"
+      ],
+      "metric_xml_sha256": "c65fa26a9fc2b83dced762e449dd987b62f11493412e85fa808198f81a73b16e",
+      "valid_intervals": 5812,
+      "invalid_intervals": 6,
+      "e_core_cycle_fraction": 0.9996451703909263,
+      "cycles": 4963630303,
+      "sample_count": 5812,
+      "shares": {
+        "delivery": 0.0012572678929698134,
+        "discarded": 0.0001300824613389137,
+        "processing": 0.0002351122895014645,
+        "useful": 0.9983775358476702
+      },
+      "target_exit_status": "0",
+      "toc_sha256": "11dc02706e609c16eba49b86579edf70ae23499517f0529da1df89be9a23419c"
+    },
+    "large_hot_nops": {
+      "command": [
+        "/usr/sbin/taskpolicy",
+        "-b",
+        "/tmp/apple-m1-icache-xcode271",
+        "200000"
+      ],
+      "metric_xml_sha256": "f99b5cfdd55d625a398a60b7d1ac95b24f61b098e8b007a82ba68917ba384bf8",
+      "valid_intervals": 7346,
+      "invalid_intervals": 2,
+      "e_core_cycle_fraction": 0.9997173231060615,
+      "cycles": 6284404697,
+      "sample_count": 7346,
+      "shares": {
+        "delivery": 0.47798784322806076,
+        "discarded": 0.00010496079661100365,
+        "processing": 0.00017458516481839837,
+        "useful": 0.521732609823289
+      },
+      "target_exit_status": "0",
+      "toc_sha256": "ec3fdad8e84f01630686d837c90235f61bb51453d7dadf36fc4296ee02c8fcb8"
+    }
+  }
+}

@@ -115,6 +115,9 @@ def probe(output: Path, mode: str = "counters") -> dict:
                                and sum(value > 0 for value in sample["native_event_values"]) >= 3
                                and any(frame["name"] == "alu_work" for frame in sample["frames"])
                                for sample in profile["samples"])
+            elif mode == "counters" and profile.get("schema") == "MetricTable":
+                positive = (profile["apple_bottlenecks"]["cycles"] > 0
+                            and len(profile["apple_bottlenecks"]["shares"]) == 4)
             else:
                 positive = any(sample["value"] > 0 for sample in profile["samples"])
             if not positive:
@@ -128,6 +131,10 @@ def probe(output: Path, mode: str = "counters") -> dict:
         result.update(sample_count=profile["sample_count"], measurement_kind=profile["measurement_kind"],
                       profile=str(output / "capture/profile.json"),
                       reason="Native observations verified; TMA formulas and measurement accuracy remain unvalidated.")
+        if mode == "counters" and profile.get("schema") == "MetricTable":
+            result["apple_bottlenecks_available"] = True
+            result["apple_bottlenecks"] = profile["apple_bottlenecks"]
+            result["reason"] = "Apple's guided four-category ratios were observed; Intel slot-TMA remains unvalidated."
     except AppleProfileError as exc:
         result.update(status=exc.code if exc.code in EXIT_CODES else "probe_failed", reason=str(exc))
     except OSError as exc:

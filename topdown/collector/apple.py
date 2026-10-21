@@ -7,12 +7,14 @@ import shlex
 import subprocess
 from collections import Counter
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
 from topdown import __version__
 
 TMA_ROOTS = ("Frontend_Bound", "Bad_Speculation", "Backend_Bound", "Retiring")
+APPLE_BOTTLENECKS = ("delivery", "discarded", "processing", "useful")
 MODES = {
     "counters": ("CPU Counters", "cpu-pmc-value", "native-pmu-values"),
     "cpu": ("CPU Profiler", "cpu-profile", "cycle-sampled-stacks"),
@@ -306,6 +308,120 @@ def parse_profile(path: Path, schema: str, pid: int, start_ns: int = 0, end_ns: 
     }
 
 
+def parse_apple_bottlenecks(path: Path, pid: int, start_ns: int = 0, end_ns: int | None = None) -> dict:
+    """Parse Xcode's guided CPU Counters intervals and cycle-weight its four native ratios."""
+    _validate_scope(pid, start_ns, end_ns)
+    if pid is None:
+        raise AppleProfileError("Require an explicit PID for XML parsing")
+    root = _xml(path)
+    resolve = _resolve_ids(root)
+    tables = [node for node in root.iter("node") if node.find("schema") is not None]
+    if len(tables) != 1 or tables[0].find("schema").get("name") != "MetricTable":
+        raise AppleProfileError(f"Expected exactly one MetricTable table in {path}")
+    table = tables[0]
+    types = {col.findtext("mnemonic"): col.findtext("engineering-type")
+             for col in table.find("schema").findall("col")}
+    expected = {"timestamp": "start-time", "duration": "duration", "pmi-event": "string",
+                "thread": "thread", "process": "process", "metric-value": "fixed-decimal",
+                "core": "core", "is-ratio": "boolean"}
+    if any(types.get(name) != kind for name, kind in expected.items()):
+        raise AppleProfileError("Unknown guided CPU Counters column types")
+    columns = [col.findtext("mnemonic") for col in table.find("schema").findall("col")]
+    if len(columns) != len(types):
+        raise AppleProfileError("Duplicate guided CPU Counters columns")
+    groups = {}
+    excluded = 0
+    for row in table.findall("row"):
+        if len(row) != len(columns):
+            raise AppleProfileError("Guided CPU Counters row does not match its schema")
+        cells = {name: resolve(cell) for name, cell in zip(columns, row)}
+        try:
+            row_pid = int(resolve(cells["process"].find("pid")).text)
+            timestamp = int(cells["timestamp"].text)
+            duration = int(cells["duration"].text)
+            tid = int(resolve(cells["thread"].find("tid")).text)
+            core = int(cells["core"].text)
+        except (AttributeError, TypeError, ValueError) as exc:
+            raise AppleProfileError("Invalid guided CPU Counters scope") from exc
+        if min(row_pid, timestamp, duration, tid, core) < 0 or duration == 0:
+            raise AppleProfileError("Invalid guided CPU Counters scope")
+        if row_pid != pid or timestamp < start_ns or (end_ns is not None and timestamp >= end_ns):
+            excluded += 1
+            continue
+        thread_process = resolve(cells["thread"].find("process"))
+        if thread_process is not None:
+            try:
+                thread_pid = int(resolve(thread_process.find("pid")).text)
+            except (AttributeError, TypeError, ValueError) as exc:
+                raise AppleProfileError("Invalid guided CPU Counters thread PID") from exc
+            if thread_pid != pid:
+                raise AppleProfileError("Thread and process PID disagree")
+        event = cells["pmi-event"].text
+        if event not in ("cycle", *APPLE_BOTTLENECKS):
+            raise AppleProfileError(f"Unexpected guided CPU Counters metric {event}")
+        try:
+            value = Decimal(cells["metric-value"].text)
+            ratio = int(cells["is-ratio"].text)
+        except (AttributeError, TypeError, ValueError, InvalidOperation) as exc:
+            raise AppleProfileError("Invalid guided CPU Counters value") from exc
+        if (not value.is_finite() or value < 0 or ratio != (event != "cycle")
+                or (event != "cycle" and value > 1)):
+            raise AppleProfileError("Invalid guided CPU Counters value")
+        if event == "cycle" and (value != value.to_integral_value() or value >= 2**64):
+            raise AppleProfileError("Invalid guided CPU Counters cycle count")
+        key = (timestamp, duration, tid, core)
+        entry = groups.setdefault(key, {"time_ns": timestamp, "duration_ns": duration, "pid": pid,
+                                        "tid": tid, "core": core, "core_label": cells["core"].get("fmt")})
+        if event in entry:
+            raise AppleProfileError(f"Duplicate guided CPU Counters metric {event}")
+        entry[event] = int(value) if event == "cycle" else float(value)
+    samples = []
+    skipped = 0
+    for entry in groups.values():
+        if not all(event in entry for event in ("cycle", *APPLE_BOTTLENECKS)):
+            skipped += 1
+            continue
+        total = sum(entry[event] for event in APPLE_BOTTLENECKS)
+        if entry["cycle"] == 0 or abs(total - 1) > 0.01:
+            skipped += 1
+            continue
+        entry["shares"] = {event: entry.pop(event) for event in APPLE_BOTTLENECKS}
+        entry["cycles"] = entry.pop("cycle")
+        samples.append(entry)
+    if not samples:
+        raise AppleProfileError(f"No valid guided CPU Counters intervals for PID {pid}")
+
+    def summary(rows):
+        cycles = sum(row["cycles"] for row in rows)
+        return {"cycles": cycles, "sample_count": len(rows),
+                "shares": {event: sum(row["cycles"] * row["shares"][event] for row in rows) / cycles
+                           for event in APPLE_BOTTLENECKS}}
+
+    by_core = {}
+    for row in samples:
+        by_core.setdefault(row["core"], []).append(row)
+    return {
+        "schema": "MetricTable", "column_types": types,
+        "scope": {"pid": pid, "start_ns": start_ns, "end_ns": end_ns},
+        "sample_count": len(samples), "excluded_rows": excluded, "invalid_intervals": skipped,
+        "apple_bottlenecks_available": True,
+        "apple_bottlenecks": summary(samples),
+        "apple_bottlenecks_by_core": [
+            {"core": core, "core_label": rows[0]["core_label"], **summary(rows)}
+            for core, rows in sorted(by_core.items())
+        ],
+        "tma": dict.fromkeys(TMA_ROOTS), "tma_available": False,
+        "tma_reason": "Xcode's guided categories are Apple metrics, not a validated Intel slot-TMA mapping.",
+        "samples": samples, "leaf_sample_counts": [],
+        "limitations": [
+            "Guided CPU Counters ratios use Xcode's native, unpublished classification formulas.",
+            "Shares are weighted by Xcode's cycle count for each valid interval.",
+            "Intervals are selected by start time; a boundary interval can extend beyond the requested window.",
+            "Core migration and counter loss can affect aggregate shares; inspect the per-core results.",
+        ],
+    }
+
+
 def export_profile(trace: Path, output: Path, mode: str, pid: int | None = None, run: int = 1,
                    start_ns: int = 0, end_ns: int | None = None) -> dict:
     """Export a selected table; counterless traces fail rather than falling back."""
@@ -324,6 +440,10 @@ def export_profile(trace: Path, output: Path, mode: str, pid: int | None = None,
         raise AppleProfileError(f"Run {run} is absent from trace")
     _, schema, kind = MODES[mode]
     tables = selected.findall(f"./data/table[@schema='{schema}']")
+    if mode == "counters" and not tables:
+        guided = selected.findall("./data/table[@schema='MetricTable']")
+        if len(guided) == 1:
+            schema, kind, tables = "MetricTable", "apple-guided-bottleneck-intervals", guided
     if len(tables) != 1:
         found = sorted({node.get("schema", "") for node in selected.findall("./data/table")})
         raise AppleProfileError(
@@ -364,7 +484,8 @@ def export_profile(trace: Path, output: Path, mode: str, pid: int | None = None,
         profile = parse_trace_profile(xml_path, gaps_path, pid, start_ns, end_ns)
         profile["gaps_xml_sha256"] = _sha256(gaps_path)
     else:
-        profile = parse_profile(xml_path, schema, pid, start_ns, end_ns, fixed_events=fixed_events)
+        profile = (parse_apple_bottlenecks(xml_path, pid, start_ns, end_ns) if schema == "MetricTable"
+                   else parse_profile(xml_path, schema, pid, start_ns, end_ns, fixed_events=fixed_events))
     target = selected.find("./info/target/process")
     profile.update(measurement_kind=kind, run_number=run, raw_xml_sha256=_sha256(xml_path),
                    toc_sha256=_sha256(output / "toc.xml"),

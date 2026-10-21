@@ -2,10 +2,12 @@
 
 Native CLI profiling is available through `topdown apple`. Process-accounted
 instruction/cycle totals and fixed-counter samples with stacks work on the tested
-M6. These experimental paths remain separate from the Linux slot-TMA database and
-funnel. They add no runtime dependencies and do not invoke `sudo` or change host
-settings. The tested M6 rejects programmable events; the M1 event mode is
-unmeasured. Four-category TMA remains unavailable on both.
+M6 and M1. The M1 also accepts the three experimental programmable-event groups.
+Xcode 27.1's CPU Counters template exposes four native bottleneck categories on
+this M1. These paths remain separate from the Linux slot-TMA database and funnel.
+They add no runtime dependencies and do not invoke `sudo` or change host settings.
+The tested M6 rejects programmable events. Intel slot-TMA equivalence has not
+been established for the Apple categories.
 
 ## Process instruction and cycle totals
 
@@ -57,6 +59,65 @@ the broader `other` label. The selected flavor is recorded in `source`, and olde
 systems fall back to V4 without these fields. These counts do not reveal per-core
 pipeline slots or programmable events.
 
+## Xcode's four-category M1 bottlenecks
+
+On the tested M1, Xcode 27.1's standard CPU Counters template records four
+per-thread, per-core ratios: Delivery, Discarded, Processing, and Useful.
+Apple describes these in [Addressing CPU bottlenecks](https://developer.apple.com/documentation/xcode/addressing-cpu-bottlenecks).
+`topdown apple record --mode counters` reads Xcode's `MetricTable` intervals,
+checks that each has all four ratios plus a cycle count, and reports shares
+weighted by the cycles in valid intervals. The JSON includes per-core breakdowns
+and the count of incomplete or inconsistent intervals. A legacy `cpu-pmc-value`
+table remains supported where Xcode exports one. This is an Apple-native
+four-category analysis; the `tma` object remains null because the Intel slot
+classification and Apple's formulas have not been shown equivalent.
+
+```sh
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
+  poetry run topdown apple probe --mode counters --output /tmp/m1-guided-probe-001
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
+  poetry run topdown apple record --mode counters --duration 5 \
+  --output /tmp/m1-guided-branch-001 -- /tmp/apple-m1-controls branch_random 700000000
+```
+
+The tested host still has Command Line Tools selected, so these commands set
+`DEVELOPER_DIR` for one process without changing the system-wide selection.
+After the user accepted Xcode's license, the guided probe returned
+`counters_present`; the earlier CLI rejected this Xcode version because it
+looked only for `cpu-pmc-value`. Controlled Xcode captures yielded:
+
+| Control | Delivery | Discarded | Processing | Useful |
+|---|---:|---:|---:|---:|
+| Wide independent ALU | 0.01% | 0.01% | 16.67% | 83.31% |
+| Random branch | 57.48% | 34.85% | 0.00% | 7.66% |
+| Random pointer chase | 0.07% | 0.01% | 99.44% | 0.48% |
+| Compact NOP stream | 0.17% | 0.00% | 0.01% | 99.82% |
+| Compact stream, large unexecuted text | 0.18% | 0.01% | 0.01% | 99.81% |
+| Large executed NOP stream | 72.82% | 0.01% | 0.01% | 27.17% |
+
+All six records completed their target, and more than 99.9% of the valid
+interval cycles were on P cores. The raw `MetricTable` XML hashes, exact ratios,
+commands, and event captures are in [M1 Xcode validation](apple-m1-xcode27-validation.json).
+Launching with `/usr/sbin/taskpolicy -b` put more than 99.95% of measured
+cycles on E cores. The guided E-core results also formed a four-way breakdown:
+
+| E-core control | Delivery | Discarded | Processing | Useful |
+|---|---:|---:|---:|---:|
+| Wide independent ALU | 16.69% | 0.02% | 0.02% | 83.27% |
+| Random branch | 43.79% | 40.59% | 0.28% | 15.34% |
+| Random pointer chase | 0.10% | 0.02% | 99.01% | 0.88% |
+| Compact NOP stream | 0.13% | 0.01% | 0.02% | 99.84% |
+| Large executed NOP stream | 47.80% | 0.01% | 0.02% | 52.17% |
+
+The wide ALU loop's useful share is near 83% on both core kinds, consistent
+with the earlier fixed-counter IPC observations divided by their respective
+eight- and four-uop peak widths. The remaining share is classified as
+Processing on P cores and Delivery on E cores, a reminder that these are
+core-specific native classifications, not a portable slot formula.
+The guided view provides the practical four-way diagnosis on this host. The
+custom `m1`/`m1-map`/`m1-fetch` groups below expose individual hardware events
+for calibration and deeper causes; they do not themselves produce slot shares.
+
 ## M1 top-down feasibility
 
 On an M1 MacBook Air with macOS 27.0.1, launched and PID-interval `stat` counts
@@ -80,15 +141,17 @@ Published XNU code sets a release kernel's default policy to restrict events
 to this known list
 ([policy definitions](https://github.com/apple-oss-distributions/xnu/blob/main/osfmk/arm64/cpc_arm64.h),
 [secure-build control](https://github.com/apple-oss-distributions/xnu/blob/main/osfmk/kern/cpc.h)).
-The compiled gate recognizes the named events; an authorized collection has
-not yet been verified. This account's direct KPC configuration and counter
+The compiled gate recognizes the named events. Xcode 27.1's Instruments collector
+successfully recorded all three requested M1 event groups; the validation data is
+in [M1 Xcode validation](apple-m1-xcode27-validation.json). This account's direct
+KPC configuration and counter
 reads returned `EPERM`; root was unavailable. Apple's
 [KPC sysctl implementation](https://github.com/apple-oss-distributions/xnu/blob/main/bsd/kern/kern_kpc.c)
 checks ktrace access (root or the blessed PID) before those operations, while
 counter-count queries are public. The unprivileged `EPERM` therefore does not
 show that the M1 event selector itself was rejected. Developer mode was enabled
-on this host, but it did not satisfy the KPC access gate. The host has Command Line
-Tools but no full Xcode, so `xctrace` and `instrumentbuilder` could not be run.
+on this host, but it did not satisfy the direct KPC access gate. Full Xcode was
+subsequently installed, and Instruments obtained programmable-event samples.
 An authorized root KPC/PET collector is a second way to measure these events;
 the original [mperf implementation](https://github.com/tmcgilchrist/mperf)
 documents a `sudo` requirement and timer-sampled per-thread snapshots. Its
@@ -97,11 +160,10 @@ need checks against Recount and long, stable controls. Root access was not
 available for this investigation.
 Apple introduced the guided CPU Bottlenecks mode in
 [Xcode 26](https://developer.apple.com/documentation/xcode-release-notes/xcode-26-release-notes);
-the available public documentation does not state whether that mode produces
-counter data on M1. Its initial Xcode 26 release notes flag missing macOS data
+Xcode 27.1's initial four-category mode produced counter data on this M1, as
+measured above. The initial Xcode 26 release notes flagged missing macOS data
 in the separate “Instruction Processing Bottlenecks” and “Streaming SME
-Bottlenecks” modes. A recording on this host is needed to establish support for
-the initial four-category mode. Apple's [Processor Trace hardware
+Bottlenecks” modes; those deeper modes have not been verified here. Apple's [Processor Trace hardware
 requirements](https://developer.apple.com/documentation/xcode/analyzing-cpu-usage-with-processor-trace)
 start at M4 for Mac recording, so Processor Trace cannot supply a hardware
 execution trace on this M1.
@@ -171,7 +233,8 @@ This group is designed to test whether the footprint sweep below produces
 instruction-cache misses while instruction-TLB misses stay low. The two empty
 pipeline signals and fetch restarts are diagnostics, not a slot-width or
 front-end-bound percentage; the events' scopes and relationships need hardware
-calibration. KPEP accepted this group offline, but no capture was available.
+calibration. KPEP accepted this group offline, and Xcode 27.1 recorded a native
+capture on the M1.
 
 An experimental `m1` mode requests this exact order through a local Instruments
 package and exports the raw counter vector with the stack and core label:
@@ -188,13 +251,18 @@ poetry run topdown apple probe --mode m1-fetch --output /tmp/m1-fetch-probe-001
 ```
 
 The output directory must be new. All three M1 modes require full Xcode's `xctrace`
-and `instrumentbuilder`; on the tested host their probes return `tool_unavailable`
-before capture. No M1 programmable values have yet been observed. The parser
+and `instrumentbuilder`. All three probes returned `counters_present` with 540–547
+sampled rows on the tested M1 after Xcode 27.1 was installed. The parser
 validates the trace's configured event order and timer trigger, retains each
 uint64 vector position without assigning an event name, and never adds sampled
-rows or reports TMA percentages. The exact mapping from vector positions to
-configured events needs calibration; KPEP's physical counter mapping alone does
-not establish Instruments' export order. The M1 probes require at least three
+rows or reports TMA percentages. The requested order is empirically consistent:
+the first two positions are within about 2% of independent whole-process
+`stat` runs for ALU, branch, and NOP controls (the memory control differs by
+about 6% in instructions), common event positions agree across three
+configurations, and the
+branch, memory, and instruction-footprint controls each change the expected
+positions. The exported vector has no per-position name metadata, so the code
+keeps `event_value_order_verified=false`. The M1 probes require at least three
 positive vector positions in one sample containing the control function, beyond
 what the two fixed events alone can explain. The packages are scoped to one explicit
 target. The controls include wide ALU, serial dependence,
@@ -207,8 +275,12 @@ found unnamed vectors, counter resets between samples, and absolute totals that
 did not match a known instruction count on another Apple chip. Its recording
 used Xcode's guided CPU Bottlenecks mode, whose exported values include derived
 metrics, so its vector interpretation cannot be copied to these custom raw-event
-packages. Treat each raw M1 vector as an observation until its configured event
-order, cumulative/delta behavior and reset points are checked against `stat`.
+packages. These new M1 captures show that summing the first two sampled positions
+recovers roughly 98% of process-accounted cycles and instructions in separate
+runs of the ALU, branch, and NOP controls; memory's initialization and sampling
+window produced a larger difference. Individual rows can reflect context-switch timing and should not
+be treated as a continuous cumulative count. Treat other positions as empirical
+event observations rather than validated slot shares.
 If `record` reports a tool error but retains a trace,
 inspect its logs and try `topdown apple export` into a new directory; a trace's
 existence alone does not qualify the counter data.
@@ -305,8 +377,20 @@ experiment does not exclude translation conflicts or other fetch effects.
 All 108 sweep runs completed with the expected checksum,
 and at least 99.4% of cycles were accounted to the intended core kind. Smaller
 blocks execute more loop branches, and process startup, frequency and thermal
-state also affect the fixed counts. An L1I miss count still needs an authorized
-programmable-counter capture. [M1 validation](apple-m1-validation.json)
+state also affect the fixed counts. Xcode 27.1 subsequently provided that
+programmable-counter capture: the requested L1I-demand-miss vector position in
+`m1-fetch` held 772,845 in the large executed stream versus 6,586 in the
+compact stream and 6,563 with
+large unexecuted text. Normalized by sampled instructions, that is about 60,115
+versus 127 and 126 misses per billion instructions. Instruction-TLB counts also
+rose, but their L2 count exceeded the L1 count in the large run; these event
+names must not be interpreted as a strict nested miss hierarchy without more
+calibration. On E cores, the same requested L1I position rose from 11,118 in
+the compact stream to 175,274,637 in the large executed stream; normalized by
+sampled instructions, that is about 815 versus 15.5 million per billion.
+All five E-core custom-event captures completed with more than 99.9% of sampled
+cycles on E cores. [M1 Xcode validation](apple-m1-xcode27-validation.json) records the
+raw vectors. [M1 validation](apple-m1-validation.json)
 summarizes the points and binary hashes; [raw sweep
 counts](apple-m1-icache-sweep.csv) retain every run. The validation JSON also
 retains an earlier two-size comparison.
@@ -318,7 +402,7 @@ footprint control.
 find that `nop` retires without issuing to an execution unit, so this workload
 must not calibrate useful work from scheduler issues or retired instructions.
 
-### What a full four-category result still needs
+### What Intel slot-TMA still needs
 
 Intel's [Top-Down Microarchitecture Analysis Method](https://www.intel.com/content/www/us/en/docs/vtune-profiler/cookbook/2024-1/top-down-microarchitecture-analysis-method.html)
 classifies pipeline slots as Retiring, Frontend Bound, Backend Bound, or Bad
