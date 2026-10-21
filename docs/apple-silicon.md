@@ -88,6 +88,10 @@ checks ktrace access (root or the blessed PID) before those operations, while
 counter-count queries are public. The unprivileged `EPERM` therefore does not
 show that the M1 event selector itself was rejected. The host has Command Line
 Tools but no full Xcode, so `xctrace` and `instrumentbuilder` could not be run.
+Apple's [CPU counter subsystem overview](https://github.com/apple-oss-distributions/xnu/blob/main/doc/observability/cpu_counters.md)
+identifies KPC as the manager of configurable core counters; Monotonic and
+Recount expose fixed instructions/cycles. Those fixed-counter paths cannot
+provide the missing pipeline events.
 
 ### Experimental M1 event collection
 
@@ -154,6 +158,14 @@ predictable and unpredictable branches, and random pointer chasing; each prints
 a deterministic checksum. Use the matching `apple stat` capture and its V6
 P/other split to reject runs with appreciable core migration.
 
+An independent [Xcode counter calibration report](https://tahrioui.com/blog/no-ebpf-for-macos)
+found unnamed vectors, counter resets between samples, and absolute totals that
+did not match a known instruction count on another Apple chip. Treat each raw M1
+vector as an observation until its cumulative/delta behavior and reset points
+are checked against `stat`. If `record` reports a tool error but retains a trace,
+inspect its logs and try `topdown apple export` into a new directory; a trace's
+existence alone does not qualify the counter data.
+
 For the instruction-cache event, compile a separate large-code control:
 
 ```sh
@@ -173,7 +185,8 @@ instructions each, and had a median P-core IPC of 2.151. Repeating it through
 other-core IPC of 2.074. These observations validate the instruction footprint
 and execution on both core kinds; an L1I miss count still needs
 an authorized programmable-counter capture. [M1 validation](apple-m1-validation.json)
-retains each run and the compiled binary hash.
+retains each run and the compiled binary hash. The `nop` stream is a fetch
+footprint control, not a test of useful mapped or retired uops.
 
 ### What a full four-category result still needs
 
@@ -202,17 +215,19 @@ semantics. This comparison does not rule out a different M1-specific formula.
 
 | TMA category | M1 signal to investigate | Missing measurement or proof |
 |---|---|---|
-| Retiring | `RETIRE_UOP` | Per-core-kind slot denominator and retire width under each workload |
-| Frontend Bound | `MAP_DISPATCH_BUBBLE`, `SCHEDULE_EMPTY`, instruction-cache misses | Delivered-uop slot count and whether the cycle signals overlap or include backend effects |
-| Bad Speculation | `BRANCH_MISPRED_NONSPEC`, `MAP_REWIND`, flush/restart events | Wasted speculative uops and recovery slots per event |
-| Backend Bound | `MAP_STALL_DISPATCH`, cache/TLB misses | Non-overlapping backend slot count, or a validated residual after the first three |
+| Retiring | `RETIRE_UOP` | Per-core-kind slot denominator, counter scope and retire width under each workload |
+| Frontend Bound | `MAP_DISPATCH_BUBBLE`, `SCHEDULE_EMPTY`, instruction-cache misses | Partially empty delivery slots; map-bubble counts fully empty cycles, not every empty slot |
+| Bad Speculation | `BRANCH_MISPRED_NONSPEC`, mapped versus retired uops, `MAP_REWIND` | Wasted speculative uops plus recovery slots, with proven map/retire units and overlap |
+| Backend Bound | `MAP_STALL_DISPATCH`, `MAP_STALL`, cache/TLB misses | Partial backend stall slots and non-overlap with rewind/front-end stalls |
 
 The map-state group provides a direct experiment for overlap: compare
 `MAP_STALL` with `MAP_STALL_DISPATCH` and `MAP_REWIND`, and compare the sum of
 mapped-uop classes with retired uops on the same P-core controls. Any apparent
 cycle partition must also account for cycles in which map is processing uops,
-counter sampling scope and core migration. An event plan accepted by KPEP is
-not evidence that these identities hold on hardware.
+partially filled map cycles, counter sampling scope and core migration. A
+cycle count for "no uops" cannot by itself reveal how many of the other
+cycles delivered fewer than the pipeline's possible uops. An event plan
+accepted by KPEP is not evidence that these identities hold on hardware.
 
 Before enabling `tma_available`, collect actual programmable values on M1 and
 check vector order, scope, sampling semantics, simultaneous availability, loss
