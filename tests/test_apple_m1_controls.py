@@ -11,6 +11,7 @@ import pytest
 
 
 SOURCE = Path(__file__).resolve().parents[1] / "examples/apple-m1-controls.c"
+ICACHE_SOURCE = Path(__file__).resolve().parents[1] / "examples/apple-m1-icache.c"
 PLANNER = Path(__file__).resolve().parents[1] / "examples/apple-m1-kpep-plan.py"
 
 
@@ -41,6 +42,19 @@ def test_controls_complete_with_deterministic_checksums(controls, args, expected
 def test_invalid_control_arguments_exit_without_running(controls, args):
     result = subprocess.run([str(controls), *args], capture_output=True, text=True, timeout=5)
     assert result.returncode == 2
+
+
+def test_icache_control_has_large_instruction_stream_and_bounded_input(tmp_path):
+    if platform.system() != "Darwin" or platform.machine() != "arm64" or not shutil.which("clang"):
+        pytest.skip("M1 instruction-cache control requires Apple silicon and clang")
+    output = tmp_path / "icache"
+    subprocess.run(["clang", "-O3", "-g", str(ICACHE_SOURCE), "-o", str(output)], check=True, timeout=30)
+    assert output.stat().st_size > 262144
+    result = subprocess.run([str(output), "2"], capture_output=True, text=True, timeout=5, check=True)
+    assert result.stdout.strip() == str(2 ^ 0x1CACED)
+    for args in ((), ("0",), ("-1",), ("invalid",)):
+        result = subprocess.run([str(output), *args], capture_output=True, text=True, timeout=5)
+        assert result.returncode == 2
 
 
 @pytest.mark.parametrize("group,expected_events", [

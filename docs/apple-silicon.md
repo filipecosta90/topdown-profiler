@@ -139,9 +139,9 @@ poetry run topdown apple record --mode m1-map --duration 5 \
   --output /tmp/m1-map-alu-001 -- /tmp/apple-m1-controls alu_wide 4000000000
 ```
 
-The output directory must be new. `m1` mode requires full Xcode's `xctrace` and
-`instrumentbuilder`; on the tested host the probe returns `tool_unavailable`
-before capture in both modes. No M1 programmable values have yet been observed. The parser
+The output directory must be new. Both M1 modes require full Xcode's `xctrace`
+and `instrumentbuilder`; on the tested host both probes return `tool_unavailable`
+before capture. No M1 programmable values have yet been observed. The parser
 validates the trace's configured event order and timer trigger, retains each
 uint64 vector position without assigning an event name, and never adds sampled
 rows or reports TMA percentages. The exact mapping from vector positions to
@@ -153,6 +153,27 @@ target. The controls include wide ALU, serial dependence,
 predictable and unpredictable branches, and random pointer chasing; each prints
 a deterministic checksum. Use the matching `apple stat` capture and its V6
 P/other split to reject runs with appreciable core migration.
+
+For the instruction-cache event, compile a separate large-code control:
+
+```sh
+xcrun clang -O3 -g examples/apple-m1-icache.c -o /tmp/apple-m1-icache
+poetry run topdown apple stat --output /tmp/m1-icache-stat-001 \
+  -- /tmp/apple-m1-icache 200000
+poetry run topdown apple record --mode m1 --duration 5 \
+  --output /tmp/m1-icache-events-001 -- /tmp/apple-m1-icache 200000
+```
+
+The compiled function contains 65,536 `nop` instructions, with a 262,396-byte
+text section. This host reports 196,608 bytes of P-core L1I and 131,072 bytes
+of E-core L1I through `hw.perflevel*.l1icachesize`. Three P-core stat runs
+completed the 200,000-repetition stream, retired roughly 13.12 billion total
+instructions each, and had a median P-core IPC of 2.151. Repeating it through
+`taskpolicy -b` gave 99.92% or more of cycles on `other` cores and a median
+other-core IPC of 2.074. These observations validate the instruction footprint
+and execution on both core kinds; an L1I miss count still needs
+an authorized programmable-counter capture. [M1 validation](apple-m1-validation.json)
+retains each run and the compiled binary hash.
 
 ### What a full four-category result still needs
 
@@ -169,6 +190,15 @@ show instructions whose issue and retired-uop counts differ. Subtracting
 The same research finds an eight-uop P-core pipeline limit, but that alone does
 not establish a denominator for mixed P/E execution or prove the observable
 fixed-cycle event matches the relevant active pipeline cycles.
+
+Arm's [Neoverse V1 top-down methodology](https://documentation-service.arm.com/static/668cffe969e89f01e39c7ba7)
+illustrates the missing information: its four-way formulas require a documented
+slot width, speculative and retired operation counts, total/front-end/back-end
+stalled slots, and a flush-recovery correction. The installed M1 database has no
+events named `OP_SPEC` or `STALL_SLOT_*`; `RETIRE_UOP` is only a candidate for
+Arm's retired-operation count. M1's cycle-level map signals cannot be inserted
+into those slot formulas without proving their widths, overlap and recovery
+semantics. This comparison does not rule out a different M1-specific formula.
 
 | TMA category | M1 signal to investigate | Missing measurement or proof |
 |---|---|---|

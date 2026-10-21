@@ -397,11 +397,99 @@
   "m1_programmable_values_observed": false,
   "tma_available": false,
   "verification": {
-    "pytest": "583 passed on each of Python 3.10, 3.11, 3.12, and 3.13; 3 dependency deprecation warnings per run",
+    "pytest": "584 passed on each of Python 3.10, 3.11, 3.12, and 3.13; 3 dependency deprecation warnings per run",
     "ruff": "all checks passed",
     "coverage_percent": 70.502,
     "git_diff_check": "passed",
     "native_m1_programmable_capture": "not run; xctrace and instrumentbuilder unavailable",
     "wheel_build": "pip wheel succeeded; apple_fixed.instrpkg, apple_m1.instrpkg and apple_m1_map.instrpkg present"
+  },
+  "icache_control": {
+    "purpose": "Calibration control for L1I_CACHE_MISS_DEMAND; no programmable values observed yet",
+    "source_sha256": "d51eb3d2e612a184500bfd9c7a6d1b917bfbc014cca7e036b056293065bca885",
+    "executable_sha256": "dc250f71cf6a8098d3bc30de0e3885c6724c3c2142cf2822423e4f4aa318b8dd",
+    "compiled_nop_instructions_per_iteration": 65536,
+    "compiled_text_section_bytes": 262396,
+    "host_l1i_bytes": {
+      "performance": 196608,
+      "efficiency": 131072
+    },
+    "repetitions": 200000,
+    "nominal_nop_instructions": 13107200000,
+    "performance_ipc_median": 2.151,
+    "performance_cycle_fraction_min": 0.999923,
+    "runs": [
+      {
+        "instructions": 13121581783,
+        "cycles": 6148422305,
+        "performance_instructions": 13121198917,
+        "performance_cycles": 6147949351,
+        "other_instructions": 382866,
+        "other_cycles": 472954,
+        "user_time_ns": 1917891916,
+        "checksum": "2073005",
+        "completed": true
+      },
+      {
+        "instructions": 13121293646,
+        "cycles": 6099308699,
+        "performance_instructions": 13120995224,
+        "performance_cycles": 6098869827,
+        "other_instructions": 298422,
+        "other_cycles": 438872,
+        "user_time_ns": 1902635500,
+        "checksum": "2073005",
+        "completed": true
+      },
+      {
+        "instructions": 13121576925,
+        "cycles": 6100886369,
+        "performance_instructions": 13121372076,
+        "performance_cycles": 6100541946,
+        "other_instructions": 204849,
+        "other_cycles": 344423,
+        "user_time_ns": 1902174625,
+        "checksum": "2073005",
+        "completed": true
+      }
+    ],
+    "other_core_execution": "topdown apple stat launched /usr/sbin/taskpolicy -b /tmp/topdown-m1-icache 200000",
+    "other_core_ipc_median": 2.074,
+    "other_cycle_fraction_min": 0.999206,
+    "other_core_runs": [
+      {
+        "instructions": 13152135837,
+        "cycles": 6341833892,
+        "performance_instructions": 9199423,
+        "performance_cycles": 4645558,
+        "other_instructions": 13142936414,
+        "other_cycles": 6337188334,
+        "user_time_ns": 4480143666,
+        "checksum": "2073005",
+        "completed": true
+      },
+      {
+        "instructions": 13152543612,
+        "cycles": 6344490568,
+        "performance_instructions": 9080823,
+        "performance_cycles": 4968569,
+        "other_instructions": 13143462789,
+        "other_cycles": 6339521999,
+        "user_time_ns": 4339625500,
+        "checksum": "2073005",
+        "completed": true
+      },
+      {
+        "instructions": 13152195608,
+        "cycles": 6341618323,
+        "performance_instructions": 9112234,
+        "performance_cycles": 5035629,
+        "other_instructions": 13143083374,
+        "other_cycles": 6336582694,
+        "user_time_ns": 4351667541,
+        "checksum": "2073005",
+        "completed": true
+      }
+    ]
   }
 }
