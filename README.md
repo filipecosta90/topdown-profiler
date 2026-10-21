@@ -14,6 +14,7 @@ scope and explicit native units.
 Programmable events and Apple slot-TMA percentages remain unavailable.
 For an unattended JSON result and stable exit code, run
 `topdown apple probe --mode fixed --output /tmp/m6-probe-001`.
+For the development-kernel experiment, see the [resume handoff](docs/apple-m6-resume.md).
 
 [![CI](https://github.com/redis-performance/topdown-profiler/actions/workflows/ci.yml/badge.svg)](https://github.com/redis-performance/topdown-profiler/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/topdown-profiler)](https://pypi.org/project/topdown-profiler/)
