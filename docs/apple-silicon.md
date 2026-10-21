@@ -127,6 +127,10 @@ collision. [Linux's M1 PMU driver](https://github.com/torvalds/linux/blob/master
 independently documents the counter restrictions. KPEP acceptance only proves a
 configuration can be constructed; it does not prove that Instruments or the
 kernel will count these events on this host.
+Apple's [Xcode 14.3 release notes](https://developer.apple.com/documentation/xcode-release-notes/xcode-14_3-release-notes/)
+record a fix for `RETIRE_UOP` failing to count on Apple silicon in an older CPU
+Counters instrument. Positive native values still need verification with the
+actual Xcode build.
 The installed `MAP_LDST_UOP` description also mentions SME instructions, while
 `hw.optional.arm.FEAT_SME` is zero on this M1. Treat the database text as a
 candidate description shared across chips, not proof of every M1 event detail.
@@ -232,6 +236,11 @@ events named `OP_SPEC` or `STALL_SLOT_*`; `RETIRE_UOP` is only a candidate for
 Arm's retired-operation count. M1's cycle-level map signals cannot be inserted
 into those slot formulas without proving their widths, overlap and recovery
 semantics. This comparison does not rule out a different M1-specific formula.
+The M1 database also lacks `MAP_UOP` and `MAP_DISPATCH_BUBBLE_SLOT`, though
+both names occur in other event catalogues shipped on this macOS installation.
+The three M1 mapped-uop class counters and its *cycle*-level
+`MAP_DISPATCH_BUBBLE` need separate validation; those slot-level event names
+cannot be assumed to describe M1 hardware.
 
 | TMA category | M1 signal to investigate | Missing measurement or proof |
 |---|---|---|

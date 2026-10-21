@@ -12,6 +12,14 @@
     "kernel_sha256": "7ebe68bdba49e38fc601d91bc52d02080f65919aaa5e2c3bd9156c67cedaa3c3",
     "event_database_sha256": "45b779879acf8eefb522d0027653e161dce44f56405f3ce4b74fc358fcdfe908",
     "installed_programmable_events": 58,
+    "m1_catalogue_missing_pipeline_events": [
+      "MAP_UOP",
+      "MAP_DISPATCH_BUBBLE_SLOT",
+      "OP_SPEC",
+      "STALL_SLOT_FRONTEND",
+      "STALL_SLOT_BACKEND"
+    ],
+    "other_installed_catalogues_with_map_dispatch_bubble_slot": 16,
     "fixed_events": 2,
     "kpc_counter_count": {
       "fixed": 2,
