@@ -13,6 +13,8 @@ import pytest
 SOURCE = Path(__file__).resolve().parents[1] / "examples/apple-m1-controls.c"
 ICACHE_SOURCE = Path(__file__).resolve().parents[1] / "examples/apple-m1-icache.c"
 PLANNER = Path(__file__).resolve().parents[1] / "examples/apple-m1-kpep-plan.py"
+BRANCH_NOP_SOURCE = Path(__file__).resolve().parents[1] / "examples/apple-m1-branch-nop.c"
+SIMD_SOURCE = Path(__file__).resolve().parents[1] / "examples/apple-m1-simd.c"
 
 
 @pytest.fixture(scope="module")
@@ -42,6 +44,26 @@ def test_controls_complete_with_deterministic_checksums(controls, args, expected
 def test_invalid_control_arguments_exit_without_running(controls, args):
     result = subprocess.run([str(controls), *args], capture_output=True, text=True, timeout=5)
     assert result.returncode == 2
+
+
+@pytest.mark.parametrize("nop_count", [8, 16, 64])
+def test_mixed_branch_nop_control_keeps_the_same_result(tmp_path, nop_count):
+    if platform.system() != "Darwin" or platform.machine() != "arm64" or not shutil.which("clang"):
+        pytest.skip("M1 workload controls require Apple silicon and clang")
+    output = tmp_path / "branch-nop"
+    subprocess.run(["clang", "-O3", f"-DNOP_COUNT={nop_count}", str(BRANCH_NOP_SOURCE), "-o", str(output)],
+                   check=True, timeout=30)
+    result = subprocess.run([str(output), "1000"], capture_output=True, text=True, timeout=5, check=True)
+    assert result.stdout.strip() == "795230588156886778"
+
+
+def test_simd_control_compiles_and_completes(tmp_path):
+    if platform.system() != "Darwin" or platform.machine() != "arm64" or not shutil.which("clang"):
+        pytest.skip("M1 workload controls require Apple silicon and clang")
+    output = tmp_path / "simd"
+    subprocess.run(["clang", "-O3", str(SIMD_SOURCE), "-o", str(output)], check=True, timeout=30)
+    result = subprocess.run([str(output), "1000"], capture_output=True, text=True, timeout=5, check=True)
+    assert result.stdout.strip() == "1000"
 
 
 def test_icache_control_matches_hot_and_large_instruction_streams(tmp_path):

@@ -456,15 +456,17 @@ four Apple categories on this host:
 | Discarded | `max(0, M - RETIRE_UOP + W × MAP_REWIND) / (W × A)` |
 | Delivery | `1 - Useful - Processing - Discarded` |
 
-Across fourteen same-trace controls, the largest absolute difference between
+Across sixteen same-trace controls, the largest absolute difference between
 these candidates and the guided, dominant-core-kind shares was 0.039
-percentage points. The controls included P/E ALU, branch, pointer chase,
+percentage points. The controls included P/E ALU, branch, pointer chase, SIMD,
 compact and large executed NOP streams, and random branches mixed with 8,
 16, or 64 NOPs per iteration. The P branch's guided Discarded share was
 34.8439% versus 34.8442% from the candidate; the P pointer chase's guided
 Processing was 99.5579% versus 99.5580%. The E large executed NOP stream
-had the largest difference. Each target exited successfully, and 99.9% or
-more of the guided cycles in each run were on the intended core kind. The
+had the largest difference. The P/E SIMD controls counted 7.9 and 3.8 billion
+in the inferred `MAP_SIMD_UOP` position, with maximum share differences of
+0.00084 and 0.00273 percentage points. Each target exited successfully, and
+99.9% or more of the guided cycles in each run were on the intended core kind. The
 requested order, inferred position sums, XML hashes, guided shares, and
 per-category errors are in [M1 TMA calibration](apple-m1-tma-calibration.json).
 
@@ -495,6 +497,7 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 The mixed branch/NOP control is in
 [apple-m1-branch-nop.c](../examples/apple-m1-branch-nop.c); compile with
 `-DNOP_COUNT=8`, `16`, or `64` to repeat the threshold test.
+The SIMD control is in [apple-m1-simd.c](../examples/apple-m1-simd.c).
 
 ### What Intel slot-TMA still needs
 

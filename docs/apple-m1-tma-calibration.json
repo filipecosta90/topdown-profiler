@@ -886,13 +886,133 @@
         "discarded": 6.417179751472268e-05,
         "delivery": 2.368175334721556e-05
       }
+    },
+    "p-simd": {
+      "command": [
+        "/tmp/apple-m1-simd",
+        "1000000000"
+      ],
+      "target_exit_status": "0",
+      "pid": 64039,
+      "selected_core_kind": "P",
+      "guide_core_cycle_fraction": 0.9998881525476322,
+      "guided_cycle_count": 3001735287,
+      "guided_interval_count": 1063,
+      "custom_sample_count": 945,
+      "inferred_vector_position_sums": [
+        2979524328,
+        9902041571,
+        2964728793,
+        118490,
+        1728611617,
+        1979069085,
+        2017724,
+        9880437764,
+        7901548578,
+        405799
+      ],
+      "guided_shares": {
+        "delivery": 0.0002341255223136177,
+        "discarded": 0.00013402061959303608,
+        "processing": 0.583057368548378,
+        "useful": 0.41657736370790865
+      },
+      "active_to_fixed_cycle_ratio": 0.9950342627308126,
+      "toc_sha256": "0ac05facf965e0eb85a5d5787f0c905b14125779d8462489b523310d45fc8349",
+      "counter_xml_sha256": "43077b92263c723160623574a818c2be211335e8eb6f4b2a7279051b00dfb238",
+      "metric_xml_sha256": "df2e065ad0eba83f56254b01c46d8817d835e6d32dda1f74eb65965d8c408dc4",
+      "naive_candidate_shares": {
+        "useful": 0.4165826983621837,
+        "processing": 0.5830589364806024,
+        "discarded": 0.0001326235559651746,
+        "delivery": 0.00022574160124877451
+      },
+      "absolute_difference_naive_percentage_points": {
+        "useful": 0.0005334654275046535,
+        "processing": 0.00015679322243888905,
+        "discarded": 0.00013970636278614842,
+        "delivery": 0.0008383921064843174
+      },
+      "clamped_candidate_shares": {
+        "useful": 0.4165826983621837,
+        "processing": 0.5830589364806024,
+        "discarded": 0.0001326235559651746,
+        "delivery": 0.00022574160124877451
+      },
+      "absolute_difference_clamped_percentage_points": {
+        "useful": 0.0005334654275046535,
+        "processing": 0.00015679322243888905,
+        "discarded": 0.00013970636278614842,
+        "delivery": 0.0008383921064843174
+      }
+    },
+    "e-simd": {
+      "command": [
+        "/usr/sbin/taskpolicy",
+        "-b",
+        "/tmp/apple-m1-simd",
+        "500000000"
+      ],
+      "target_exit_status": "0",
+      "pid": 64059,
+      "selected_core_kind": "E",
+      "guide_core_cycle_fraction": 0.9990865783836702,
+      "guided_cycle_count": 2003508384,
+      "guided_interval_count": 2300,
+      "custom_sample_count": 1448,
+      "inferred_vector_position_sums": [
+        1952624163,
+        4840307095,
+        1922812279,
+        172908,
+        720436967,
+        962848217,
+        1659888,
+        4803011966,
+        3839361901,
+        1031516
+      ],
+      "guided_shares": {
+        "delivery": 0.0006695572259989141,
+        "discarded": 0.00020203034202175566,
+        "processing": 0.3746795501369915,
+        "useful": 0.6244598824666543
+      },
+      "active_to_fixed_cycle_ratio": 0.9847324003436497,
+      "toc_sha256": "cb5edcb1f7ed9c3d805a09248c1167734111862f83567102a2ffc1d01af2f13c",
+      "counter_xml_sha256": "f356c84aaa921bc6f80ba93d281264a75925c0f08c9ede97cee283546d3eec1b",
+      "metric_xml_sha256": "e22df042a835c94f687599e9e7e3e832b5297d3b772a57cb124dde31c713c1e4",
+      "naive_candidate_shares": {
+        "useful": 0.624477493000241,
+        "processing": 0.37467878423091766,
+        "discarded": 0.00020148508735417744,
+        "delivery": 0.00064223768148719
+      },
+      "absolute_difference_naive_percentage_points": {
+        "useful": 0.0017610533586731592,
+        "processing": 7.659060738407497e-05,
+        "discarded": 5.452546675782199e-05,
+        "delivery": 0.0027319544511724162
+      },
+      "clamped_candidate_shares": {
+        "useful": 0.624477493000241,
+        "processing": 0.37467878423091766,
+        "discarded": 0.00020148508735417744,
+        "delivery": 0.00064223768148719
+      },
+      "absolute_difference_clamped_percentage_points": {
+        "useful": 0.0017610533586731592,
+        "processing": 7.659060738407497e-05,
+        "discarded": 5.452546675782199e-05,
+        "delivery": 0.0027319544511724162
+      }
     }
   },
   "package_source": "examples/apple-m1-tma-calibration.instrpkg",
   "mixed_control_source": "examples/apple-m1-branch-nop.c",
   "formula_note": "These are empirical candidate equations for Xcode 27.1 guided Apple bottlenecks, not certified hardware definitions or validated Intel slot-TMA formulas. Guided and custom tables were captured in the same trace on dominant P or E cores, but have different sampling and weighting. The raw array event-position labels are inferred, not exported by Xcode.",
   "summary": {
-    "capture_count": 14,
+    "capture_count": 16,
     "maximum_clamped_absolute_difference_percentage_points": 0.038666980137014306,
     "naive_formula_counterexample": "Pure and mixed NOP streams make mapped minus retired uops negative because many NOPs retire without map uops; unclamped Discarded can be strongly negative.",
     "clamped_formula_limit": "A nonnegative clamp fits these controls but does not prove behavior for other instruction classes, overlapping stalls, or all Xcode versions."
@@ -952,5 +1072,6 @@
     },
     "hardware_access_verified": false,
     "note": "KPEP accepts the eight programmable events on distinct hardware counters. Its event-to-counter assignment is not the order of the combined Instruments raw vector."
-  }
+  },
+  "simd_control_source": "examples/apple-m1-simd.c"
 }
