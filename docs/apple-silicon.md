@@ -217,10 +217,12 @@ poetry run topdown apple record --mode m1 --duration 10 \
 
 The default function contains 65,536 `nop` instructions. Smaller builds repeat
 a compact `nop` block to keep nominal work around 13.107 billion NOPs per
-capture; the 160 KiB build uses 320,000 repetitions. This host reports
+capture; nondivisor block sizes use `TOPDOWN_NOP_GROUPS=1` and a matching
+repetition count recorded in the validation JSON. The 160 KiB build uses
+320,000 repetitions. This host reports
 196,608 bytes of P-core L1I and 131,072 bytes of E-core L1I through
-`hw.perflevel*.l1icachesize`. Three fresh `stat` runs of each build on each
-core kind produced:
+`hw.perflevel*.l1icachesize`. Three fresh `stat` runs of each of 18 builds on
+each core kind produced:
 
 | NOP block | Compiled text bytes | P-core median IPC | E-core median IPC |
 |---:|---:|---:|---:|
@@ -228,15 +230,36 @@ core kind produced:
 | 8,192 | 33,044 | 7.959 | 3.963 |
 | 16,384 | 65,812 | 7.970 | 3.955 |
 | 32,768 | 131,348 | 7.955 | 3.883 |
+| 33,024 | 132,372 | 7.955 | 3.665 |
+| 33,792 | 135,444 | 7.949 | 3.117 |
+| 34,816 | 139,540 | 7.952 | 2.645 |
+| 36,864 | 147,732 | 7.956 | 2.071 |
+| 38,912 | 155,924 | 7.945 | 2.074 |
 | 40,960 | 164,116 | 7.957 | 2.073 |
 | 49,152 | 196,884 | 7.881 | 2.073 |
+| 49,408 | 197,908 | 7.218 | 2.073 |
+| 50,176 | 200,980 | 5.690 | 2.073 |
+| 51,200 | 205,076 | 4.478 | 2.074 |
+| 53,248 | 213,268 | 3.190 | 2.074 |
+| 57,344 | 229,652 | 2.140 | 2.073 |
+| 61,440 | 246,036 | 2.164 | 2.073 |
 | 65,536 | 262,420 | 2.159 | 2.074 |
 
-The E-core throughput drops sharply between the 128.3 KiB and 160.3 KiB text
-sections; the P-core throughput drops between 192.3 KiB and 256.3 KiB. This pattern
-is consistent with the reported L1I capacities. The NOP block itself is exactly
+The E-core throughput starts falling between 128.3 KiB and 129.3 KiB of text,
+then reaches about 2.07 IPC by 144.3 KiB. P-core throughput starts falling
+between 192.3 KiB and 193.3 KiB, then reaches about 2.15 IPC by 224.3 KiB.
+The three-run IPC ranges on each side of both initial steps do not overlap.
+The boundaries are consistent with the reported L1I capacities, and the
+opposite core kind stays near its prior throughput at each initial step.
+The NOP block itself is exactly
 128 or 192 KiB at the respective near-limit points; the text section also
-contains loop and other program code. All runs completed with the expected checksum,
+contains loop and other program code. The host uses 16 KiB pages, so even the
+largest text section touches at most 18 pages regardless of alignment. An
+independent [M1 ITLB measurement](https://jia.je/hardware/2024/12/26/apple-m1/)
+places the P/E L1 instruction TLB capacities at 192/128 pages. A simple ITLB
+capacity limit therefore does not explain the observed drops, although this
+experiment does not exclude translation conflicts or other fetch effects.
+All 108 runs completed with the expected checksum,
 and at least 99.4% of cycles were accounted to the intended core kind. Smaller
 blocks execute more loop branches, and process startup, frequency and thermal
 state also affect the fixed counts. An L1I miss count still needs an authorized
