@@ -94,6 +94,41 @@
     },
     "hardware_access_verified": false
   },
+  "kpep_fetch_plan": {
+    "cpu_family": "0x1b588bb3",
+    "group": "fetch",
+    "counter_classes": 3,
+    "configurable_registers": [
+      "0x2",
+      "0xd6",
+      "0x51",
+      "0xdb",
+      "0xd4",
+      "0x1",
+      "0xa",
+      "0xde"
+    ],
+    "event_to_counter": {
+      "FIXED_CYCLES": 0,
+      "FIXED_INSTRUCTIONS": 1,
+      "RETIRE_UOP": 7,
+      "CORE_ACTIVE_CYCLE": 2,
+      "MAP_DISPATCH_BUBBLE": 3,
+      "SCHEDULE_EMPTY": 4,
+      "L1I_CACHE_MISS_DEMAND": 5,
+      "L1I_TLB_MISS_DEMAND": 6,
+      "L2_TLB_MISS_INSTRUCTION": 8,
+      "FETCH_RESTART": 9
+    },
+    "hardware_access_verified": false
+  },
+  "m1_fetch_package_sha256": "9efd2b8228d1bd3c3b86b01cf8e31c0449fcdbe3c3f4419dc61e76b036523934",
+  "m1_fetch_probe": {
+    "status": "tool_unavailable",
+    "exit_code": 4,
+    "reason": "xctrace or m1-fetch counter tooling unavailable",
+    "tma_available": false
+  },
   "kpep_conflict": {
     "events": [
       "RETIRE_UOP",

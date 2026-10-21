@@ -10,7 +10,7 @@ fixed-counter samples with stacks (`record --mode fixed`), and timer profiles.
 `record --mode trace` also exports hardware-traced execution intervals with native
 instruction/cycle counts and reported trace gaps.
 On M1, `stat` also reports the performance-core and other-core split, and
-`record --mode m1` and `record --mode m1-map` provide experimental
+`record --mode m1`, `m1-map`, and `m1-fetch` provide experimental
 programmable-event packages that still need Xcode/Instruments captures. Apple
 slot-TMA percentages remain unavailable.
 For an unattended JSON result and stable exit code, run

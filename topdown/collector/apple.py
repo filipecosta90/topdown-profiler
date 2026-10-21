@@ -21,6 +21,7 @@ MODES = {
     "trace": ("Processor Trace", "processor-trace-intervals", "hardware-traced-execution-intervals"),
     "m1": (None, "counters-profile", "native-m1-event-samples"),
     "m1-map": (None, "counters-profile", "native-m1-map-state-samples"),
+    "m1-fetch": (None, "counters-profile", "native-m1-fetch-samples"),
 }
 FIXED_EVENTS = ("FIXED_CYCLES", "FIXED_INSTRUCTIONS")
 FIXED_PACKAGE = Path(__file__).with_name("apple_fixed.instrpkg")
@@ -32,6 +33,10 @@ M1_MAP_EVENTS = ("FIXED_CYCLES", "FIXED_INSTRUCTIONS", "RETIRE_UOP", "MAP_DISPAT
                  "MAP_STALL", "MAP_REWIND", "MAP_STALL_DISPATCH", "MAP_INT_UOP",
                  "MAP_LDST_UOP", "MAP_SIMD_UOP")
 M1_MAP_PACKAGE = Path(__file__).with_name("apple_m1_map.instrpkg")
+M1_FETCH_EVENTS = ("FIXED_CYCLES", "FIXED_INSTRUCTIONS", "RETIRE_UOP", "CORE_ACTIVE_CYCLE",
+                   "MAP_DISPATCH_BUBBLE", "SCHEDULE_EMPTY", "L1I_CACHE_MISS_DEMAND",
+                   "L1I_TLB_MISS_DEMAND", "L2_TLB_MISS_INSTRUCTION", "FETCH_RESTART")
+M1_FETCH_PACKAGE = Path(__file__).with_name("apple_m1_fetch.instrpkg")
 M1_CPU_FAMILY = 0x1B588BB3
 APPLE_COLLECTION_MESSAGE = (
     "Apple silicon uses native Instruments profiles, not Linux perf/toplev. "
@@ -172,7 +177,7 @@ def parse_profile(path: Path, schema: str, pid: int, start_ns: int = 0, end_ns: 
     if schema == "processor-trace-intervals":
         raise AppleProfileError("Processor Trace requires its gap table; use export with trace mode")
     fixed = schema == "counters-profile"
-    if fixed and fixed_events not in (FIXED_EVENTS, M1_EVENTS, M1_MAP_EVENTS):
+    if fixed and fixed_events not in (FIXED_EVENTS, M1_EVENTS, M1_MAP_EVENTS, M1_FETCH_EVENTS):
         raise AppleProfileError("Require a validated event order from trace metadata")
     root = _xml(path)
     resolve = _resolve_ids(root)
@@ -295,7 +300,7 @@ def parse_profile(path: Path, schema: str, pid: int, start_ns: int = 0, end_ns: 
             "Loss, multiplexing and effective sampling rate are unverified; no frequency/residency inference.",
             "PMC values retain native semantics; no event sums, IPC or stall percentages are derived.",
             *(["M1 vector position-to-event mapping awaits calibration."]
-              if fixed_events in (M1_EVENTS, M1_MAP_EVENTS) else []),
+              if fixed_events in (M1_EVENTS, M1_MAP_EVENTS, M1_FETCH_EVENTS) else []),
             "Leaf sample counts are observations, not exact instruction costs or pipeline-slot shares.",
         ],
     }
@@ -305,7 +310,7 @@ def export_profile(trace: Path, output: Path, mode: str, pid: int | None = None,
                    start_ns: int = 0, end_ns: int | None = None) -> dict:
     """Export a selected table; counterless traces fail rather than falling back."""
     if mode not in MODES or run < 1:
-        raise AppleProfileError("Choose counters, fixed, m1, m1-map, trace, cpu or time mode and a positive run number")
+        raise AppleProfileError("Choose counters, fixed, m1, m1-map, m1-fetch, trace, cpu or time mode and a positive run number")
     _validate_scope(pid, start_ns, end_ns)
     if (output / "toc.xml").exists() or (output / "profile.json").exists():
         raise AppleProfileError(f"Export artifacts already exist in {output}; choose a new directory")
@@ -325,16 +330,17 @@ def export_profile(trace: Path, output: Path, mode: str, pid: int | None = None,
             f"Expected one {schema} table; found {len(tables)}. Available schemas: {', '.join(found)}. "
             "A successful recording or timer samples do not establish PMU access. "
             "Inspect the retained trace and recording logs; no automatic retry, privilege change or fallback was performed.",
-            code="counter_data_missing" if not tables and mode in {"counters", "fixed", "m1", "m1-map"}
+            code="counter_data_missing" if not tables and mode in {"counters", "fixed", "m1", "m1-map", "m1-fetch"}
             else "invalid_data",
         )
     fixed_events = None
-    if mode in {"fixed", "m1", "m1-map"}:
+    if mode in {"fixed", "m1", "m1-map", "m1-fetch"}:
         try:
             fixed_events = tuple(shlex.split(tables[0].get("pmc-events", "")))
         except ValueError as exc:
             raise AppleProfileError("Invalid configured event order") from exc
-        expected = {"fixed": FIXED_EVENTS, "m1": M1_EVENTS, "m1-map": M1_MAP_EVENTS}[mode]
+        expected = {"fixed": FIXED_EVENTS, "m1": M1_EVENTS, "m1-map": M1_MAP_EVENTS,
+                    "m1-fetch": M1_FETCH_EVENTS}[mode]
         if fixed_events != expected or tables[0].get("trigger") != "time":
             raise AppleProfileError(f"{mode} mode requires its configured events in order with a timer trigger")
     if pid is None:
@@ -409,11 +415,11 @@ def record_profile(output: Path, command: list[str], duration: int = 5, mode: st
                    pid: int | None = None, start_ns: int = 0, end_ns: int | None = None) -> dict:
     """Launch one explicit target, retain evidence, then export the requested data."""
     if mode not in MODES or duration <= 0:
-        raise AppleProfileError("Choose counters, fixed, m1, m1-map, trace, cpu or time mode and a positive duration")
+        raise AppleProfileError("Choose counters, fixed, m1, m1-map, m1-fetch, trace, cpu or time mode and a positive duration")
     _validate_scope(pid, start_ns, end_ns)
     if not command or not Path(command[0]).is_file():
         raise AppleProfileError("Supply an executable path after '--'")
-    if mode in {"m1", "m1-map"}:
+    if mode in {"m1", "m1-map", "m1-fetch"}:
         _require_m1_host()
     output.mkdir(parents=True, exist_ok=False)
     metadata = {
@@ -439,6 +445,10 @@ def record_profile(output: Path, command: list[str], duration: int = 5, mode: st
             metadata["m1_map_package_sha256"] = _sha256(M1_MAP_PACKAGE)
             package = _build_counter_instrument(output, M1_MAP_PACKAGE, "m1-map")
             cmd[3:3] = ["--package", str(package), "--instrument", "Topdown M1 Map State"]
+        elif mode == "m1-fetch":
+            metadata["m1_fetch_package_sha256"] = _sha256(M1_FETCH_PACKAGE)
+            package = _build_counter_instrument(output, M1_FETCH_PACKAGE, "m1-fetch")
+            cmd[3:3] = ["--package", str(package), "--instrument", "Topdown M1 Fetch Diagnostics"]
         else:
             cmd[3:3] = ["--template", MODES[mode][0]]
         _run(cmd, output, "record", duration + 30)

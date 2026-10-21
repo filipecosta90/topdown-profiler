@@ -9,8 +9,9 @@ from xml.etree import ElementTree as ET
 
 import pytest
 
-from topdown.collector.apple import (AppleProfileError, M1_EVENTS, M1_MAP_EVENTS, M1_MAP_PACKAGE, M1_PACKAGE,
-                                     _sha256, export_profile, parse_profile, record_profile)
+from topdown.collector.apple import (AppleProfileError, M1_EVENTS, M1_FETCH_EVENTS, M1_FETCH_PACKAGE,
+                                     M1_MAP_EVENTS, M1_MAP_PACKAGE, M1_PACKAGE, _sha256, export_profile,
+                                     parse_profile, record_profile)
 
 
 FIXED_FIXTURE = Path(__file__).parent / "test_data/apple_fixed_profile_m6.xml"
@@ -42,6 +43,7 @@ def fake_m1_export(cmd, events=M1_EVENTS, **kwargs):
 @pytest.mark.parametrize("package,events,title", [
     (M1_PACKAGE, M1_EVENTS, "Topdown M1 Event Controls"),
     (M1_MAP_PACKAGE, M1_MAP_EVENTS, "Topdown M1 Map State"),
+    (M1_FETCH_PACKAGE, M1_FETCH_EVENTS, "Topdown M1 Fetch Diagnostics"),
 ])
 def test_m1_package_and_export_order_match(package, events, title):
     root = ET.parse(package).getroot()
@@ -55,9 +57,10 @@ def test_m1_kpep_plans_match_recorded_event_order():
     groups = run_path(str(PLANNER))["EVENT_GROUPS"]
     assert groups["controls"] == M1_EVENTS
     assert groups["map-state"] == M1_MAP_EVENTS
+    assert groups["fetch"] == M1_FETCH_EVENTS
 
 
-@pytest.mark.parametrize("events", [M1_EVENTS, M1_MAP_EVENTS])
+@pytest.mark.parametrize("events", [M1_EVENTS, M1_MAP_EVENTS, M1_FETCH_EVENTS])
 def test_m1_vector_retains_positions_without_unverified_name_mapping(tmp_path, events):
     path = tmp_path / "m1.xml"
     synthetic_m1_xml(path)
@@ -72,7 +75,8 @@ def test_m1_vector_retains_positions_without_unverified_name_mapping(tmp_path, e
     assert set(profile["tma"].values()) == {None}
 
 
-@pytest.mark.parametrize("mode,events", [("m1", M1_EVENTS), ("m1-map", M1_MAP_EVENTS)])
+@pytest.mark.parametrize("mode,events", [("m1", M1_EVENTS), ("m1-map", M1_MAP_EVENTS),
+                                        ("m1-fetch", M1_FETCH_EVENTS)])
 @pytest.mark.parametrize("change", ["reorder", "trigger", "missing"])
 def test_m1_export_rejects_changed_configuration(tmp_path, change, mode, events):
     def altered(cmd, **kwargs):
@@ -100,6 +104,8 @@ def test_m1_export_rejects_changed_configuration(tmp_path, change, mode, events)
     ("m1", M1_EVENTS, M1_PACKAGE, "Topdown M1 Event Controls", "native-m1-event-samples", "m1_package_sha256"),
     ("m1-map", M1_MAP_EVENTS, M1_MAP_PACKAGE, "Topdown M1 Map State", "native-m1-map-state-samples",
      "m1_map_package_sha256"),
+    ("m1-fetch", M1_FETCH_EVENTS, M1_FETCH_PACKAGE, "Topdown M1 Fetch Diagnostics",
+     "native-m1-fetch-samples", "m1_fetch_package_sha256"),
 ])
 def test_m1_record_uses_local_package_and_preserves_configuration(tmp_path, mode, events, package, title, kind,
                                                                    metadata_key):
@@ -127,7 +133,7 @@ def test_m1_record_uses_local_package_and_preserves_configuration(tmp_path, mode
     assert (tmp_path / f"capture/{mode}-counters.instrpkg").read_bytes() == package.read_bytes()
 
 
-@pytest.mark.parametrize("mode", ["m1", "m1-map"])
+@pytest.mark.parametrize("mode", ["m1", "m1-map", "m1-fetch"])
 def test_m1_wrong_host_is_rejected_before_output_creation(tmp_path, mode):
     with patch("topdown.collector.apple.platform.system", return_value="Linux"):
         with pytest.raises(AppleProfileError, match="Apple M1 host"):

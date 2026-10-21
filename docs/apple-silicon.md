@@ -158,6 +158,18 @@ classes omit eliminated NOP uops, even without meaningful bad speculation.
 A separate experimental `m1-map` package requests this group;
 each recording uses one group and retains raw vectors.
 
+A third KPEP-accepted group, `fetch`, pairs `L1I_CACHE_MISS_DEMAND`,
+`L1I_TLB_MISS_DEMAND`, `L2_TLB_MISS_INSTRUCTION`, and `FETCH_RESTART` with
+`SCHEDULE_EMPTY`, `MAP_DISPATCH_BUBBLE`, `RETIRE_UOP`, and `CORE_ACTIVE_CYCLE`.
+It keeps fixed cycles and instructions in the same ten-event configuration.
+Run `python3 examples/apple-m1-kpep-plan.py --group fetch` to inspect its
+counter assignment; `m1-fetch` requests the matching Instruments package.
+This group is designed to test whether the footprint sweep below produces
+instruction-cache misses while instruction-TLB misses stay low. The two empty
+pipeline signals and fetch restarts are diagnostics, not a slot-width or
+front-end-bound percentage; the events' scopes and relationships need hardware
+calibration. KPEP accepted this group offline, but no capture was available.
+
 An experimental `m1` mode requests this exact order through a local Instruments
 package and exports the raw counter vector with the stack and core label:
 
@@ -169,10 +181,11 @@ poetry run topdown apple record --mode m1 --duration 5 \
 poetry run topdown apple probe --mode m1-map --output /tmp/m1-map-probe-001
 poetry run topdown apple record --mode m1-map --duration 5 \
   --output /tmp/m1-map-alu-001 -- /tmp/apple-m1-controls alu_wide 4000000000
+poetry run topdown apple probe --mode m1-fetch --output /tmp/m1-fetch-probe-001
 ```
 
-The output directory must be new. Both M1 modes require full Xcode's `xctrace`
-and `instrumentbuilder`; on the tested host both probes return `tool_unavailable`
+The output directory must be new. All three M1 modes require full Xcode's `xctrace`
+and `instrumentbuilder`; on the tested host their probes return `tool_unavailable`
 before capture. No M1 programmable values have yet been observed. The parser
 validates the trace's configured event order and timer trigger, retains each
 uint64 vector position without assigning an event name, and never adds sampled
@@ -213,6 +226,10 @@ poetry run topdown apple stat --output /tmp/m1-icache-160k-stat-001 \
   -- /tmp/apple-m1-icache-160k 320000
 poetry run topdown apple record --mode m1 --duration 10 \
   --output /tmp/m1-icache-events-001 -- /tmp/apple-m1-icache 200000
+poetry run topdown apple record --mode m1-fetch --duration 10 \
+  --output /tmp/m1-fetch-icache-001 -- /tmp/apple-m1-icache 200000
+poetry run topdown apple record --mode m1-fetch --duration 10 \
+  --output /tmp/m1-fetch-icache-hot-001 -- /tmp/apple-m1-icache-hot 200000
 ```
 
 The default function contains 65,536 `nop` instructions. Smaller builds repeat
@@ -322,7 +339,7 @@ The release kernel's known-event policy rules it out as a stock macOS fallback.
 | TMA category | M1 signal to investigate | Missing measurement or proof |
 |---|---|---|
 | Retiring | `RETIRE_UOP` | Per-core-kind slot denominator, counter scope and retire width under each workload |
-| Frontend Bound | `MAP_DISPATCH_BUBBLE`, instruction-cache misses | Partially empty delivery slots; map-bubble counts fully empty cycles, not every empty slot |
+| Frontend Bound | `MAP_DISPATCH_BUBBLE`, instruction-cache/TLB misses, `SCHEDULE_EMPTY` | Partially empty delivery slots; cycle events and misses cannot identify every empty slot or its cause |
 | Bad Speculation | `BRANCH_MISPRED_NONSPEC`, `FLUSH_RESTART_OTHER_NONSPEC`, `MAP_REWIND` | Wasted speculative uops plus recovery slots; these count flushes or rewind cycles, not all lost slots |
 | Backend Bound | `MAP_STALL_DISPATCH`, `MAP_STALL`, cache/TLB misses | Partial backend stall slots and non-overlap with rewind/front-end stalls |
 
@@ -352,7 +369,7 @@ cycle count for "no uops" cannot by itself reveal how many of the other
 cycles delivered fewer than the pipeline's possible uops. An event plan
 accepted by KPEP is not evidence that these identities hold on hardware.
 
-Use the two packages as paired experiments on stable workloads. Each capture
+Use the three packages as paired experiments on stable workloads. Each capture
 has its own event group, so compare normalized responses across repeated runs
 rather than subtracting one group's raw sample from another's. The immediate
 checks are:
@@ -361,7 +378,7 @@ checks are:
 |---|---|---|
 | Random versus predictable branch | Mispredicted branches in `m1`; `MAP_REWIND` in `m1-map` | Recheck the executed branch, vector positions, event support and sample scope |
 | Pointer chase versus wide ALU | Load-cache misses in `m1`; map backpressure in `m1-map` | Recheck cache footprint and distinguish memory latency from unrelated stalls |
-| Large `nop` stream versus wide ALU | Demand L1I misses in `m1`; delivery bubbles in both groups | Recheck the instruction footprint and whether either event captures partial delivery loss |
+| Large versus compact `nop` stream | L1I misses versus instruction-TLB misses in `m1-fetch`, plus map bubbles and scheduler-empty cycles | Recheck the instruction footprint, translation behavior, vector mapping and sample scope |
 | Wide ALU on P versus E cores | Retired/mapped uops, fixed cycles and Recount core-kind split | Keep separate denominators; reject captures with substantial migration |
 
 On the same map-state samples, check whether `MAP_STALL_DISPATCH` is bounded by

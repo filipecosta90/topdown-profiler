@@ -8,7 +8,7 @@ import pytest
 from typer.testing import CliRunner
 
 from topdown.cli import app
-from topdown.collector.apple import AppleProfileError, M1_EVENTS, M1_MAP_EVENTS, _run
+from topdown.collector.apple import AppleProfileError, M1_EVENTS, M1_FETCH_EVENTS, M1_MAP_EVENTS, _run
 from topdown.collector.apple_probe import EXPECTED_CHECKSUM, probe
 
 ENVIRONMENT = {"system": "Darwin", "arch": "arm64", "xctrace": "27.0", "templates": ["CPU Counters", "CPU Profiler", "Time Profiler"]}
@@ -115,7 +115,8 @@ def test_fixed_probe_requires_both_counters_and_observed_probe_work(tmp_path, ch
 
 
 @pytest.mark.parametrize("native_value,status", [(100, "counters_present"), (0, "probe_failed")])
-@pytest.mark.parametrize("mode,events", [("m1", M1_EVENTS), ("m1-map", M1_MAP_EVENTS)])
+@pytest.mark.parametrize("mode,events", [("m1", M1_EVENTS), ("m1-map", M1_MAP_EVENTS),
+                                        ("m1-fetch", M1_FETCH_EVENTS)])
 def test_m1_probe_requires_nonzero_native_vector_and_observed_work(tmp_path, native_value, status, mode, events):
     def m1_capture(*args, **kwargs):
         profile = fake_capture(*args, **kwargs)
