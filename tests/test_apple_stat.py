@@ -271,7 +271,7 @@ def test_unverified_sigkill_is_reported():
             _terminate(SimpleNamespace(pid=42))
 
 
-def fake_libraries(error=False, timebase_error=False):
+def fake_libraries(error=False, timebase_error=False, v6_unsupported=False, invalid_p=False):
     libproc, libsystem = MagicMock(), MagicMock()
 
     def timebase(pointer):
@@ -282,9 +282,15 @@ def fake_libraries(error=False, timebase_error=False):
         if error:
             ctypes.set_errno(1)
             return -1
+        if v6_unsupported and flavor == 6:
+            ctypes.set_errno(errno.EINVAL)
+            return -1
         info = pointer._obj
         info.ri_instructions, info.ri_cycles = 9007199254740993, 9
         info.ri_user_time, info.ri_system_time = 3, 6
+        if flavor == 6:
+            info.ri_pinstructions = info.ri_instructions + 1 if invalid_p else 9007199254740000
+            info.ri_pcycles = 7
         return 0
 
     libproc.proc_pid_rusage.side_effect = read
@@ -294,10 +300,32 @@ def fake_libraries(error=False, timebase_error=False):
 
 def test_ffi_retains_integer_precision_and_converts_mach_time():
     with patch("topdown.collector.apple_stat.ctypes.CDLL", side_effect=fake_libraries()):
-        result = _UsageReader().read(42)
+        reader = _UsageReader()
+        result = reader.read(42)
+    assert reader.flavor_id == 6
     assert result["instructions"] == 9007199254740993
     assert result["user_time_ns"] == 125
     assert result["system_time_ns"] == 250
+    assert result["performance_instructions"] == 9007199254740000
+    assert result["other_instructions"] == 993
+    assert result["performance_cycles"] == 7
+    assert result["other_cycles"] == 2
+
+
+def test_ffi_falls_back_to_v4_when_v6_is_unavailable():
+    libproc, libsystem = fake_libraries(v6_unsupported=True)
+    with patch("topdown.collector.apple_stat.ctypes.CDLL", side_effect=[libproc, libsystem]):
+        reader = _UsageReader()
+        result = reader.read(42)
+    assert reader.flavor_id == 4
+    assert "performance_instructions" not in result
+    assert [call.args[1] for call in libproc.proc_pid_rusage.call_args_list] == [6, 4]
+
+
+def test_ffi_rejects_performance_counts_above_aggregate():
+    with patch("topdown.collector.apple_stat.ctypes.CDLL", side_effect=fake_libraries(invalid_p=True)):
+        with pytest.raises(AppleProfileError, match="exceed aggregate"):
+            _UsageReader().read(42)
 
 
 def test_ffi_error_does_not_return_zero_measurements():
@@ -352,6 +380,30 @@ def test_existing_pid_interval_uses_deltas_without_launching_or_signaling(tmp_pa
     kill.assert_not_called()
     capture.launch.assert_not_called()
     capture.process.wait.assert_not_called()
+
+
+def test_existing_pid_interval_preserves_core_kind_deltas(tmp_path, capture):
+    before, after = interval_snapshots(capture)
+    before.update(performance_instructions=80, performance_cycles=150, other_instructions=20, other_cycles=50)
+    after.update(performance_instructions=260, performance_cycles=430, other_instructions=40, other_cycles=70)
+    with patch("topdown.collector.apple_stat.time.sleep"):
+        result = stat_pid(tmp_path / "stat", 42)
+    assert result["counters"]["performance_instructions"] == 180
+    assert result["counters"]["other_instructions"] == 20
+    assert result["counters"]["performance_cycles"] == 280
+    assert result["counters"]["other_cycles"] == 20
+    assert result["counters"]["instructions"] == 200
+    assert result["counters"]["cycles"] == 300
+
+
+def test_existing_pid_rejects_counter_flavor_change(tmp_path, capture):
+    before, after = interval_snapshots(capture)
+    before["performance_instructions"] = 80
+    with patch("topdown.collector.apple_stat.time.sleep"):
+        result = stat_pid(tmp_path / "stat", 42)
+    assert result["status"] == "failed"
+    assert "Counter flavor changed" in result["error"]
+    assert result["counters"] is None
 
 
 @pytest.mark.parametrize("change", ["reused", "unknown", "decreased"])

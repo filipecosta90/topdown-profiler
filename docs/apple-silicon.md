@@ -47,6 +47,34 @@ The totals are not a TMA decomposition, and no IPC, frequency or residency estim
 is derived. macOS also exposes basic instruction/cycle totals through
 `/usr/bin/time -l /path/to/program`; `stat` adds structured output and PID intervals.
 
+When `RUSAGE_INFO_V6` is available, `stat` also reports
+`performance_instructions` and `performance_cycles` from Apple's performance-core-only
+fields. `other_instructions` and `other_cycles` are aggregate totals minus those
+performance-core totals. On a two-core-kind M1 these are the efficiency-core
+remainder; on other chips, retain the broader `other` label. The selected flavor is
+recorded in `source`, and older systems fall back to V4 without these fields.
+These counts do not reveal per-core pipeline slots or programmable events.
+
+## M1 top-down feasibility
+
+On an M1 MacBook Air with macOS 27.0.1, launched and PID-interval `stat` counts
+worked, including the V6 core-kind split. KPC reports two fixed and eight
+configurable counters, while this account's direct KPC configuration and counter
+reads returned `EPERM`. The host has Command Line Tools but no full Xcode, so
+`xctrace` and the native CPU Counters template could not be tested. These results
+do not establish whether authorized KPC or Instruments collection works on M1.
+
+The installed M1 event database includes `RETIRE_UOP`, `SCHEDULE_UOP`,
+`MAP_DISPATCH_BUBBLE`, `MAP_STALL_DISPATCH`, `BRANCH_MISPRED_NONSPEC`, and cache/TLB
+events. Event names alone are insufficient for the four slot-TMA percentages:
+the issue/retirement widths, overlapping event meanings, recovery costs, and
+denominator must be established for each core kind. Apple's [CPU Bottlenecks
+categories](https://developer.apple.com/documentation/xcode/addressing-cpu-bottlenecks)
+use maximum sustainable CPU bandwidth; their equivalence to pipeline-slot TMA
+has not been established. A native M1 breakdown should retain its own metric
+names and units until controlled workloads and Instruments traces validate the
+formulas.
+
 ## Fixed-counter samples and stacks
 
 `fixed` mode requests only `FIXED_CYCLES` and `FIXED_INSTRUCTIONS`, with a timer
