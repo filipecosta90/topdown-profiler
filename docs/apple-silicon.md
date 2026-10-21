@@ -88,6 +88,12 @@ checks ktrace access (root or the blessed PID) before those operations, while
 counter-count queries are public. The unprivileged `EPERM` therefore does not
 show that the M1 event selector itself was rejected. The host has Command Line
 Tools but no full Xcode, so `xctrace` and `instrumentbuilder` could not be run.
+An authorized root KPC/PET collector is a second way to measure these events;
+the original [mperf implementation](https://github.com/tmcgilchrist/mperf)
+documents a `sudo` requirement and timer-sampled per-thread snapshots. Its
+first/last deltas can miss short-lived threads, so whole-run values would still
+need checks against Recount and long, stable controls. Root access was not
+available for this investigation.
 Apple introduced the guided CPU Bottlenecks mode in
 [Xcode 26](https://developer.apple.com/documentation/xcode-release-notes/xcode-26-release-notes);
 the available public documentation does not state whether that mode produces
@@ -144,7 +150,12 @@ the two fixed events. `MAP_REWIND` counts cycles blocked during a flush/restart;
 it does not label the cause of the flush. `MAP_STALL` is for any map stall, so
 `MAP_STALL_DISPATCH` may be a subset. The three mapped-uop classes have no
 published guarantee that they exhaust map throughput or correspond one-to-one
-with retired uops. A separate experimental `m1-map` package requests this group;
+with retired uops. In [Dougall Johnson's Firestorm NOP
+measurements](https://dougallj.github.io/applecpu/measurements/firestorm/NOP.html),
+a stream of roughly 80,000 retired NOP uops had only 200 `MAP_INT_UOP`
+counts and no reported load/store or SIMD map-class counts. Those execution-unit
+classes omit eliminated NOP uops, even without meaningful bad speculation.
+A separate experimental `m1-map` package requests this group;
 each recording uses one group and retains raw vectors.
 
 An experimental `m1` mode requests this exact order through a local Instruments
@@ -192,32 +203,51 @@ For the instruction-cache event, compile a separate large-code control:
 xcrun clang -O3 -g examples/apple-m1-icache.c -o /tmp/apple-m1-icache
 xcrun clang -O3 -g -DTOPDOWN_SMALL_ICACHE examples/apple-m1-icache.c \
   -o /tmp/apple-m1-icache-hot
+xcrun clang -O3 -g -DTOPDOWN_NOP_BLOCK=40960 -DTOPDOWN_NOP_GROUPS=1 \
+  examples/apple-m1-icache.c -o /tmp/apple-m1-icache-160k
 poetry run topdown apple stat --output /tmp/m1-icache-stat-001 \
   -- /tmp/apple-m1-icache 200000
 poetry run topdown apple stat --output /tmp/m1-icache-hot-stat-001 \
   -- /tmp/apple-m1-icache-hot 200000
-poetry run topdown apple record --mode m1 --duration 5 \
+poetry run topdown apple stat --output /tmp/m1-icache-160k-stat-001 \
+  -- /tmp/apple-m1-icache-160k 320000
+poetry run topdown apple record --mode m1 --duration 10 \
   --output /tmp/m1-icache-events-001 -- /tmp/apple-m1-icache 200000
 ```
 
-The default function contains 65,536 `nop` instructions, with a 262,396-byte
-text section. The compact build repeats a 256-`nop` block 256 times, giving
-the same nominal 65,536 `nop` instructions per requested repetition in a
-1,292-byte text section. This host reports 196,608 bytes of P-core L1I and
-131,072 bytes of E-core L1I through `hw.perflevel*.l1icachesize`.
-In three fresh matched runs of each build at 200,000 repetitions, median P-core
-IPC was 7.940 for compact code versus 2.155 for the large stream; median
-other-core IPC under `taskpolicy -b` was 3.963 versus 1.944. Each run printed
-the same checksum, retired roughly 13.1–13.2 billion instructions, and kept
-more than 99.8% of counted cycles on the intended core kind. The compact
-build executes additional loop branches; process startup, frequency and thermal
-state also affect these fixed counts. The large footprint clearly reduces
-throughput, but an L1I miss count still needs an authorized programmable-counter
-capture. [M1 validation](apple-m1-validation.json) retains all runs and binary
-hashes. The `nop` stream is a fetch footprint control.
+The default function contains 65,536 `nop` instructions. Smaller builds repeat
+a compact `nop` block to keep nominal work around 13.107 billion NOPs per
+capture; the 160 KiB build uses 320,000 repetitions. This host reports
+196,608 bytes of P-core L1I and 131,072 bytes of E-core L1I through
+`hw.perflevel*.l1icachesize`. Three fresh `stat` runs of each build on each
+core kind produced:
+
+| NOP block | Compiled text bytes | P-core median IPC | E-core median IPC |
+|---:|---:|---:|---:|
+| 256 | 1,300 | 7.945 | 3.963 |
+| 8,192 | 33,044 | 7.959 | 3.963 |
+| 16,384 | 65,812 | 7.970 | 3.955 |
+| 32,768 | 131,348 | 7.955 | 3.883 |
+| 40,960 | 164,116 | 7.957 | 2.073 |
+| 49,152 | 196,884 | 7.881 | 2.073 |
+| 65,536 | 262,420 | 2.159 | 2.074 |
+
+The E-core throughput drops sharply between the 128.3 KiB and 160.3 KiB text
+sections; the P-core throughput drops between 192.3 KiB and 256.3 KiB. This pattern
+is consistent with the reported L1I capacities. The NOP block itself is exactly
+128 or 192 KiB at the respective near-limit points; the text section also
+contains loop and other program code. All runs completed with the expected checksum,
+and at least 99.4% of cycles were accounted to the intended core kind. Smaller
+blocks execute more loop branches, and process startup, frequency and thermal
+state also affect the fixed counts. An L1I miss count still needs an authorized
+programmable-counter capture. [M1 validation](apple-m1-validation.json)
+summarizes the points and binary hashes; [raw sweep
+counts](apple-m1-icache-sweep.csv) retain every run. The validation JSON also
+retains an earlier two-size comparison.
 The compact throughputs are consistent with the independently measured eight-
 and four-uop P/E limits; fixed *instruction* counts and process overhead do not
-prove a slot denominator or four-way partition.
+prove a slot denominator or four-way partition. The `nop` stream is a fetch
+footprint control.
 [Firestorm measurements](https://dougallj.github.io/applecpu/firestorm.html)
 find that `nop` retires without issuing to an execution unit, so this workload
 must not calibrate useful work from scheduler issues or retired instructions.
@@ -253,12 +283,17 @@ both names occur in other event catalogues shipped on this macOS installation.
 The three M1 mapped-uop class counters and its *cycle*-level
 `MAP_DISPATCH_BUBBLE` need separate validation; those slot-level event names
 cannot be assumed to describe M1 hardware.
+An undocumented `dispatch uop` selector `0x78` appears in independent
+[Firestorm measurements](https://dougallj.github.io/applecpu/measurements/firestorm/NOP.html),
+but it is absent from the installed M1 event database and Apple's
+[T8103 release-kernel event list](https://github.com/apple-oss-distributions/xnu/blob/main/osfmk/arm64/cpc_arm64_events.c).
+The release kernel's known-event policy rules it out as a stock macOS fallback.
 
 | TMA category | M1 signal to investigate | Missing measurement or proof |
 |---|---|---|
 | Retiring | `RETIRE_UOP` | Per-core-kind slot denominator, counter scope and retire width under each workload |
 | Frontend Bound | `MAP_DISPATCH_BUBBLE`, instruction-cache misses | Partially empty delivery slots; map-bubble counts fully empty cycles, not every empty slot |
-| Bad Speculation | `BRANCH_MISPRED_NONSPEC`, mapped versus retired uops, `MAP_REWIND` | Wasted speculative uops plus recovery slots, with proven map/retire units and overlap |
+| Bad Speculation | `BRANCH_MISPRED_NONSPEC`, `FLUSH_RESTART_OTHER_NONSPEC`, `MAP_REWIND` | Wasted speculative uops plus recovery slots; these count flushes or rewind cycles, not all lost slots |
 | Backend Bound | `MAP_STALL_DISPATCH`, `MAP_STALL`, cache/TLB misses | Partial backend stall slots and non-overlap with rewind/front-end stalls |
 
 The controls group also pairs `CORE_ACTIVE_CYCLE` with `FIXED_CYCLES` in one
@@ -271,10 +306,16 @@ observed `CORE_ACTIVE_CYCLE`, `MAP_STALL`, `MAP_STALL_DISPATCH`, and
 `MAP_REWIND` change with memory-ordering behavior. In its two workloads,
 `MAP_STALL_DISPATCH` was close to `MAP_STALL`; that is a useful directional
 check for the map-state group, not a universal equality or a macOS calibration.
+Its reported active cycles per instruction are consistent with reciprocal IPC
+from `perf` cycles/instructions within the rounding of the reader and writer
+cases. This makes `CORE_ACTIVE_CYCLE` a credible M1 denominator candidate, but
+its scope and equivalence to fixed cycles still need a same-run macOS check.
 
 The map-state group provides a direct experiment for overlap: compare
 `MAP_STALL` with `MAP_STALL_DISPATCH` and `MAP_REWIND`, and compare the sum of
-mapped-uop classes with retired uops on the same P-core controls. Any apparent
+mapped-uop classes with retired uops on the same P-core controls. The NOP
+counterexample above already rules out using that sum as a general all-uop
+counter or subtracting it from `RETIRE_UOP` to estimate discarded work. Any apparent
 cycle partition must also account for cycles in which map is processing uops,
 partially filled map cycles, counter sampling scope and core migration. A
 cycle count for "no uops" cannot by itself reveal how many of the other

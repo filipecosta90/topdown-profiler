@@ -4,22 +4,37 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#ifdef TOPDOWN_SMALL_ICACHE
-#define NOP_BLOCK 256
-#define NOP_GROUPS 256
-#else
-#define NOP_BLOCK 65536
-#define NOP_GROUPS 1
+#if defined(TOPDOWN_SMALL_ICACHE) && !defined(TOPDOWN_NOP_BLOCK)
+#define TOPDOWN_NOP_BLOCK 256
+#endif
+#ifndef TOPDOWN_NOP_BLOCK
+#define TOPDOWN_NOP_BLOCK 65536
+#endif
+#if TOPDOWN_NOP_BLOCK <= 0
+#error TOPDOWN_NOP_BLOCK must be positive
+#endif
+
+#ifndef TOPDOWN_NOP_GROUPS
+#if 65536 % TOPDOWN_NOP_BLOCK != 0
+#error TOPDOWN_NOP_BLOCK must divide 65536 unless TOPDOWN_NOP_GROUPS is set
+#endif
+#define TOPDOWN_NOP_GROUPS (65536 / TOPDOWN_NOP_BLOCK)
+#endif
+#if TOPDOWN_NOP_GROUPS <= 0
+#error TOPDOWN_NOP_GROUPS must be positive
 #endif
 
 #define STRINGIFY_INNER(value) #value
 #define STRINGIFY(value) STRINGIFY_INNER(value)
 
 __attribute__((noinline)) static uint64_t icache_stream(uint64_t repetitions) {
+    unsigned groups = TOPDOWN_NOP_GROUPS;
+    // Prevent clang from duplicating the NOP block when the group count is small.
+    __asm__ volatile("" : "+r"(groups));
     for (uint64_t i = 0; i < repetitions; ++i) {
-        for (unsigned chunk = 0; chunk < NOP_GROUPS; ++chunk) {
+        for (unsigned chunk = 0; chunk < groups; ++chunk) {
             __asm__ volatile(
-                ".rept " STRINGIFY(NOP_BLOCK) "\n"
+                ".rept " STRINGIFY(TOPDOWN_NOP_BLOCK) "\n"
                 "nop\n"
                 ".endr\n");
         }

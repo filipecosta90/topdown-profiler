@@ -45,16 +45,27 @@ def test_invalid_control_arguments_exit_without_running(controls, args):
 
 
 def test_icache_control_matches_hot_and_large_instruction_streams(tmp_path):
-    if platform.system() != "Darwin" or platform.machine() != "arm64" or not shutil.which("clang"):
+    if (platform.system() != "Darwin" or platform.machine() != "arm64"
+            or not shutil.which("clang") or not shutil.which("otool")):
         pytest.skip("M1 instruction-cache control requires Apple silicon and clang")
     output = tmp_path / "icache"
     hot = tmp_path / "icache-hot"
+    medium = tmp_path / "icache-medium"
+    custom = tmp_path / "icache-custom"
     subprocess.run(["clang", "-O3", "-g", str(ICACHE_SOURCE), "-o", str(output)], check=True, timeout=30)
     subprocess.run(["clang", "-O3", "-g", "-DTOPDOWN_SMALL_ICACHE", str(ICACHE_SOURCE), "-o", str(hot)],
                    check=True, timeout=30)
-    assert output.stat().st_size > 262144
-    assert hot.stat().st_size < output.stat().st_size / 2
-    for binary in (output, hot):
+    subprocess.run(["clang", "-O3", "-g", "-DTOPDOWN_NOP_BLOCK=32768", str(ICACHE_SOURCE), "-o", str(medium)],
+                   check=True, timeout=30)
+    subprocess.run(["clang", "-O3", "-g", "-DTOPDOWN_NOP_BLOCK=40960", "-DTOPDOWN_NOP_GROUPS=1",
+                    str(ICACHE_SOURCE), "-o", str(custom)], check=True, timeout=30)
+
+    def text_bytes(binary):
+        result = subprocess.run(["otool", "-l", str(binary)], capture_output=True, text=True, check=True)
+        return int(result.stdout.split("sectname __text", 1)[1].split("size 0x", 1)[1].split()[0], 16)
+
+    assert text_bytes(hot) < 131072 < text_bytes(medium) < text_bytes(custom) < 196608 < text_bytes(output)
+    for binary in (output, hot, medium, custom):
         result = subprocess.run([str(binary), "2"], capture_output=True, text=True, timeout=5, check=True)
         assert result.stdout.strip() == str(2 ^ 0x1CACED)
     for args in ((), ("0",), ("-1",), ("invalid",)):

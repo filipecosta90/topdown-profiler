@@ -664,5 +664,188 @@
       "checksum": "2073005",
       "interpretation": "Matches the scale of stat V6 small-code P-core process counts; separate run, not synchronized."
     }
+  },
+  "icache_footprint_sweep": {
+    "purpose": "Instruction-footprint sweep with approximately equal nominal NOP work; fixed process counters only",
+    "source_sha256": "657288f9ece601831cd8af6e8ba2f5878c3deaf8e9cc996e47451ad1ea44fec7",
+    "compiler": "clang -O3 -g, with -DTOPDOWN_NOP_BLOCK=<block> and -DTOPDOWN_NOP_GROUPS=1 for blocks 40960 and 49152",
+    "host_l1i_bytes": {
+      "performance": 196608,
+      "efficiency": 131072
+    },
+    "target_nominal_nops": 13107200000,
+    "points": [
+      {
+        "nop_block": 256,
+        "groups_per_repetition": 256,
+        "repetitions": 200000,
+        "nominal_nops": 13107200000,
+        "text_bytes": 1300,
+        "executable_sha256": "918a9d538b62b29c83b4b900f81ba91638fc0a0d6e8fa098f9629830a4b22595",
+        "p": {
+          "ipc_median": 7.945,
+          "ipc_range": [
+            7.937,
+            7.947
+          ],
+          "min_kind_cycle_fraction": 0.999884
+        },
+        "e": {
+          "ipc_median": 3.963,
+          "ipc_range": [
+            3.959,
+            3.963
+          ],
+          "min_kind_cycle_fraction": 0.998381
+        }
+      },
+      {
+        "nop_block": 8192,
+        "groups_per_repetition": 8,
+        "repetitions": 200000,
+        "nominal_nops": 13107200000,
+        "text_bytes": 33044,
+        "executable_sha256": "c0a90d796ef0366c8be2ff7f79332d3c01caa350b26d84a25237c5dd292e3217",
+        "p": {
+          "ipc_median": 7.959,
+          "ipc_range": [
+            7.955,
+            7.961
+          ],
+          "min_kind_cycle_fraction": 0.999904
+        },
+        "e": {
+          "ipc_median": 3.963,
+          "ipc_range": [
+            3.932,
+            3.965
+          ],
+          "min_kind_cycle_fraction": 0.998445
+        }
+      },
+      {
+        "nop_block": 16384,
+        "groups_per_repetition": 4,
+        "repetitions": 200000,
+        "nominal_nops": 13107200000,
+        "text_bytes": 65812,
+        "executable_sha256": "2e36326037e51503e0c3984455e75badc55fc5631317cb7ff4d1dcfa534e8354",
+        "p": {
+          "ipc_median": 7.97,
+          "ipc_range": [
+            7.968,
+            7.973
+          ],
+          "min_kind_cycle_fraction": 0.999595
+        },
+        "e": {
+          "ipc_median": 3.955,
+          "ipc_range": [
+            3.954,
+            3.957
+          ],
+          "min_kind_cycle_fraction": 0.998337
+        }
+      },
+      {
+        "nop_block": 32768,
+        "groups_per_repetition": 2,
+        "repetitions": 200000,
+        "nominal_nops": 13107200000,
+        "text_bytes": 131348,
+        "executable_sha256": "c3c0163853381a33d30b097c910d7f04e632a213b0683a537694ce85049c2155",
+        "p": {
+          "ipc_median": 7.955,
+          "ipc_range": [
+            7.948,
+            7.967
+          ],
+          "min_kind_cycle_fraction": 0.999907
+        },
+        "e": {
+          "ipc_median": 3.883,
+          "ipc_range": [
+            3.867,
+            3.889
+          ],
+          "min_kind_cycle_fraction": 0.99841
+        }
+      },
+      {
+        "nop_block": 40960,
+        "groups_per_repetition": 1,
+        "repetitions": 320000,
+        "nominal_nops": 13107200000,
+        "text_bytes": 164116,
+        "executable_sha256": "ac66619343c291c0a1c36fb2ccdb308498acb437e979b7af521df656d8ef172a",
+        "p": {
+          "ipc_median": 7.957,
+          "ipc_range": [
+            7.94,
+            7.968
+          ],
+          "min_kind_cycle_fraction": 0.994893
+        },
+        "e": {
+          "ipc_median": 2.073,
+          "ipc_range": [
+            2.072,
+            2.075
+          ],
+          "min_kind_cycle_fraction": 0.999163
+        }
+      },
+      {
+        "nop_block": 49152,
+        "groups_per_repetition": 1,
+        "repetitions": 266667,
+        "nominal_nops": 13107216384,
+        "text_bytes": 196884,
+        "executable_sha256": "6e299e5fdaa903277f11cd954029c309d71d9af3fc0cb5356ab76550dfdeb6ea",
+        "p": {
+          "ipc_median": 7.881,
+          "ipc_range": [
+            7.879,
+            7.885
+          ],
+          "min_kind_cycle_fraction": 0.999907
+        },
+        "e": {
+          "ipc_median": 2.073,
+          "ipc_range": [
+            2.073,
+            2.075
+          ],
+          "min_kind_cycle_fraction": 0.999141
+        }
+      },
+      {
+        "nop_block": 65536,
+        "groups_per_repetition": 1,
+        "repetitions": 200000,
+        "nominal_nops": 13107200000,
+        "text_bytes": 262420,
+        "executable_sha256": "7f1c583420b5535da049fd7c5a42800935240f99b150f2576cc8540392180464",
+        "p": {
+          "ipc_median": 2.159,
+          "ipc_range": [
+            2.143,
+            2.163
+          ],
+          "min_kind_cycle_fraction": 0.999893
+        },
+        "e": {
+          "ipc_median": 2.074,
+          "ipc_range": [
+            2.074,
+            2.074
+          ],
+          "min_kind_cycle_fraction": 0.999205
+        }
+      }
+    ],
+    "limit": "Each process includes startup and loop overhead; affinity is inferred from V6 core-kind cycle share. Throughput cliffs are consistent with L1I capacity but no L1I miss event was counted.",
+    "raw_runs_csv": "apple-m1-icache-sweep.csv",
+    "raw_runs_csv_sha256": "f3568c705d1d2e51cfe23f9733bc366ca866667394435cc2ceab284f579b98dc"
   }
 }
