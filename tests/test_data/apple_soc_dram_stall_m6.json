@@ -1,0 +1,161 @@
+{
+  "format": 2,
+  "unit": 7205759403792793600,
+  "id": 5786369367636719414,
+  "subgroup": "PACC0",
+  "group": "PMP",
+  "name": "DRAM Stall",
+  "unit_label": "events",
+  "states": [
+    {
+      "id": 2314885616799580160,
+      "label": "   4%",
+      "value": 7,
+      "intransitions": 0
+    },
+    {
+      "id": 2314885633979449344,
+      "label": "   8%",
+      "value": 0,
+      "intransitions": 0
+    },
+    {
+      "id": 2314904299907317760,
+      "label": "  12%",
+      "value": 0,
+      "intransitions": 0
+    },
+    {
+      "id": 2314904317087186944,
+      "label": "  16%",
+      "value": 0,
+      "intransitions": 0
+    },
+    {
+      "id": 2314905390829010944,
+      "label": "  20%",
+      "value": 0,
+      "intransitions": 0
+    },
+    {
+      "id": 2314905408008880128,
+      "label": "  24%",
+      "value": 2,
+      "intransitions": 0
+    },
+    {
+      "id": 2314905425188749312,
+      "label": "  28%",
+      "value": 1,
+      "intransitions": 0
+    },
+    {
+      "id": 2314906498930573312,
+      "label": "  32%",
+      "value": 0,
+      "intransitions": 0
+    },
+    {
+      "id": 2314906516110442496,
+      "label": "  36%",
+      "value": 2,
+      "intransitions": 0
+    },
+    {
+      "id": 2314907589852266496,
+      "label": "  40%",
+      "value": 3,
+      "intransitions": 0
+    },
+    {
+      "id": 2314907607032135680,
+      "label": "  44%",
+      "value": 17,
+      "intransitions": 0
+    },
+    {
+      "id": 2314907624212004864,
+      "label": "  48%",
+      "value": 46,
+      "intransitions": 0
+    },
+    {
+      "id": 2314908697953828864,
+      "label": "  52%",
+      "value": 35,
+      "intransitions": 0
+    },
+    {
+      "id": 2314908715133698048,
+      "label": "  56%",
+      "value": 32,
+      "intransitions": 0
+    },
+    {
+      "id": 2314909788875522048,
+      "label": "  60%",
+      "value": 42,
+      "intransitions": 0
+    },
+    {
+      "id": 2314909806055391232,
+      "label": "  64%",
+      "value": 28,
+      "intransitions": 0
+    },
+    {
+      "id": 2314909823235260416,
+      "label": "  68%",
+      "value": 24,
+      "intransitions": 0
+    },
+    {
+      "id": 2314910896977084416,
+      "label": "  72%",
+      "value": 27,
+      "intransitions": 0
+    },
+    {
+      "id": 2314910914156953600,
+      "label": "  76%",
+      "value": 20,
+      "intransitions": 0
+    },
+    {
+      "id": 2314911987898777600,
+      "label": "  80%",
+      "value": 11,
+      "intransitions": 0
+    },
+    {
+      "id": 2314912005078646784,
+      "label": "  84%",
+      "value": 26,
+      "intransitions": 0
+    },
+    {
+      "id": 2314912022258515968,
+      "label": "  88%",
+      "value": 95,
+      "intransitions": 0
+    },
+    {
+      "id": 2314913096000339968,
+      "label": "  92%",
+      "value": 3998,
+      "intransitions": 0
+    },
+    {
+      "id": 2314913113180209152,
+      "label": "  96%",
+      "value": 33,
+      "intransitions": 0
+    },
+    {
+      "id": 2319688266409836544,
+      "label": " 100%",
+      "value": 0,
+      "intransitions": 0
+    }
+  ]
+}

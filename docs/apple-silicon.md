@@ -2,7 +2,8 @@
 
 Native CLI profiling is available through `topdown apple`. Process-accounted
 instruction/cycle totals and fixed-counter samples with stacks work on the tested
-M6. These experimental paths remain separate from the Linux slot-TMA database and
+M6. Native system/cluster firmware histograms and trace scheduling context are also
+available. These experimental paths remain separate from the Linux slot-TMA database and
 funnel. They add no runtime dependencies and do not invoke `sudo` or change host
 settings. Programmable events and four-category TMA remain unavailable.
 
@@ -143,10 +144,106 @@ native counters are available separately for Super, Performance and Efficiency
 cores. A separate C reader matched the Python reader's bytes for a stopped owned
 target. Thread lifetime counts differed from process-accounted lifetime totals;
 these sources remain separate and the per-thread interface is not exposed as a
-new product command. Serial/parallel arithmetic controls produced different
-native instruction/cycle ratios, which cannot identify a unique stall cause.
+new product command. A follow-up self-exec control found exact agreement of thread
+and process instruction deltas within ten individual phases, while their cumulative
+offset changed across exec. The offset's precise cause remains unresolved; phase
+agreement does not establish lifetime equivalence. Serial/parallel arithmetic
+controls produced different native instruction/cycle ratios, which cannot identify
+a unique stall cause.
 See [follow-up validation](apple-m6-trace-validation.json) for the measured controls
 and limitations.
+
+## System and cluster firmware context
+
+`apple soc` reads private native IOReport channels without root, Xcode, or new runtime
+dependencies. It does not launch or attach to a workload. Run the workload separately
+and use a new directory:
+
+```sh
+poetry run topdown apple soc --duration 2 --output /tmp/apple-soc-001
+```
+
+On the tested M6, the command exports 27 channels: six PMP stall distributions
+(`Core Block Slot`, `M$ Stall`, `DRAM Stall` for EACC0/PACC0), nine DCS bandwidth
+histograms, and twelve core performance-state distributions. It retains native
+channel/state IDs, labels, units, exact unsigned counter deltas, transition deltas,
+read timestamps, before/after snapshots, collector hash, and worker logs. The
+private native reader runs in a subprocess with a duration-plus-30-second timeout;
+missing channels, changing layouts, counter resets and invalid values fail the run.
+Other machines may expose different channels or reject subscriptions.
+
+The PMP channels use native **events**, including those read through a function
+named `IOReportStateGetResidency`. These values are observation counts, not
+nanoseconds. The CPU performance-state channels use native `24Mticks`.
+`share_of_reported_values` divides each state's delta by that channel's total;
+zero totals produce null shares. The percentage and GB/s strings are native bucket
+labels. Their boundaries, sample cadence and activity denominator remain unknown.
+No exact bandwidth, clock frequency, process stall percentage, or TMA share is
+computed. Results include unrelated activity across the system/cluster.
+
+Controlled, randomized workload experiments found a reproducible PACC0 `DRAM Stall`
+response to large dependent pointer-chasing. One-worker 8 KiB–4 MiB controls remained
+near the first bucket, while 64–256 MiB controls moved strongly toward high buckets.
+Disjoint 128 MiB chains retained the high response with one, two and six workers;
+shared chains behaved differently, exposing cache-sharing as a confound. This
+supports a coarse contextual memory signal under these controls. It does not
+calibrate the labels as a workload's percentage of stalled cycles. `Core Block
+Slot` remained near its first bucket in the arithmetic and memory controls; its
+responsiveness and meaning are unvalidated. No automatic bottleneck classifier is
+provided. A separate static branch-ring control expanded its code footprint from
+256 bytes to 4 MiB and slowed by about 37 times, while `Core Block Slot` stayed in
+the first bucket. This channel therefore did not identify that control's slowdown;
+the experiment does not isolate instruction-cache misses from branch-target effects.
+See [deep CLI validation](apple-m6-deep-validation.json).
+
+## Trace scheduling context
+
+When a Processor Trace recording includes a `thread-state` table, export also
+retains `thread-state.xml` and adds `scheduling` to each decoded interval. Native
+Running/Blocked/other state spans are intersected with that interval and thread.
+The annotation reports covered and uncovered nanoseconds, native state durations,
+and observed Running cores. A single core is assigned only when the complete
+positive-duration interval was observed Running on that core. Missing spans,
+blocking, migration and unknown core identity prevent that assignment.
+
+The measured serial-loop fixtures and native exports resolve to both S-core and
+E-core execution in separate recordings. Counts remain the original native
+instruction/cycle values: they are never prorated across scheduling states or
+cores. Call intervals contain inclusive time and can overlap. Native thread-state
+model boundaries can be synthetic, so no process-wide waiting percentage is
+computed. A two-sleep control measured 110.039 ms and 103.388 ms in the target;
+corresponding native Blocked spans were 110.003 ms and 103.351 ms. Other Blocked
+spans also occurred, so they are not all classified as those sleeps. Complete
+scheduling coverage does not establish complete instruction trace decoding.
+Traces without this table remain exportable and report
+`scheduling_available: false`.
+
+## Remaining OS counter barriers
+
+The uncore interface accepts ownership and reports two monitors with 24 counters,
+but an exhaustive disabled sweep of all 65,536 16-bit selectors accepted only zero;
+all 65,535 nonzero selectors returned `EPERM`. The probe never enabled counters and
+closed/reset its ownership. Together with the earlier programmable-core rejection
+and running-kernel inspection, this closes another direct acquisition route on
+this installed kernel. No host security setting, kernel, or boot configuration was
+changed.
+
+IOReport enumerates 207 AMC memory-controller channels, but subscriptions to each
+individual channel failed without root. Enumeration alone does not establish
+readable counters. A root comparison still requires interactive CLI authentication
+and has not been completed. No developer-kernel or bootable OS patch was built or
+tested. The existing kernel gate explains a blocker; it does not establish that
+patching one branch would provide valid event mappings, safe counter programming,
+or a complete top-down model.
+
+A support recheck on October 21 found no remedy in the retrieved
+[Apple engineer's forum response](https://developer.apple.com/forums/thread/849179).
+A separate participant reports the failure on macOS 27.2 Beta; this is a user
+report, not a local test or Apple confirmation. Apple has released
+[Xcode 27.1](https://developer.apple.com/news/releases/?id=10152026a), but the
+retrieved 27.1/27.2 release notes supplied no M6/KPC fix. Newer Xcode/OS builds were
+not installed or tested here. Absence of a release-note entry does not establish
+whether a newer build changes behavior.
 
 ## Unattended capability probe
 
@@ -294,7 +391,8 @@ implementation does not automatically translate a signpost into the export windo
 
 The output directory contains commands, recorder/export logs, a raw trace for new
 captures, `toc.xml`, and `profile.json` when export succeeds. Sampled modes retain
-`samples.xml`; trace mode retains `intervals.xml` and `gaps.xml`. New
+`samples.xml`; trace mode retains `intervals.xml`, `gaps.xml`, and, when available,
+`thread-state.xml`. New
 captures also retain `capture.json` with executable/collector hashes, tool version,
 host metadata and outcome. The JSON includes XML checksums, target exit metadata,
 per-row PID/TID/time, and mode-specific native measurements. Sampled modes retain
