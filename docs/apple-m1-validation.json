@@ -1111,6 +1111,78 @@
     ],
     "limit": "Each process includes startup and loop overhead; affinity is inferred from V6 core-kind cycle share. Throughput cliffs are consistent with L1I capacity but no L1I miss event was counted.",
     "raw_runs_csv": "apple-m1-icache-sweep.csv",
-    "raw_runs_csv_sha256": "90b863c05c05a1b7dfb516122e9ecc5eb929c918dd1e03b39901e884bd13b60e"
+    "raw_runs_csv_sha256": "90b863c05c05a1b7dfb516122e9ecc5eb929c918dd1e03b39901e884bd13b60e",
+    "matched_128k_one_group_control": {
+      "nop_block": 32768,
+      "groups_per_repetition": 1,
+      "repetitions": 400000,
+      "nominal_nops": 13107200000,
+      "text_bytes": 131348,
+      "executable_sha256": "debdcc8c1e6bb27fc818fbba83225d0195430b53a3a0227babbc9059aefc7964",
+      "runs": {
+        "p": [
+          {
+            "instructions": 13122175924,
+            "cycles": 1654034336,
+            "kind_instructions": 13118295636,
+            "kind_cycles": 1649991709,
+            "checksum": 1750637
+          },
+          {
+            "instructions": 13121679051,
+            "cycles": 1649889249,
+            "kind_instructions": 13121344540,
+            "kind_cycles": 1649712792,
+            "checksum": 1750637
+          },
+          {
+            "instructions": 13121349858,
+            "cycles": 1649579288,
+            "kind_instructions": 13120982351,
+            "kind_cycles": 1649415687,
+            "checksum": 1750637
+          }
+        ],
+        "e": [
+          {
+            "instructions": 13141607157,
+            "cycles": 3383117540,
+            "kind_instructions": 13132454689,
+            "kind_cycles": 3377796601,
+            "checksum": 1750637
+          },
+          {
+            "instructions": 13141705744,
+            "cycles": 3382949592,
+            "kind_instructions": 13132627386,
+            "kind_cycles": 3377862942,
+            "checksum": 1750637
+          },
+          {
+            "instructions": 13141837558,
+            "cycles": 3382956305,
+            "kind_instructions": 13132774244,
+            "kind_cycles": 3378048917,
+            "checksum": 1750637
+          }
+        ]
+      },
+      "p": {
+        "ipc_median": 7.954,
+        "ipc_range": [
+          7.951,
+          7.955
+        ],
+        "min_kind_cycle_fraction": 0.997556
+      },
+      "e": {
+        "ipc_median": 3.888,
+        "ipc_range": [
+          3.888,
+          3.888
+        ],
+        "min_kind_cycle_fraction": 0.998427
+      }
+    }
   }
 }

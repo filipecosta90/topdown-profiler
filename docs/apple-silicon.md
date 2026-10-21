@@ -245,6 +245,13 @@ each core kind produced:
 | 61,440 | 246,036 | 2.164 | 2.073 |
 | 65,536 | 262,420 | 2.159 | 2.074 |
 
+The 128 KiB NOP-block row uses two inner-loop passes. An additional control
+used one pass and 400,000 repetitions, matching the just-over-128 KiB builds'
+loop structure and nominal NOP work. Its three-run medians were 7.954 IPC on P
+cores and 3.888 on E cores, close to the original 128 KiB row; the next 129 KiB
+block still fell to 3.665 E-core IPC. Its six raw counts and binary hash are in
+the validation JSON.
+
 The E-core throughput starts falling between 128.3 KiB and 129.3 KiB of text,
 then reaches about 2.07 IPC by 144.3 KiB. P-core throughput starts falling
 between 192.3 KiB and 193.3 KiB, then reaches about 2.15 IPC by 224.3 KiB.
