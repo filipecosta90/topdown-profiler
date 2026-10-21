@@ -393,7 +393,7 @@ def parse_apple_bottlenecks(path: Path, pid: int, start_ns: int = 0, end_ns: int
 
     def summary(rows):
         cycles = sum(row["cycles"] for row in rows)
-        return {"cycles": cycles, "sample_count": len(rows),
+        return {"cycles": cycles, "sample_count": len(rows), "weighting": "sampled_core_cycles",
                 "shares": {event: sum(row["cycles"] * row["shares"][event] for row in rows) / cycles
                            for event in APPLE_BOTTLENECKS}}
 
@@ -416,6 +416,7 @@ def parse_apple_bottlenecks(path: Path, pid: int, start_ns: int = 0, end_ns: int
         "limitations": [
             "Guided CPU Counters ratios use Xcode's native, unpublished classification formulas.",
             "Shares are weighted by Xcode's cycle count for each valid interval.",
+            "Across P/E core kinds, cycle weighting is not a peak-bandwidth or slot-weighted aggregate; inspect per-core shares.",
             "Intervals are selected by start time; a boundary interval can extend beyond the requested window.",
             "Core migration and counter loss can affect aggregate shares; inspect the per-core results.",
         ],

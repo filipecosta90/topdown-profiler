@@ -72,6 +72,9 @@ and the count of incomplete or inconsistent intervals. A legacy `cpu-pmc-value`
 table remains supported where Xcode exports one. This is an Apple-native
 four-category analysis; the `tma` object remains null because the Intel slot
 classification and Apple's formulas have not been shown equivalent.
+The overall shares are weighted by sampled core cycles. For a process that runs
+on both P and E cores, this is not an average weighted by each core kind's peak
+instruction bandwidth; use the per-core breakdown to interpret migrations.
 Xcode also exports `CounterMetricByThread` arrays. Matching 1,767 intervals
 against `MetricTable` identified their four positions as rounded
 Useful/Processing/Delivery/Discarded shares scaled by 10,000; the best

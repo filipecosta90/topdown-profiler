@@ -41,6 +41,7 @@ def test_guided_ratios_are_cycle_weighted_and_scoped(tmp_path):
     assert profile["sample_count"] == 2
     assert profile["excluded_rows"] == 5
     assert profile["apple_bottlenecks"]["cycles"] == 400
+    assert profile["apple_bottlenecks"]["weighting"] == "sampled_core_cycles"
     assert profile["apple_bottlenecks_available"] is True
     assert profile["apple_bottlenecks"]["shares"] == pytest.approx(
         {"delivery": 0.4, "discarded": 0.2, "processing": 0.15, "useful": 0.25})
