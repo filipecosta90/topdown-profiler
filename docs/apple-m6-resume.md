@@ -15,19 +15,65 @@ without needing to open a local handoff file from the other computer.
 ## Recovery boot with a persistent log
 
 On this Mac, the reviewed local activation helper is staged at
-`/Users/oly/m6-boot.sh`. Recovery lacks the `shasum` tool it expects. Put the
-[Recovery wrapper](../examples/m6-recovery-boot-wrapper.sh) on a USB drive or
-download it into Recovery's `/tmp` from the reviewed commit. Shut down, hold
-the power button to enter the paired Recovery environment, open Terminal,
-and run:
+`/Users/oly/m6-boot.sh`. Recovery lacks the `shasum` tool it expects. The
+[Recovery wrapper](../examples/m6-recovery-boot-wrapper.sh) supplies compatibility
+and can start from USB before the internal Data volume is mounted.
+
+### Prepared USB: one command in Recovery
+
+On 2026-10-21, the attached 4 GB UDisk USB was erased with the user's approval,
+formatted as FAT32 with the volume name `BOOT`, and prepared with the reviewed
+wrapper at `/Volumes/BOOT/boot.sh`. After unmounting and remounting the USB, the
+copy matched the repository source byte for byte and passed shell syntax checking.
+Its SHA256 is
+`9f88c99bd814f2f370aabaf8debbdc6932ab30935aff09f806259393fd2b4f04`.
+The activation helper and kernel collection remain on the original Mac's Data
+volume.
+
+1. Leave the USB plugged into the original M6 Mac. Shut down, then hold the power
+   button to enter the paired Recovery environment. Select Options, continue,
+   and open Terminal from the Utilities menu.
+2. Identify the original Mac's Data/System pair with
+   `diskutil apfs listVolumeGroups`. Then start the wrapper:
+
+   ```sh
+   sh /Volumes/BOOT/boot.sh
+   ```
+
+3. Enter that pair's Data and System APFS disk identifiers when prompted.
+   Use the identifiers shown in Recovery; they may
+   differ from those in normal macOS. The wrapper checks the volume group, and
+   the staged helper checks the exact authorized volume UUIDs.
+4. Follow Apple's native unlock and owner-authentication prompts, selecting the
+   verified target OS. The wrapper mounts the internal volumes as needed and
+   starts the reviewed activation helper. The helper reboots only after its
+   activation steps succeed.
+
+If `BOOT` is absent under `/Volumes`, inspect `diskutil list` and mount the USB's
+`BOOT` volume through Disk Utility before retrying. Internal Data does not need to
+be mounted to load the wrapper from USB. Actual Recovery activation and boot
+remain untested.
+
+### Preparing another copy
+
+From this checkout in normal macOS, with a writable USB already mounted as
+`/Volumes/BOOT`, copy and verify the wrapper:
 
 ```sh
-sh /path/to/m6-recovery-boot-wrapper.sh
+cp examples/m6-recovery-boot-wrapper.sh /Volumes/BOOT/boot.sh
+sync
+cmp examples/m6-recovery-boot-wrapper.sh /Volumes/BOOT/boot.sh
+sh -n /Volumes/BOOT/boot.sh
 ```
 
-The wrapper can start before Data is mounted.
-It asks for the Data and System disk identifiers, unlocks or mounts Data with
-Apple's native prompt, and verifies that the volumes share a group. It then
+These commands replace `boot.sh` on that USB. Successful `cmp` and `sh -n` produce
+no output. Alternatively, download the reviewed wrapper into Recovery's `/tmp`
+and run it there with `sh`.
+
+### Checks and persistent logs
+
+The wrapper asks for the Data and System disk identifiers, unlocks or mounts Data
+with Apple's native prompt, and verifies that the volumes share a group. It then
 mounts System, self-tests a SHA-256 tool from Recovery or the installed OS,
 checks the reviewed helper and collection hashes, and calls the staged local
 helper with a compatible `shasum -a 256` command. Any unavailable tool or
