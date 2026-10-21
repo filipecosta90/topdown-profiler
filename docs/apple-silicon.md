@@ -880,6 +880,7 @@ of this development kernel with a custom collection. No kernel was activated,
 startup policy changed, or reboot performed. See the
 [KDK validation record](apple-m6-kdk-validation.json) for hashes, binary evidence,
 builder errors and remaining steps.
+The [resume handoff](apple-m6-resume.md) records how to continue after reboot.
 
 ## Unattended capability probe
 
