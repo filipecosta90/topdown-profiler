@@ -8,7 +8,9 @@ Wraps [pmu-tools/toplev](https://github.com/andikleen/pmu-tools) on Intel, [AMD 
 via `topdown apple`. M6 supports process instruction/cycle totals (`stat`),
 fixed-counter samples with stacks (`record --mode fixed`), and timer profiles.
 `record --mode trace` also exports hardware-traced execution intervals with native
-instruction/cycle counts and reported trace gaps.
+instruction/cycle counts, reported trace gaps, and observed thread states/cores.
+`apple soc` reads native cluster stall and bandwidth histograms, with system-wide
+scope and explicit native units.
 On M1, `stat` also reports the performance-core and other-core split, and
 `record --mode m1`, `m1-map`, and `m1-fetch` provide experimental
 programmable-event captures verified with Xcode 27.1. The standard CPU Counters

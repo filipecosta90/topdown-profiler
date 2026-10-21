@@ -483,6 +483,18 @@ def export_profile(trace: Path, output: Path, mode: str, pid: int | None = None,
               "--output", str(gaps_path)], output, "export-gaps", 30)
         profile = parse_trace_profile(xml_path, gaps_path, pid, start_ns, end_ns)
         profile["gaps_xml_sha256"] = _sha256(gaps_path)
+        states = selected.findall("./data/table[@schema='thread-state']")
+        if len(states) > 1:
+            raise AppleProfileError("Ambiguous Processor Trace thread-state tables")
+        profile["scheduling_available"] = bool(states)
+        if states:
+            from topdown.collector.apple_schedule import annotate_scheduling
+
+            states_path = output / "thread-state.xml"
+            states_xpath = f'/trace-toc/run[@number="{run}"]/data/table[@schema="thread-state"]'
+            _run(["xcrun", "xctrace", "export", "--input", str(trace), "--xpath", states_xpath,
+                  "--output", str(states_path)], output, "export-thread-state", 30)
+            annotate_scheduling(profile, states_path)
     else:
         profile = (parse_apple_bottlenecks(xml_path, pid, start_ns, end_ns) if schema == "MetricTable"
                    else parse_profile(xml_path, schema, pid, start_ns, end_ns, fixed_events=fixed_events))

@@ -17,7 +17,26 @@ def _profile_summary(profile, output):
               "measurement_kind": profile["measurement_kind"], "tma": profile["tma"]}
     if count == "interval_count":
         result.update(gap_count=profile["gap_count"], coverage_complete=profile["coverage_complete"])
+        if "scheduling_available" in profile:
+            result["scheduling_available"] = profile["scheduling_available"]
     return result
+
+
+@app.command(name="soc")
+def soc_context(
+    output: Annotated[Path, typer.Option(help="New directory for native firmware observations and snapshots")],
+    duration: Annotated[float, typer.Option(help="Sampling interval in seconds; system/cluster scope", min=0.001, max=300)] = 1,
+):
+    """Read native cluster stall/bandwidth state distributions; all processes, no PID attribution."""
+    from topdown.collector.apple_soc import sample_soc
+
+    try:
+        result = sample_soc(output, duration)
+    except (AppleProfileError, OSError) as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(json.dumps(result, indent=2))
+    raise typer.Exit(result["exit_code"])
 
 
 @app.command(name="stat", context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
