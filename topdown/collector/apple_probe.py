@@ -3,7 +3,8 @@
 from datetime import datetime, timezone
 from pathlib import Path
 
-from topdown.collector.apple import AppleProfileError, FIXED_EVENTS, MODES, TMA_ROOTS, _run, _write_json, _xml, doctor, record_profile
+from topdown.collector.apple import (AppleProfileError, FIXED_EVENTS, M1_EVENTS, MODES, TMA_ROOTS, _require_m1_host,
+                                     _run, _write_json, _xml, doctor, record_profile)
 
 EXPECTED_CHECKSUM = "9087321014236724183"
 PROBE_SOURCE = r'''#include <stdint.h>
@@ -72,7 +73,7 @@ def probe(output: Path, mode: str = "counters") -> dict:
     created = False
     try:
         if mode not in MODES or mode == "trace":
-            raise AppleProfileError("Probe supports counters, fixed, cpu or time; use record --mode trace for Processor Trace")
+            raise AppleProfileError("Probe supports counters, fixed, m1, cpu or time; use record --mode trace for Processor Trace")
         output.mkdir(parents=True, exist_ok=False)
         created = True
         environment = doctor()
@@ -80,9 +81,15 @@ def probe(output: Path, mode: str = "counters") -> dict:
         if environment.get("error"):
             result.update(status="unsupported_host", reason=environment["error"])
             return result
+        if mode == "m1":
+            try:
+                _require_m1_host()
+            except AppleProfileError as exc:
+                result.update(status="unsupported_host", reason=str(exc))
+                return result
         template = MODES[mode][0]
         if not environment.get("xctrace") or (template and template not in environment.get("templates", [])):
-            result.update(status="tool_unavailable", reason=f"xctrace or {template or 'fixed-counter tooling'} unavailable")
+            result.update(status="tool_unavailable", reason=f"xctrace or {template or mode + ' counter tooling'} unavailable")
             return result
         source = output / "probe.c"
         executable = output / "probe"
@@ -92,10 +99,15 @@ def probe(output: Path, mode: str = "counters") -> dict:
         result["target_completed"] = _target_completed(output / "capture")
         if not result["target_completed"]:
             raise AppleProfileError("Probe completion and expected checksum were not verified")
-        if mode in {"counters", "fixed"}:
+        if mode in {"counters", "fixed", "m1"}:
             if mode == "fixed":
                 positive = any(set(sample["event_values"]) == set(FIXED_EVENTS)
                                and all(value > 0 for value in sample["event_values"].values())
+                               and any(frame["name"] == "alu_work" for frame in sample["frames"])
+                               for sample in profile["samples"])
+            elif mode == "m1":
+                positive = any(len(sample.get("native_event_values", ())) == len(M1_EVENTS)
+                               and any(value > 0 for value in sample["native_event_values"])
                                and any(frame["name"] == "alu_work" for frame in sample["frames"])
                                for sample in profile["samples"])
             else:

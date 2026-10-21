@@ -291,6 +291,7 @@ def fake_libraries(error=False, timebase_error=False, v6_unsupported=False, inva
         if flavor == 6:
             info.ri_pinstructions = info.ri_instructions + 1 if invalid_p else 9007199254740000
             info.ri_pcycles = 7
+            info.ri_user_ptime, info.ri_system_ptime = 2, 4
         return 0
 
     libproc.proc_pid_rusage.side_effect = read
@@ -310,6 +311,10 @@ def test_ffi_retains_integer_precision_and_converts_mach_time():
     assert result["other_instructions"] == 993
     assert result["performance_cycles"] == 7
     assert result["other_cycles"] == 2
+    assert result["performance_user_time_ns"] == 83
+    assert result["other_user_time_ns"] == 42
+    assert result["performance_system_time_ns"] == 166
+    assert result["other_system_time_ns"] == 84
 
 
 def test_ffi_falls_back_to_v4_when_v6_is_unavailable():
@@ -324,7 +329,23 @@ def test_ffi_falls_back_to_v4_when_v6_is_unavailable():
 
 def test_ffi_rejects_performance_counts_above_aggregate():
     with patch("topdown.collector.apple_stat.ctypes.CDLL", side_effect=fake_libraries(invalid_p=True)):
-        with pytest.raises(AppleProfileError, match="exceed aggregate"):
+        with pytest.raises(AppleProfileError, match="exceeds aggregate"):
+            _UsageReader().read(42)
+
+
+def test_ffi_rejects_performance_time_above_aggregate():
+    libproc, libsystem = fake_libraries()
+    original = libproc.proc_pid_rusage.side_effect
+
+    def read(pid, flavor, pointer):
+        status = original(pid, flavor, pointer)
+        if flavor == 6:
+            pointer._obj.ri_user_ptime = 4
+        return status
+
+    libproc.proc_pid_rusage.side_effect = read
+    with patch("topdown.collector.apple_stat.ctypes.CDLL", side_effect=[libproc, libsystem]):
+        with pytest.raises(AppleProfileError, match="exceeds aggregate"):
             _UsageReader().read(42)
 
 
@@ -384,8 +405,12 @@ def test_existing_pid_interval_uses_deltas_without_launching_or_signaling(tmp_pa
 
 def test_existing_pid_interval_preserves_core_kind_deltas(tmp_path, capture):
     before, after = interval_snapshots(capture)
-    before.update(performance_instructions=80, performance_cycles=150, other_instructions=20, other_cycles=50)
-    after.update(performance_instructions=260, performance_cycles=430, other_instructions=40, other_cycles=70)
+    before.update(performance_instructions=80, performance_cycles=150, other_instructions=20, other_cycles=50,
+                  performance_user_time_ns=700, performance_system_time_ns=600,
+                  other_user_time_ns=300, other_system_time_ns=400)
+    after.update(performance_instructions=260, performance_cycles=430, other_instructions=40, other_cycles=70,
+                 performance_user_time_ns=1600, performance_system_time_ns=900,
+                 other_user_time_ns=400, other_system_time_ns=600)
     with patch("topdown.collector.apple_stat.time.sleep"):
         result = stat_pid(tmp_path / "stat", 42)
     assert result["counters"]["performance_instructions"] == 180
@@ -394,6 +419,10 @@ def test_existing_pid_interval_preserves_core_kind_deltas(tmp_path, capture):
     assert result["counters"]["other_cycles"] == 20
     assert result["counters"]["instructions"] == 200
     assert result["counters"]["cycles"] == 300
+    assert result["counters"]["performance_user_time_ns"] == 900
+    assert result["counters"]["other_user_time_ns"] == 100
+    assert result["counters"]["performance_system_time_ns"] == 300
+    assert result["counters"]["other_system_time_ns"] == 200
 
 
 def test_existing_pid_rejects_counter_flavor_change(tmp_path, capture):

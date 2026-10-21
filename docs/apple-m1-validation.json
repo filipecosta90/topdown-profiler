@@ -1,0 +1,377 @@
+{
+  "date_utc": "2026-10-21",
+  "host": {
+    "model": "MacBookAir10,1",
+    "chip": "Apple M1",
+    "macos": "27.0.1 (26A434)",
+    "darwin_kernel": "27.0.0 xnu-13432.1.9~1/RELEASE_ARM64_T8103",
+    "cpu_family": "0x1b588bb3",
+    "p_cores": 4,
+    "e_cores": 4,
+    "kernel_uuid": "1F15A5DA-11D6-39EE-88D2-153E2F90F066",
+    "kernel_sha256": "7ebe68bdba49e38fc601d91bc52d02080f65919aaa5e2c3bd9156c67cedaa3c3",
+    "event_database_sha256": "45b779879acf8eefb522d0027653e161dce44f56405f3ce4b74fc358fcdfe908",
+    "installed_programmable_events": 58,
+    "fixed_events": 2,
+    "kpc_counter_count": {
+      "fixed": 2,
+      "configurable": 8,
+      "combined": 10
+    },
+    "kpc_unprivileged_configuration": "EPERM",
+    "kpc_unprivileged_counter_read": "EPERM",
+    "full_xcode_installed": false,
+    "xctrace_installed": false,
+    "compiled_programmable_name_selector_pairs_matched": 58,
+    "compiled_allowlist_check": "kpc_set_config in kernel.release.t8103 at VM 0xfffffe00074b9a18 compares selected event low 16 bits against entries at VM 0xfffffe00071f4e80; unmatched nonzero selector prints not-allowed event and fails. All 58 installed programmable name/selector pairs occur in the referenced table.",
+    "compiled_allowlist_limit": "The kernel gate was inspected offline; authorized/root KPC collection and Instruments remain untested.",
+    "kpc_access_gate": "XNU kern_kpc.c calls ktrace_read_check (root or blessed PID) before configuration/reads; public counter-count queries bypass the access check."
+  },
+  "kpep_offline_plan": {
+    "cpu_family": "0x1b588bb3",
+    "counter_classes": 3,
+    "configurable_registers": [
+      "0x52",
+      "0x51",
+      "0xd6",
+      "0xcb",
+      "0x70",
+      "0x1",
+      "0xa3",
+      "0xdb"
+    ],
+    "event_to_counter": {
+      "FIXED_CYCLES": 0,
+      "FIXED_INSTRUCTIONS": 1,
+      "RETIRE_UOP": 7,
+      "BRANCH_MISPRED_NONSPEC": 5,
+      "SCHEDULE_UOP": 2,
+      "SCHEDULE_EMPTY": 3,
+      "MAP_DISPATCH_BUBBLE": 4,
+      "MAP_STALL_DISPATCH": 6,
+      "L1D_CACHE_MISS_LD": 8,
+      "L1I_CACHE_MISS_DEMAND": 9
+    },
+    "hardware_access_verified": false
+  },
+  "kpep_conflict": {
+    "events": [
+      "RETIRE_UOP",
+      "INST_ALL"
+    ],
+    "result": "second add rejected: code 12, event_error 4; both require configurable counter 7"
+  },
+  "control_source_sha256": "4258df5c18adeccd13f2353e5b750800469c8e499f97e7a05e8aa4dc7e7950bd",
+  "control_executable_sha256": "cac1c2ceadf2f285c93bdd20b0164f356e4ac1652f750b0ebc807f76c7d256d6",
+  "measurement": "topdown apple stat, RUSAGE_INFO_V6, full process lifetime, three runs per case; instructions/cycles include startup and setup; background control launched through taskpolicy -b in the same measured PID",
+  "controls": {
+    "alu_wide": {
+      "iterations": 4000000000,
+      "ipc_median": 6.645,
+      "ipc_range": [
+        6.645,
+        6.649
+      ],
+      "performance_cycle_fraction_min": 0.999759,
+      "runs": [
+        {
+          "instructions": 40013980061,
+          "cycles": 6021895459,
+          "performance_instructions": 40012571706,
+          "performance_cycles": 6021403812,
+          "user_time_ns": 1879592458,
+          "other_user_time_ns": 277000,
+          "checksum": "144000000036",
+          "completed": true
+        },
+        {
+          "instructions": 40013657278,
+          "cycles": 6018342170,
+          "performance_instructions": 40012729015,
+          "performance_cycles": 6018003617,
+          "user_time_ns": 1879506708,
+          "other_user_time_ns": 174042,
+          "checksum": "144000000036",
+          "completed": true
+        },
+        {
+          "instructions": 40014175108,
+          "cycles": 6021261515,
+          "performance_instructions": 40009715560,
+          "performance_cycles": 6019812715,
+          "user_time_ns": 1879450000,
+          "other_user_time_ns": 680834,
+          "checksum": "144000000036",
+          "completed": true
+        }
+      ]
+    },
+    "serial": {
+      "iterations": 2000000000,
+      "ipc_median": 0.999,
+      "ipc_range": [
+        0.998,
+        0.999
+      ],
+      "performance_cycle_fraction_min": 0.999911,
+      "runs": [
+        {
+          "instructions": 6014202276,
+          "cycles": 6022743740,
+          "performance_instructions": 6013699770,
+          "performance_cycles": 6022210644,
+          "user_time_ns": 1879211791,
+          "other_user_time_ns": 279500,
+          "checksum": "2420019157618242561",
+          "completed": true
+        },
+        {
+          "instructions": 6013839300,
+          "cycles": 6022084053,
+          "performance_instructions": 6013410823,
+          "performance_cycles": 6021630749,
+          "user_time_ns": 1878558916,
+          "other_user_time_ns": 267291,
+          "checksum": "2420019157618242561",
+          "completed": true
+        },
+        {
+          "instructions": 6014601199,
+          "cycles": 6024448038,
+          "performance_instructions": 6014215548,
+          "performance_cycles": 6024017369,
+          "user_time_ns": 1880052041,
+          "other_user_time_ns": 196916,
+          "checksum": "2420019157618242561",
+          "completed": true
+        }
+      ]
+    },
+    "parallel": {
+      "iterations": 800000000,
+      "ipc_median": 1.248,
+      "ipc_range": [
+        1.246,
+        1.249
+      ],
+      "performance_cycle_fraction_min": 0.999904,
+      "runs": [
+        {
+          "instructions": 8014071110,
+          "cycles": 6423038382,
+          "performance_instructions": 8013681141,
+          "performance_cycles": 6422695921,
+          "user_time_ns": 2004013583,
+          "other_user_time_ns": 195417,
+          "checksum": "3425399953752588296",
+          "completed": true
+        },
+        {
+          "instructions": 8013494082,
+          "cycles": 6417382537,
+          "performance_instructions": 8012783934,
+          "performance_cycles": 6416766701,
+          "user_time_ns": 2004357750,
+          "other_user_time_ns": 291709,
+          "checksum": "3425399953752588296",
+          "completed": true
+        },
+        {
+          "instructions": 8014935034,
+          "cycles": 6434973151,
+          "performance_instructions": 8014443593,
+          "performance_cycles": 6434532228,
+          "user_time_ns": 2003995666,
+          "other_user_time_ns": 207125,
+          "checksum": "3425399953752588296",
+          "completed": true
+        }
+      ]
+    },
+    "branch_predictable": {
+      "iterations": 500000000,
+      "ipc_median": 1.29,
+      "ipc_range": [
+        1.29,
+        1.29
+      ],
+      "performance_cycle_fraction_min": 0.999941,
+      "runs": [
+        {
+          "instructions": 4012404226,
+          "cycles": 3109744488,
+          "performance_instructions": 4012273145,
+          "performance_cycles": 3109622107,
+          "user_time_ns": 969228708,
+          "other_user_time_ns": 70750,
+          "checksum": "6923268305960419564",
+          "completed": true
+        },
+        {
+          "instructions": 4012563761,
+          "cycles": 3109680963,
+          "performance_instructions": 4012430496,
+          "performance_cycles": 3109560588,
+          "user_time_ns": 969422875,
+          "other_user_time_ns": 66584,
+          "checksum": "6923268305960419564",
+          "completed": true
+        },
+        {
+          "instructions": 4012859927,
+          "cycles": 3111146269,
+          "performance_instructions": 4012643833,
+          "performance_cycles": 3110961335,
+          "user_time_ns": 970326666,
+          "other_user_time_ns": 89375,
+          "checksum": "6923268305960419564",
+          "completed": true
+        }
+      ]
+    },
+    "branch_random": {
+      "iterations": 500000000,
+      "ipc_median": 0.612,
+      "ipc_range": [
+        0.612,
+        0.612
+      ],
+      "performance_cycle_fraction_min": 0.999921,
+      "runs": [
+        {
+          "instructions": 4264471721,
+          "cycles": 6967665781,
+          "performance_instructions": 4264129196,
+          "performance_cycles": 6967113772,
+          "user_time_ns": 2173939583,
+          "other_user_time_ns": 290458,
+          "checksum": "6923268303682308596",
+          "completed": true
+        },
+        {
+          "instructions": 4264379094,
+          "cycles": 6968021317,
+          "performance_instructions": 4264058759,
+          "performance_cycles": 6967478302,
+          "user_time_ns": 2173926666,
+          "other_user_time_ns": 261875,
+          "checksum": "6923268303682308596",
+          "completed": true
+        },
+        {
+          "instructions": 4264314383,
+          "cycles": 6966273510,
+          "performance_instructions": 4264069839,
+          "performance_cycles": 6965873205,
+          "user_time_ns": 2173470041,
+          "other_user_time_ns": 206375,
+          "checksum": "6923268303682308596",
+          "completed": true
+        }
+      ]
+    },
+    "memory": {
+      "iterations": 40000000,
+      "ipc_median": 0.045,
+      "ipc_range": [
+        0.045,
+        0.045
+      ],
+      "performance_cycle_fraction_min": 0.999957,
+      "runs": [
+        {
+          "instructions": 355666643,
+          "cycles": 7939548116,
+          "performance_instructions": 355609200,
+          "performance_cycles": 7939224452,
+          "user_time_ns": 2473083416,
+          "other_user_time_ns": 181416,
+          "checksum": "6947856",
+          "completed": true
+        },
+        {
+          "instructions": 355341105,
+          "cycles": 7920940995,
+          "performance_instructions": 355263844,
+          "performance_cycles": 7920601843,
+          "user_time_ns": 2467482958,
+          "other_user_time_ns": 178333,
+          "checksum": "6947856",
+          "completed": true
+        },
+        {
+          "instructions": 355814707,
+          "cycles": 7983511608,
+          "performance_instructions": 355747941,
+          "performance_cycles": 7983205221,
+          "user_time_ns": 2486564333,
+          "other_user_time_ns": 153125,
+          "checksum": "6947856",
+          "completed": true
+        }
+      ]
+    },
+    "alu_wide_background": {
+      "command_prefix": [
+        "/usr/sbin/taskpolicy",
+        "-b"
+      ],
+      "iterations": 4000000000,
+      "ipc_median": 3.312,
+      "ipc_range": [
+        3.304,
+        3.312
+      ],
+      "other_cycle_fraction_min": 0.999572,
+      "runs": [
+        {
+          "instructions": 40064632936,
+          "cycles": 12096638249,
+          "performance_instructions": 9143706,
+          "performance_cycles": 5181204,
+          "other_instructions": 40055489230,
+          "other_cycles": 12091457045,
+          "user_time_ns": 8529769666,
+          "other_user_time_ns": 8529103333,
+          "checksum": "144000000036",
+          "completed": true
+        },
+        {
+          "instructions": 40063395131,
+          "cycles": 12096783962,
+          "performance_instructions": 9167026,
+          "performance_cycles": 5010596,
+          "other_instructions": 40054228105,
+          "other_cycles": 12091773366,
+          "user_time_ns": 8350656375,
+          "other_user_time_ns": 8349986792,
+          "checksum": "144000000036",
+          "completed": true
+        },
+        {
+          "instructions": 40125048423,
+          "cycles": 12144635995,
+          "performance_instructions": 9126687,
+          "performance_cycles": 5003663,
+          "other_instructions": 40115921736,
+          "other_cycles": 12139632332,
+          "user_time_ns": 7972155208,
+          "other_user_time_ns": 7971502583,
+          "checksum": "144000000036",
+          "completed": true
+        }
+      ]
+    }
+  },
+  "m1_probe_status": "tool_unavailable",
+  "m1_programmable_values_observed": false,
+  "tma_available": false,
+  "verification": {
+    "pytest": "573 passed, 3 dependency deprecation warnings (rebased on M6 trace branch)",
+    "ruff": "all checks passed",
+    "coverage_percent": 70.4436,
+    "git_diff_check": "passed",
+    "native_m1_programmable_capture": "not run; xctrace and instrumentbuilder unavailable",
+    "wheel_build": "pip wheel succeeded; apple_fixed.instrpkg and apple_m1.instrpkg present"
+  }
+}

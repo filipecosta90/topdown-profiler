@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<package>
+  <id>org.redis-performance.topdown.m1-counters</id>
+  <title>Topdown M1 Event Controls</title>
+  <owner><name>topdown-profiler</name></owner>
+  <import-schema>counters-profile</import-schema>
+  <instrument>
+    <id>org.redis-performance.topdown.m1-counters.instrument</id>
+    <title>Topdown M1 Event Controls</title>
+    <category>CPU</category>
+    <purpose>Observe named M1 PMU events for independent calibration.</purpose>
+    <icon>CPU Counters</icon>
+    <limitations/>
+    <create-table>
+      <id>m1-counter-profile</id>
+      <schema-ref>counters-profile</schema-ref>
+      <attribute><name>target-pid</name><string>SINGLE</string></attribute>
+      <attribute><name>needs-kernel-callstack</name><integer>0</integer></attribute>
+      <attribute><name>pmc-events</name><array>
+        <string>FIXED_CYCLES</string><string>FIXED_INSTRUCTIONS</string>
+        <string>RETIRE_UOP</string><string>BRANCH_MISPRED_NONSPEC</string>
+        <string>SCHEDULE_UOP</string><string>SCHEDULE_EMPTY</string>
+        <string>MAP_DISPATCH_BUBBLE</string><string>MAP_STALL_DISPATCH</string>
+        <string>L1D_CACHE_MISS_LD</string><string>L1I_CACHE_MISS_DEMAND</string>
+      </array></attribute>
+      <attribute><name>trigger</name><string>time</string></attribute>
+      <attribute><name>sample-rate-micro-seconds</name><integer>1000</integer></attribute>
+    </create-table>
+    <list>
+      <title>Native M1 Event Samples</title>
+      <table-ref>m1-counter-profile</table-ref>
+      <column>time</column><column>process</column><column>thread</column><column>counters-array</column>
+    </list>
+  </instrument>
+</package>

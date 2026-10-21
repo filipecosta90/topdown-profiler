@@ -87,11 +87,16 @@ class _UsageReader:
             "process_exit_mach": info.ri_proc_exit_abstime,
         }
         if self.flavor_id == 6:
-            if info.ri_pinstructions > info.ri_instructions or info.ri_pcycles > info.ri_cycles:
-                raise AppleProfileError("Performance-core counts exceed aggregate counts")
+            if (info.ri_pinstructions > info.ri_instructions or info.ri_pcycles > info.ri_cycles
+                    or info.ri_user_ptime > info.ri_user_time or info.ri_system_ptime > info.ri_system_time):
+                raise AppleProfileError("Performance-core usage exceeds aggregate usage")
             result.update(performance_instructions=info.ri_pinstructions, performance_cycles=info.ri_pcycles,
                           other_instructions=info.ri_instructions - info.ri_pinstructions,
-                          other_cycles=info.ri_cycles - info.ri_pcycles)
+                          other_cycles=info.ri_cycles - info.ri_pcycles,
+                          performance_user_time_ns=info.ri_user_ptime * numer // denom,
+                          performance_system_time_ns=info.ri_system_ptime * numer // denom,
+                          other_user_time_ns=result["user_time_ns"] - info.ri_user_ptime * numer // denom,
+                          other_system_time_ns=result["system_time_ns"] - info.ri_system_ptime * numer // denom)
         return result
 
 
@@ -158,7 +163,7 @@ def _report(reader):
         "tma_available": False, "tma": dict.fromkeys(TMA_ROOTS),
         "limitations": [
             "All threads and user/kernel execution of one PID, excluding descendants.",
-            "Counters aggregate heterogeneous cores; frequency, residency and measurement bias remain unvalidated.",
+            "V6 separates performance-core usage from the remainder; per-core slots and measurement bias remain unvalidated.",
             "When V6 is available, 'other' core counts are aggregate totals minus performance-core-only totals.",
             "Fixed cycles/instructions do not provide programmable events, stacks or a TMA decomposition.",
         ],
@@ -201,7 +206,9 @@ def stat_pid(output: Path, pid: int, duration: float = 5) -> dict:
             raise AppleProfileError("Counter flavor changed during observation; no interval counters reported")
         fields = ("instructions", "cycles", "user_time_ns", "system_time_ns")
         if "performance_instructions" in before:
-            fields += ("performance_instructions", "performance_cycles", "other_instructions", "other_cycles")
+            fields += ("performance_instructions", "performance_cycles", "other_instructions", "other_cycles",
+                       "performance_user_time_ns", "performance_system_time_ns",
+                       "other_user_time_ns", "other_system_time_ns")
         if any(after[field] < before[field] for field in fields):
             raise AppleProfileError("Process counters decreased; no interval counters reported")
         result["counters"] = {field: after[field] - before[field] for field in fields}

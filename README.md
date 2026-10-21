@@ -9,7 +9,10 @@ via `topdown apple`. M6 supports process instruction/cycle totals (`stat`),
 fixed-counter samples with stacks (`record --mode fixed`), and timer profiles.
 `record --mode trace` also exports hardware-traced execution intervals with native
 instruction/cycle counts and reported trace gaps.
-Programmable events and Apple slot-TMA percentages remain unavailable.
+On M1, `stat` also reports the performance-core and other-core split, and
+`record --mode m1` provides an experimental programmable-event package that
+still needs an Xcode/Instruments capture. Apple slot-TMA percentages remain
+unavailable.
 For an unattended JSON result and stable exit code, run
 `topdown apple probe --mode fixed --output /tmp/m6-probe-001`.
 

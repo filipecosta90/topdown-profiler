@@ -42,7 +42,7 @@ def test_measured_m6_fixed_rows_keep_exact_values_stacks_and_scope():
 
 @pytest.mark.parametrize("events", [None, (), tuple(reversed(FIXED_EVENTS)), ("INST_ALL",)])
 def test_fixed_vector_cannot_be_named_without_validated_event_order(events):
-    with pytest.raises(AppleProfileError, match="validated fixed event order"):
+    with pytest.raises(AppleProfileError, match="validated event order"):
         parse_profile(FIXTURE, "counters-profile", 3362, fixed_events=events)
 
 
@@ -133,7 +133,7 @@ def test_fixed_export_rejects_unverified_event_semantics(tmp_path, old, new):
         return result
 
     with patch("subprocess.run", side_effect=bad_config):
-        with pytest.raises(AppleProfileError, match="Fixed mode requires|Invalid fixed event"):
+        with pytest.raises(AppleProfileError, match="fixed mode requires|Invalid configured event"):
             export_profile(tmp_path / "trace", tmp_path / "out", "fixed")
 
 

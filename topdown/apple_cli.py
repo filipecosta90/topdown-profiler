@@ -55,7 +55,7 @@ def stat_target(
 @app.command(name="probe")
 def probe_host(
     output: Annotated[Path, typer.Option(help="New directory for probe result and all raw artifacts")],
-    mode: Annotated[str, typer.Option(help="counters, fixed, cpu or time")] = "counters",
+    mode: Annotated[str, typer.Option(help="counters, fixed, m1, cpu or time")] = "counters",
 ):
     """Compile/run a bounded probe and emit JSON with a stable status and exit code."""
     from topdown.collector.apple_probe import probe
@@ -78,7 +78,7 @@ def check():
 def record(
     ctx: typer.Context,
     output: Annotated[Path, typer.Option(help="New directory for raw trace, logs, metadata and profile.json")],
-    mode: Annotated[str, typer.Option(help="counters (PMU), fixed (fixed PMU + stacks), trace (hardware trace), cpu, time")] = "counters",
+    mode: Annotated[str, typer.Option(help="counters (PMU), fixed (fixed PMU + stacks), m1 (experimental events), trace (hardware trace), cpu, time")] = "counters",
     duration: Annotated[int, typer.Option(help="Maximum recording duration in seconds", min=1)] = 5,
     pid: Annotated[Optional[int], typer.Option(help="Override target PID from trace metadata", min=1)] = None,
     start_ns: Annotated[int, typer.Option(help="Inclusive trace-relative start, nanoseconds", min=0)] = 0,
@@ -100,7 +100,7 @@ def record(
 def export_trace(
     trace: Annotated[Path, typer.Argument(exists=True, help="Existing Instruments .trace bundle")],
     output: Annotated[Path, typer.Option(help="New export directory")],
-    mode: Annotated[str, typer.Option(help="counters, fixed, trace, cpu or time")] = "counters",
+    mode: Annotated[str, typer.Option(help="counters, fixed, m1, trace, cpu or time")] = "counters",
     pid: Annotated[Optional[int], typer.Option(help="Only this PID; otherwise use trace target", min=1)] = None,
     run: Annotated[int, typer.Option(help="Trace run number", min=1)] = 1,
     start_ns: Annotated[int, typer.Option(min=0)] = 0,

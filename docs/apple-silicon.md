@@ -4,7 +4,8 @@ Native CLI profiling is available through `topdown apple`. Process-accounted
 instruction/cycle totals and fixed-counter samples with stacks work on the tested
 M6. These experimental paths remain separate from the Linux slot-TMA database and
 funnel. They add no runtime dependencies and do not invoke `sudo` or change host
-settings. Programmable events and four-category TMA remain unavailable.
+settings. The tested M6 rejects programmable events; the M1 event mode is
+unmeasured. Four-category TMA remains unavailable on both.
 
 ## Process instruction and cycle totals
 
@@ -49,31 +50,128 @@ is derived. macOS also exposes basic instruction/cycle totals through
 
 When `RUSAGE_INFO_V6` is available, `stat` also reports
 `performance_instructions` and `performance_cycles` from Apple's performance-core-only
-fields. `other_instructions` and `other_cycles` are aggregate totals minus those
-performance-core totals. On a two-core-kind M1 these are the efficiency-core
-remainder; on other chips, retain the broader `other` label. The selected flavor is
-recorded in `source`, and older systems fall back to V4 without these fields.
-These counts do not reveal per-core pipeline slots or programmable events.
+fields, plus performance-core user and system time. The matching `other` counts
+and times are aggregate totals minus those performance-core values. On a
+two-core-kind M1 these are the efficiency-core remainder; on other chips, retain
+the broader `other` label. The selected flavor is recorded in `source`, and older
+systems fall back to V4 without these fields. These counts do not reveal per-core
+pipeline slots or programmable events.
 
 ## M1 top-down feasibility
 
 On an M1 MacBook Air with macOS 27.0.1, launched and PID-interval `stat` counts
-worked, including the V6 core-kind split. KPC reports two fixed and eight
-configurable counters, while this account's direct KPC configuration and counter
-reads returned `EPERM`. The host has Command Line Tools but no full Xcode, so
-`xctrace` and the native CPU Counters template could not be tested. These results
-do not establish whether authorized KPC or Instruments collection works on M1.
+worked, including V6 performance-core instructions, cycles, user time and system
+time. The `other` remainder was nearly zero in ordinary CPU-bound runs. Running
+the same ALU control through `/usr/sbin/taskpolicy -b` moved more than 99.95% of
+its counted cycles into `other`, confirming the M1 efficiency-core interpretation
+for this host. Three runs gave median 6.645 instructions/cycle on P cores and
+3.312 on E cores. These are instruction-throughput observations, not pipeline-slot
+shares; both include process startup and any kernel work. The full controls and
+counts are in [M1 validation](apple-m1-validation.json).
 
-The installed M1 event database includes `RETIRE_UOP`, `SCHEDULE_UOP`,
-`MAP_DISPATCH_BUBBLE`, `MAP_STALL_DISPATCH`, `BRANCH_MISPRED_NONSPEC`, and cache/TLB
-events. Event names alone are insufficient for the four slot-TMA percentages:
-the issue/retirement widths, overlapping event meanings, recovery costs, and
-denominator must be established for each core kind. Apple's [CPU Bottlenecks
+The M1 KPC interface reports two fixed and eight configurable counters. The
+installed event database has 58 programmable events. Their names and selectors
+match the T8103 allowlist in [Apple's XNU source](https://github.com/apple-oss-distributions/xnu/blob/main/osfmk/arm64/cpc_arm64_events.c).
+The running T8103 kernel has the same UUID as the locally inspected kernel
+binary. All 58 installed programmable name/selector pairs occur in its event
+table. Offline disassembly of its `kpc_set_config` path shows a nonzero event
+selector compared against this table and an error for unmatched selectors.
+Published XNU code sets a release kernel's default policy to restrict events
+to this known list
+([policy definitions](https://github.com/apple-oss-distributions/xnu/blob/main/osfmk/arm64/cpc_arm64.h),
+[secure-build control](https://github.com/apple-oss-distributions/xnu/blob/main/osfmk/kern/cpc.h)).
+The compiled gate recognizes the named events; an authorized collection has
+not yet been verified. This account's direct KPC configuration and counter
+reads returned `EPERM`; root was unavailable. Apple's
+[KPC sysctl implementation](https://github.com/apple-oss-distributions/xnu/blob/main/bsd/kern/kern_kpc.c)
+checks ktrace access (root or the blessed PID) before those operations, while
+counter-count queries are public. The unprivileged `EPERM` therefore does not
+show that the M1 event selector itself was rejected. The host has Command Line
+Tools but no full Xcode, so `xctrace` and `instrumentbuilder` could not be run.
+
+### Experimental M1 event collection
+
+The local KPEP library accepted the following group without enabling any PMU
+counters. Run `python3 examples/apple-m1-kpep-plan.py` on an M1 to reproduce its
+counter assignments. The command fails on a different CPU family.
+
+| Counter | Event | What its database description measures |
+|---:|---|---|
+| 0, 1 | `FIXED_CYCLES`, `FIXED_INSTRUCTIONS` | Fixed cycles and retired instructions |
+| 2 | `SCHEDULE_UOP` | Uops issued to execution units |
+| 3 | `SCHEDULE_EMPTY` | Cycles with an empty uop scheduler |
+| 4 | `MAP_DISPATCH_BUBBLE` | Cycles with no map input and no map stall |
+| 5 | `BRANCH_MISPRED_NONSPEC` | Architecturally executed mispredicted branches |
+| 6 | `MAP_STALL_DISPATCH` | Cycles with dispatch backpressure at map |
+| 7 | `RETIRE_UOP` | Retired uops |
+| 8 | `L1D_CACHE_MISS_LD` | Load cache misses |
+| 9 | `L1I_CACHE_MISS_DEMAND` | Demand instruction-cache misses |
+
+`RETIRE_UOP` and `INST_ALL` both require configurable counter 7 and KPEP rejected
+them in one configuration. The separate fixed instruction counter avoids that
+collision. [Linux's M1 PMU driver](https://github.com/torvalds/linux/blob/master/drivers/perf/apple_m1_cpu_pmu.c)
+independently documents the counter restrictions. KPEP acceptance only proves a
+configuration can be constructed; it does not prove that Instruments or the
+kernel will count these events on this host.
+
+An experimental `m1` mode requests this exact order through a local Instruments
+package and exports the raw counter vector with the stack and core label:
+
+```sh
+xcrun clang -O3 -g examples/apple-m1-controls.c -o /tmp/apple-m1-controls
+poetry run topdown apple probe --mode m1 --output /tmp/m1-event-probe-001
+poetry run topdown apple record --mode m1 --duration 5 \
+  --output /tmp/m1-event-alu-001 -- /tmp/apple-m1-controls alu_wide 4000000000
+```
+
+The output directory must be new. `m1` mode requires full Xcode's `xctrace` and
+`instrumentbuilder`; on the tested host the probe returns `tool_unavailable`
+before capture. No M1 programmable values have yet been observed. The parser
+validates the trace's configured event order and timer trigger, retains each
+uint64 vector position without assigning an event name, and never adds sampled
+rows or reports TMA percentages. The exact mapping from vector positions to
+configured events needs calibration; KPEP's physical counter mapping alone does
+not establish Instruments' export order. The package is scoped to one explicit
+target. The controls include wide ALU, serial dependence,
+predictable and unpredictable branches, and random pointer chasing; each prints
+a deterministic checksum. Use the matching `apple stat` capture and its V6
+P/other split to reject runs with appreciable core migration.
+
+### What a full four-category result still needs
+
+Intel's [Top-Down Microarchitecture Analysis Method](https://www.intel.com/content/www/us/en/docs/vtune-profiler/cookbook/2024-1/top-down-microarchitecture-analysis-method.html)
+classifies pipeline slots as Retiring, Frontend Bound, Backend Bound, or Bad
+Speculation. The M1 events above provide useful signals but no established
+disjoint four-way slot classification. For example, `BRANCH_MISPRED_NONSPEC`
+counts branches, not the slots lost during their recovery. `MAP_DISPATCH_BUBBLE`
+and `SCHEDULE_EMPTY` count different kinds of cycles, with overlap and width
+unknown. `SCHEDULE_UOP` counts execution-unit issues, not all allocated uops:
+[Firestorm measurements](https://dougallj.github.io/applecpu/firestorm.html)
+show instructions whose issue and retired-uop counts differ. Subtracting
+`RETIRE_UOP` from `SCHEDULE_UOP` therefore does not measure bad speculation.
+The same research finds an eight-uop P-core pipeline limit, but that alone does
+not establish a denominator for mixed P/E execution or prove the observable
+fixed-cycle event matches the relevant active pipeline cycles.
+
+| TMA category | M1 signal to investigate | Missing measurement or proof |
+|---|---|---|
+| Retiring | `RETIRE_UOP` | Per-core-kind slot denominator and retire width under each workload |
+| Frontend Bound | `MAP_DISPATCH_BUBBLE`, `SCHEDULE_EMPTY`, instruction-cache misses | Delivered-uop slot count and whether the cycle signals overlap or include backend effects |
+| Bad Speculation | `BRANCH_MISPRED_NONSPEC`, `MAP_REWIND`, flush/restart events | Wasted speculative uops and recovery slots per event |
+| Backend Bound | `MAP_STALL_DISPATCH`, cache/TLB misses | Non-overlapping backend slot count, or a validated residual after the first three |
+
+Before enabling `tma_available`, collect actual programmable values on M1 and
+check vector order, scope, sampling semantics, simultaneous availability, loss
+and counter multiplexing. Calibrate each event against the control workloads,
+including P-only and E-only runs. Establish per-core-kind slot widths and
+event formulas with explicit overlap rules, then verify that the four shares
+sum to 100% across independent controls and correlate with an authorized
+Instruments CPU Bottlenecks recording. Apple's [CPU Bottlenecks
 categories](https://developer.apple.com/documentation/xcode/addressing-cpu-bottlenecks)
-use maximum sustainable CPU bandwidth; their equivalence to pipeline-slot TMA
-has not been established. A native M1 breakdown should retain its own metric
-names and units until controlled workloads and Instruments traces validate the
-formulas.
+partition maximum sustainable CPU bandwidth into Useful, Instruction Delivery,
+Instruction Processing and Discarded; their correspondence to Intel slot TMA
+must be tested rather than assumed. Until then, native event names and units
+remain separate from the Linux TMA database and funnel.
 
 ## Fixed-counter samples and stacks
 
@@ -133,8 +231,8 @@ The example has a five-second alarm, a bounded recurrence and a known checksum.
 The default 100,000 steps produce checksum `2700328192655336907`. Unlike the large
 fixed-counter probe, this example is intended for short hardware traces. Trace
 recordings can still be large: an initial subsecond recording used about 140 MB.
-The unattended `apple probe` command continues to support only its original four
-modes; use `record --mode trace` with an explicitly bounded target.
+The unattended `apple probe` command does not support `trace`; use
+`record --mode trace` with an explicitly bounded target.
 
 `profile.json` contains `intervals` and `interval_count`, rather than samples.
 Each interval retains its native label, binary offset, call depth and frames,

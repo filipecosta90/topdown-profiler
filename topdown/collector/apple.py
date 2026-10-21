@@ -19,9 +19,15 @@ MODES = {
     "time": ("Time Profiler", "time-profile", "timer-sampled-stacks"),
     "fixed": (None, "counters-profile", "native-fixed-counter-samples"),
     "trace": ("Processor Trace", "processor-trace-intervals", "hardware-traced-execution-intervals"),
+    "m1": (None, "counters-profile", "native-m1-event-samples"),
 }
 FIXED_EVENTS = ("FIXED_CYCLES", "FIXED_INSTRUCTIONS")
 FIXED_PACKAGE = Path(__file__).with_name("apple_fixed.instrpkg")
+M1_EVENTS = ("FIXED_CYCLES", "FIXED_INSTRUCTIONS", "RETIRE_UOP", "BRANCH_MISPRED_NONSPEC",
+             "SCHEDULE_UOP", "SCHEDULE_EMPTY", "MAP_DISPATCH_BUBBLE", "MAP_STALL_DISPATCH",
+             "L1D_CACHE_MISS_LD", "L1I_CACHE_MISS_DEMAND")
+M1_PACKAGE = Path(__file__).with_name("apple_m1.instrpkg")
+M1_CPU_FAMILY = 0x1B588BB3
 APPLE_COLLECTION_MESSAGE = (
     "Apple silicon uses native Instruments profiles, not Linux perf/toplev. "
     "Use 'topdown apple doctor', 'topdown apple stat --output <new-directory> -- /path/to/program [args]', "
@@ -161,8 +167,8 @@ def parse_profile(path: Path, schema: str, pid: int, start_ns: int = 0, end_ns: 
     if schema == "processor-trace-intervals":
         raise AppleProfileError("Processor Trace requires its gap table; use export with trace mode")
     fixed = schema == "counters-profile"
-    if fixed and fixed_events != FIXED_EVENTS:
-        raise AppleProfileError("Require the validated fixed event order from trace metadata")
+    if fixed and fixed_events not in (FIXED_EVENTS, M1_EVENTS):
+        raise AppleProfileError("Require a validated event order from trace metadata")
     root = _xml(path)
     resolve = _resolve_ids(root)
     samples, summaries = [], Counter()
@@ -250,11 +256,14 @@ def parse_profile(path: Path, schema: str, pid: int, start_ns: int = 0, end_ns: 
                     native_values = [int(value) for value in (values.text or "").split()]
                 except ValueError as exc:
                     raise AppleProfileError("Invalid fixed-counter integer") from exc
-                if len(native_values) != len(FIXED_EVENTS) or any(not 0 <= value < 2**64 for value in native_values):
-                    raise AppleProfileError("Require one uint64 value per fixed event")
-                sample.update(event_values=dict(zip(FIXED_EVENTS, native_values)),
-                              native_weight_type=cells["weight"].tag,
+                if len(native_values) != len(fixed_events) or any(not 0 <= value < 2**64 for value in native_values):
+                    raise AppleProfileError("Require one uint64 value per configured event")
+                sample.update(native_weight_type=cells["weight"].tag,
                               thread_state=cells["thread-state"].get("fmt"))
+                if fixed_events == FIXED_EVENTS:
+                    sample["event_values"] = dict(zip(FIXED_EVENTS, native_values))
+                else:
+                    sample["native_event_values"] = native_values
             if frames:
                 leaf = frames[0]
                 summaries[(leaf["binary"], leaf["name"], leaf["address"])] += 1
@@ -266,6 +275,8 @@ def parse_profile(path: Path, schema: str, pid: int, start_ns: int = 0, end_ns: 
         "column_types": types,
         "scope": {"pid": pid, "start_ns": start_ns, "end_ns": end_ns},
         "sample_count": len(samples), "excluded_rows": excluded, "unmeasured_rows": unmeasured,
+        "configured_events": list(fixed_events) if fixed else None,
+        "event_value_order_verified": fixed_events == FIXED_EVENTS if fixed else None,
         "tma": dict.fromkeys(TMA_ROOTS),
         "tma_available": False,
         "tma_reason": "Native Apple measurements; validated slot-classification formulas are not implemented.",
@@ -278,6 +289,7 @@ def parse_profile(path: Path, schema: str, pid: int, start_ns: int = 0, end_ns: 
             "Samples are scoped by PID and time, not by a function or automatic signpost selection.",
             "Loss, multiplexing and effective sampling rate are unverified; no frequency/residency inference.",
             "PMC values retain native semantics; no event sums, IPC or stall percentages are derived.",
+            *(["M1 vector position-to-event mapping awaits calibration."] if fixed_events == M1_EVENTS else []),
             "Leaf sample counts are observations, not exact instruction costs or pipeline-slot shares.",
         ],
     }
@@ -287,7 +299,7 @@ def export_profile(trace: Path, output: Path, mode: str, pid: int | None = None,
                    start_ns: int = 0, end_ns: int | None = None) -> dict:
     """Export a selected table; counterless traces fail rather than falling back."""
     if mode not in MODES or run < 1:
-        raise AppleProfileError("Choose counters, fixed, trace, cpu or time mode and a positive run number")
+        raise AppleProfileError("Choose counters, fixed, m1, trace, cpu or time mode and a positive run number")
     _validate_scope(pid, start_ns, end_ns)
     if (output / "toc.xml").exists() or (output / "profile.json").exists():
         raise AppleProfileError(f"Export artifacts already exist in {output}; choose a new directory")
@@ -307,16 +319,17 @@ def export_profile(trace: Path, output: Path, mode: str, pid: int | None = None,
             f"Expected one {schema} table; found {len(tables)}. Available schemas: {', '.join(found)}. "
             "A successful recording or timer samples do not establish PMU access. "
             "Inspect the retained trace and recording logs; no automatic retry, privilege change or fallback was performed.",
-            code="counter_data_missing" if not tables and mode in {"counters", "fixed"} else "invalid_data",
+            code="counter_data_missing" if not tables and mode in {"counters", "fixed", "m1"} else "invalid_data",
         )
     fixed_events = None
-    if mode == "fixed":
+    if mode in {"fixed", "m1"}:
         try:
             fixed_events = tuple(shlex.split(tables[0].get("pmc-events", "")))
         except ValueError as exc:
-            raise AppleProfileError("Invalid fixed event configuration") from exc
-        if fixed_events != FIXED_EVENTS or tables[0].get("trigger") != "time":
-            raise AppleProfileError("Fixed mode requires timer-triggered FIXED_CYCLES, FIXED_INSTRUCTIONS in that order")
+            raise AppleProfileError("Invalid configured event order") from exc
+        expected = FIXED_EVENTS if mode == "fixed" else M1_EVENTS
+        if fixed_events != expected or tables[0].get("trigger") != "time":
+            raise AppleProfileError(f"{mode} mode requires its configured events in order with a timer trigger")
     if pid is None:
         target = selected.find("./info/target/process")
         if target is None or not target.get("pid", "").isdigit():
@@ -350,33 +363,51 @@ def export_profile(trace: Path, output: Path, mode: str, pid: int | None = None,
     return profile
 
 
-def _build_fixed_instrument(output: Path) -> Path:
-    """Compile a local package requesting only fixed events, without installing it."""
+def _build_counter_instrument(output: Path, source_package: Path, name: str) -> Path:
+    """Compile a local counter package without installing it."""
     try:
         _run(["xcrun", "--find", "instrumentbuilder"], output, "find-instrumentbuilder", 10)
     except AppleProfileError as exc:
         if exc.code == "tool_error":
-            raise AppleProfileError(f"Xcode instrumentbuilder is required for fixed mode: {exc}",
+            raise AppleProfileError(f"Xcode instrumentbuilder is required for {name} mode: {exc}",
                                     code="tool_unavailable") from exc
         raise
-    source = output / "fixed-counters.instrpkg"
-    source.write_bytes(FIXED_PACKAGE.read_bytes())
-    package = output / "fixed-counters.instrdst"
+    source = output / f"{name}-counters.instrpkg"
+    source.write_bytes(source_package.read_bytes())
+    package = output / f"{name}-counters.instrdst"
     _run(["xcrun", "instrumentbuilder", "-i", str(source), "-o", str(package), "-l", "CPU Counters"],
-         output, "build-fixed-instrument", 30)
+         output, f"build-{name}-instrument", 30)
     if not (package / "Contents/pkginfo.plist").is_file():
-        raise AppleProfileError("instrumentbuilder did not produce a valid fixed-counter package")
+        raise AppleProfileError(f"instrumentbuilder did not produce a valid {name} counter package")
     return package
+
+
+def _build_fixed_instrument(output: Path) -> Path:
+    return _build_counter_instrument(output, FIXED_PACKAGE, "fixed")
+
+
+def _require_m1_host():
+    if platform.system() != "Darwin" or platform.machine() != "arm64":
+        raise AppleProfileError("M1 event mode requires an Apple M1 host")
+    try:
+        family = int(subprocess.run(["sysctl", "-n", "hw.cpufamily"], capture_output=True, text=True,
+                                    timeout=10, check=True).stdout.strip())
+    except (OSError, ValueError, subprocess.SubprocessError) as exc:
+        raise AppleProfileError(f"Cannot verify M1 CPU family: {exc}") from exc
+    if family != M1_CPU_FAMILY:
+        raise AppleProfileError(f"M1 event mode requires CPU family {M1_CPU_FAMILY:#x}; found {family:#x}")
 
 
 def record_profile(output: Path, command: list[str], duration: int = 5, mode: str = "counters",
                    pid: int | None = None, start_ns: int = 0, end_ns: int | None = None) -> dict:
     """Launch one explicit target, retain evidence, then export the requested data."""
     if mode not in MODES or duration <= 0:
-        raise AppleProfileError("Choose counters, fixed, trace, cpu or time mode and a positive duration")
+        raise AppleProfileError("Choose counters, fixed, m1, trace, cpu or time mode and a positive duration")
     _validate_scope(pid, start_ns, end_ns)
     if not command or not Path(command[0]).is_file():
         raise AppleProfileError("Supply an executable path after '--'")
+    if mode == "m1":
+        _require_m1_host()
     output.mkdir(parents=True, exist_ok=False)
     metadata = {
         "started_at": datetime.now(timezone.utc).isoformat(),
@@ -393,6 +424,10 @@ def record_profile(output: Path, command: list[str], duration: int = 5, mode: st
             metadata["fixed_package_sha256"] = _sha256(FIXED_PACKAGE)
             package = _build_fixed_instrument(output)
             cmd[3:3] = ["--package", str(package), "--instrument", "Topdown Fixed Counters"]
+        elif mode == "m1":
+            metadata["m1_package_sha256"] = _sha256(M1_PACKAGE)
+            package = _build_counter_instrument(output, M1_PACKAGE, "m1")
+            cmd[3:3] = ["--package", str(package), "--instrument", "Topdown M1 Event Controls"]
         else:
             cmd[3:3] = ["--template", MODES[mode][0]]
         _run(cmd, output, "record", duration + 30)
