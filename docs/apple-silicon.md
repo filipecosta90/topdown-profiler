@@ -285,17 +285,20 @@ On recorder failure/interruption, target termination is unverified; inspect the
 retained recorder/target artifacts before another capture. The probe's alarm also
 bounds its lifetime independently of the recorder.
 
-Exports select one run (`--run`, default 1) and one schema. They use the launch PID
+Exports select one run (`--run`, default 1). The mode selects the measurement
+schema; `trace` also requires its gap table. Exports use the launch PID
 from trace metadata; pass `--pid` for an ambiguous or different target. Optional
 `--start-ns`/`--end-ns` select a trace-relative, half-open interval. Defaults include
 startup and shutdown. Signposts help select an interval in Instruments, but this
 implementation does not automatically translate a signpost into the export window.
 
 The output directory contains commands, recorder/export logs, a raw trace for new
-captures, `toc.xml`, `samples.xml`, and `profile.json` when export succeeds. New
+captures, `toc.xml`, and `profile.json` when export succeeds. Sampled modes retain
+`samples.xml`; trace mode retains `intervals.xml` and `gaps.xml`. New
 captures also retain `capture.json` with executable/collector hashes, tool version,
 host metadata and outcome. The JSON includes XML checksums, target exit metadata,
-per-row PID/TID/core/time, and either native event values or stack/weight data.
+per-row PID/TID/time, and mode-specific native measurements. Sampled modes retain
+core labels; trace intervals retain code locations and gap associations.
 Raw artifacts may contain local paths/device metadata; keep them local and publish
 only reviewed summaries and hashes.
 
