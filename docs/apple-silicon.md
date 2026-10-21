@@ -434,7 +434,15 @@ three mapped-uop classes alongside Xcode's guided CPU Bottlenecks instrument
 in one trace. Xcode exported both its named `MetricTable` ratios and the
 custom PMU vector. The vector has no event labels and reordered the requested
 events; its position labels below are inferred from ALU, branch, memory, and
-NOP controls. They are not certified by Xcode.
+NOP controls. They are not certified by Xcode. The same package under a Blank
+template produced a ten-position vector whose workload signatures aligned
+with the requested order. Adding the guided CPU Counters template produced a
+twelve-position vector with a different effective order, even though both
+traces listed identical `pmc-events` metadata. This is why the profiler
+retains raw positions without assigning unverified event names. Run
+`python3 examples/apple-m1-kpep-plan.py --group calibration` to check that
+the eight programmable events fit distinct hardware counters; that KPEP
+assignment is not the combined trace's raw vector order.
 
 Let `A` be active cycles, `W` an assumed peak width of eight P-core or four
 E-core uops per cycle, and `M` the sum of `MAP_INT_UOP`, `MAP_LDST_UOP`, and

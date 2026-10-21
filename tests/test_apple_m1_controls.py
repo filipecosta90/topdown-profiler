@@ -85,6 +85,8 @@ def test_icache_control_matches_hot_and_large_instruction_streams(tmp_path):
                    "MAP_STALL_DISPATCH", "MAP_INT_UOP", "MAP_LDST_UOP", "MAP_SIMD_UOP"}),
     ("fetch", {"RETIRE_UOP", "CORE_ACTIVE_CYCLE", "MAP_DISPATCH_BUBBLE", "SCHEDULE_EMPTY",
                "L1I_CACHE_MISS_DEMAND", "L1I_TLB_MISS_DEMAND", "L2_TLB_MISS_INSTRUCTION", "FETCH_RESTART"}),
+    ("calibration", {"RETIRE_UOP", "MAP_DISPATCH_BUBBLE", "MAP_STALL", "MAP_REWIND",
+                     "CORE_ACTIVE_CYCLE", "MAP_INT_UOP", "MAP_LDST_UOP", "MAP_SIMD_UOP"}),
 ])
 def test_m1_kpep_plan_uses_distinct_hardware_counters(group, expected_events):
     if platform.system() != "Darwin" or platform.machine() != "arm64":

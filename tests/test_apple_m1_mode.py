@@ -58,6 +58,10 @@ def test_m1_kpep_plans_match_recorded_event_order():
     assert groups["controls"] == M1_EVENTS
     assert groups["map-state"] == M1_MAP_EVENTS
     assert groups["fetch"] == M1_FETCH_EVENTS
+    calibration = Path(__file__).resolve().parents[1] / "examples/apple-m1-tma-calibration.instrpkg"
+    names = tuple(node.text for node in ET.parse(calibration).getroot().findall(
+        "./instrument/create-table/attribute[name='pmc-events']/array/string"))
+    assert groups["calibration"] == names
 
 
 @pytest.mark.parametrize("events", [M1_EVENTS, M1_MAP_EVENTS, M1_FETCH_EVENTS])
