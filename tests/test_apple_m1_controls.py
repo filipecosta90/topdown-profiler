@@ -52,6 +52,7 @@ def test_icache_control_matches_hot_and_large_instruction_streams(tmp_path):
     hot = tmp_path / "icache-hot"
     medium = tmp_path / "icache-medium"
     custom = tmp_path / "icache-custom"
+    cold = tmp_path / "icache-cold"
     subprocess.run(["clang", "-O3", "-g", str(ICACHE_SOURCE), "-o", str(output)], check=True, timeout=30)
     subprocess.run(["clang", "-O3", "-g", "-DTOPDOWN_SMALL_ICACHE", str(ICACHE_SOURCE), "-o", str(hot)],
                    check=True, timeout=30)
@@ -59,13 +60,16 @@ def test_icache_control_matches_hot_and_large_instruction_streams(tmp_path):
                    check=True, timeout=30)
     subprocess.run(["clang", "-O3", "-g", "-DTOPDOWN_NOP_BLOCK=40960", "-DTOPDOWN_NOP_GROUPS=1",
                     str(ICACHE_SOURCE), "-o", str(custom)], check=True, timeout=30)
+    subprocess.run(["clang", "-O3", "-g", "-DTOPDOWN_SMALL_ICACHE", "-DTOPDOWN_COLD_NOP_BLOCK=65536",
+                    str(ICACHE_SOURCE), "-o", str(cold)], check=True, timeout=30)
 
     def text_bytes(binary):
         result = subprocess.run(["otool", "-l", str(binary)], capture_output=True, text=True, check=True)
         return int(result.stdout.split("sectname __text", 1)[1].split("size 0x", 1)[1].split()[0], 16)
 
     assert text_bytes(hot) < 131072 < text_bytes(medium) < text_bytes(custom) < 196608 < text_bytes(output)
-    for binary in (output, hot, medium, custom):
+    assert text_bytes(cold) > text_bytes(output)
+    for binary in (output, hot, medium, custom, cold):
         result = subprocess.run([str(binary), "2"], capture_output=True, text=True, timeout=5, check=True)
         assert result.stdout.strip() == str(2 ^ 0x1CACED)
     for args in ((), ("0",), ("-1",), ("invalid",)):
@@ -79,6 +83,8 @@ def test_icache_control_matches_hot_and_large_instruction_streams(tmp_path):
                   "L1D_CACHE_MISS_LD", "L1I_CACHE_MISS_DEMAND"}),
     ("map-state", {"RETIRE_UOP", "MAP_DISPATCH_BUBBLE", "MAP_STALL", "MAP_REWIND",
                    "MAP_STALL_DISPATCH", "MAP_INT_UOP", "MAP_LDST_UOP", "MAP_SIMD_UOP"}),
+    ("fetch", {"RETIRE_UOP", "CORE_ACTIVE_CYCLE", "MAP_DISPATCH_BUBBLE", "SCHEDULE_EMPTY",
+               "L1I_CACHE_MISS_DEMAND", "L1I_TLB_MISS_DEMAND", "L2_TLB_MISS_INSTRUCTION", "FETCH_RESTART"}),
 ])
 def test_m1_kpep_plan_uses_distinct_hardware_counters(group, expected_events):
     if platform.system() != "Darwin" or platform.machine() != "arm64":

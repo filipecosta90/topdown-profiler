@@ -155,6 +155,8 @@ measurements](https://dougallj.github.io/applecpu/measurements/firestorm/NOP.htm
 a stream of roughly 80,000 retired NOP uops had only 200 `MAP_INT_UOP`
 counts and no reported load/store or SIMD map-class counts. Those execution-unit
 classes omit eliminated NOP uops, even without meaningful bad speculation.
+[Icestorm NOP measurements](https://dougallj.github.io/applecpu/measurements/icestorm/NOP.html)
+show the same mismatch on E cores.
 A separate experimental `m1-map` package requests this group;
 each recording uses one group and retains raw vectors.
 
@@ -218,12 +220,16 @@ xcrun clang -O3 -g -DTOPDOWN_SMALL_ICACHE examples/apple-m1-icache.c \
   -o /tmp/apple-m1-icache-hot
 xcrun clang -O3 -g -DTOPDOWN_NOP_BLOCK=40960 -DTOPDOWN_NOP_GROUPS=1 \
   examples/apple-m1-icache.c -o /tmp/apple-m1-icache-160k
+xcrun clang -O3 -g -DTOPDOWN_SMALL_ICACHE -DTOPDOWN_COLD_NOP_BLOCK=65536 \
+  examples/apple-m1-icache.c -o /tmp/apple-m1-icache-cold
 poetry run topdown apple stat --output /tmp/m1-icache-stat-001 \
   -- /tmp/apple-m1-icache 200000
 poetry run topdown apple stat --output /tmp/m1-icache-hot-stat-001 \
   -- /tmp/apple-m1-icache-hot 200000
 poetry run topdown apple stat --output /tmp/m1-icache-160k-stat-001 \
   -- /tmp/apple-m1-icache-160k 320000
+poetry run topdown apple stat --output /tmp/m1-icache-cold-stat-001 \
+  -- /tmp/apple-m1-icache-cold 200000
 poetry run topdown apple record --mode m1 --duration 10 \
   --output /tmp/m1-icache-events-001 -- /tmp/apple-m1-icache 200000
 poetry run topdown apple record --mode m1-fetch --duration 10 \
@@ -268,6 +274,18 @@ loop structure and nominal NOP work. Its three-run medians were 7.954 IPC on P
 cores and 3.888 on E cores, close to the original 128 KiB row; the next 129 KiB
 block still fell to 3.665 E-core IPC. Its six raw counts and binary hash are in
 the validation JSON.
+Repeating both boundary pairs three times in oversized-first order reproduced
+the separation: E-core medians were 3.664 at 129 KiB versus 3.882 at 128 KiB;
+P-core medians were 7.218 at 193 KiB versus 7.890 at 192 KiB. All twelve
+additional runs used the same binaries and expected checksums; their counts
+and execution order are also in the validation JSON.
+An unexecuted 256 KiB NOP function enlarged the text section to 263,448 bytes
+while the executed loop stayed at 256 NOPs. Three runs of this binary measured
+7.950 P-core and 3.964 E-core median IPC, close to the compact hot-loop
+baseline despite total text exceeding both L1I sizes. This separates the
+*executed* instruction footprint from binary size; the six raw counts and
+binary hash are in the validation JSON. The earlier sweep's source hash refers
+to its recorded commit, before this optional cold-function control was added.
 
 The E-core throughput starts falling between 128.3 KiB and 129.3 KiB of text,
 then reaches about 2.07 IPC by 144.3 KiB. P-core throughput starts falling
@@ -283,7 +301,7 @@ independent [M1 ITLB measurement](https://jia.je/hardware/2024/12/26/apple-m1/)
 places the P/E L1 instruction TLB capacities at 192/128 pages. A simple ITLB
 capacity limit therefore does not explain the observed drops, although this
 experiment does not exclude translation conflicts or other fetch effects.
-All 108 runs completed with the expected checksum,
+All 108 sweep runs completed with the expected checksum,
 and at least 99.4% of cycles were accounted to the intended core kind. Smaller
 blocks execute more loop branches, and process startup, frequency and thermal
 state also affect the fixed counts. An L1I miss count still needs an authorized
@@ -311,6 +329,10 @@ counts execution-unit issues, not all allocated uops:
 [Firestorm measurements](https://dougallj.github.io/applecpu/firestorm.html)
 show instructions whose issue and retired-uop counts differ. Subtracting
 `RETIRE_UOP` from `SCHEDULE_UOP` therefore does not measure bad speculation.
+The Firestorm NOP throughput control counted 100 scheduled uops beside 80,204
+retired uops; the Icestorm control likewise counted about 100 beside 80,204
+([P-core](https://dougallj.github.io/applecpu/measurements/firestorm/NOP.html),
+[E-core](https://dougallj.github.io/applecpu/measurements/icestorm/NOP.html)).
 The same research finds an eight-uop P-core pipeline limit and [up to four
 retired uops per E-core cycle](https://dougallj.github.io/applecpu/icestorm.html).
 These black-box throughput limits do not establish which pipeline stage defines
@@ -327,6 +349,9 @@ into those slot formulas without proving their widths, overlap and recovery
 semantics. This comparison does not rule out a different M1-specific formula.
 The M1 database also lacks `MAP_UOP` and `MAP_DISPATCH_BUBBLE_SLOT`, though
 both names occur in other event catalogues shipped on this macOS installation.
+It also lacks `MAP_DISPATCH_BUBBLE_IC`, `MAP_DISPATCH_BUBBLE_ITLB`, and
+`ARM_STALL_FRONTEND`, which appear in newer [Apple event
+catalogues](https://github.com/apple-oss-distributions/xnu/blob/main/osfmk/arm64/cpc_arm64_events.c).
 The three M1 mapped-uop class counters and its *cycle*-level
 `MAP_DISPATCH_BUBBLE` need separate validation; those slot-level event names
 cannot be assumed to describe M1 hardware.
@@ -335,6 +360,12 @@ An undocumented `dispatch uop` selector `0x78` appears in independent
 but it is absent from the installed M1 event database and Apple's
 [T8103 release-kernel event list](https://github.com/apple-oss-distributions/xnu/blob/main/osfmk/arm64/cpc_arm64_events.c).
 The release kernel's known-event policy rules it out as a stock macOS fallback.
+In both the [Firestorm](https://dougallj.github.io/applecpu/measurements/firestorm/NOP.html)
+and [Icestorm](https://dougallj.github.io/applecpu/measurements/icestorm/NOP.html)
+NOP throughput measurements, selector `0x78` counted only 100 dispatch uops
+beside 80,204 retired uops. Even if raw access were available,
+this selector would not supply an all-uop speculative count for eliminated
+instructions.
 
 | TMA category | M1 signal to investigate | Missing measurement or proof |
 |---|---|---|

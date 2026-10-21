@@ -27,6 +27,19 @@
 #define STRINGIFY_INNER(value) #value
 #define STRINGIFY(value) STRINGIFY_INNER(value)
 
+#ifdef TOPDOWN_COLD_NOP_BLOCK
+#if TOPDOWN_COLD_NOP_BLOCK <= 0
+#error TOPDOWN_COLD_NOP_BLOCK must be positive
+#endif
+// Keep a large unexecuted text block to separate binary size from the hot fetch footprint.
+__attribute__((used, noinline)) static void cold_icache_block(void) {
+    __asm__ volatile(
+        ".rept " STRINGIFY(TOPDOWN_COLD_NOP_BLOCK) "\n"
+        "nop\n"
+        ".endr\n");
+}
+#endif
+
 __attribute__((noinline)) static uint64_t icache_stream(uint64_t repetitions) {
     unsigned groups = TOPDOWN_NOP_GROUPS;
     // Prevent clang from duplicating the NOP block when the group count is small.

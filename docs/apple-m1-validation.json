@@ -17,7 +17,10 @@
       "MAP_DISPATCH_BUBBLE_SLOT",
       "OP_SPEC",
       "STALL_SLOT_FRONTEND",
-      "STALL_SLOT_BACKEND"
+      "STALL_SLOT_BACKEND",
+      "MAP_DISPATCH_BUBBLE_IC",
+      "MAP_DISPATCH_BUBBLE_ITLB",
+      "ARM_STALL_FRONTEND"
     ],
     "other_installed_catalogues_with_map_dispatch_bubble_slot": 16,
     "fixed_events": 2,
@@ -1217,6 +1220,241 @@
           3.888
         ],
         "min_kind_cycle_fraction": 0.998427
+      }
+    },
+    "reverse_order_boundary_control": {
+      "purpose": "Repeat both L1I boundary pairs in oversized-first order using the same binaries and work counts",
+      "run_order": [
+        "p_over",
+        "p_at",
+        "e_over",
+        "e_at",
+        "p_over",
+        "p_at",
+        "e_over",
+        "e_at",
+        "p_over",
+        "p_at",
+        "e_over",
+        "e_at"
+      ],
+      "cases": {
+        "e_over": {
+          "core_kind": "e",
+          "nop_block": 33024,
+          "repetitions": 396899,
+          "executable_sha256": "03e142a96dd8c7f74eb7dbbfec2d0ad893fa5100e6024550636d1b136710d101",
+          "runs": [
+            {
+              "instructions": 13142121069,
+              "cycles": 3584842147,
+              "kind_instructions": 13132956485,
+              "kind_cycles": 3579871944,
+              "checksum": 1745550
+            },
+            {
+              "instructions": 13143776517,
+              "cycles": 3589214812,
+              "kind_instructions": 13134712379,
+              "kind_cycles": 3584332344,
+              "checksum": 1745550
+            },
+            {
+              "instructions": 13145443409,
+              "cycles": 3592844833,
+              "kind_instructions": 13136348560,
+              "kind_cycles": 3588001419,
+              "checksum": 1745550
+            }
+          ],
+          "ipc_median": 3.664,
+          "ipc_range": [
+            3.661,
+            3.669
+          ],
+          "min_kind_cycle_fraction": 0.998614
+        },
+        "e_at": {
+          "core_kind": "e",
+          "nop_block": 32768,
+          "repetitions": 400000,
+          "executable_sha256": "debdcc8c1e6bb27fc818fbba83225d0195430b53a3a0227babbc9059aefc7964",
+          "runs": [
+            {
+              "instructions": 13140099779,
+              "cycles": 3381218810,
+              "kind_instructions": 13131055015,
+              "kind_cycles": 3376318635,
+              "checksum": 1750637
+            },
+            {
+              "instructions": 13144045330,
+              "cycles": 3388385120,
+              "kind_instructions": 13134909396,
+              "kind_cycles": 3383473702,
+              "checksum": 1750637
+            },
+            {
+              "instructions": 13153430608,
+              "cycles": 3392985129,
+              "kind_instructions": 13144355020,
+              "kind_cycles": 3387980747,
+              "checksum": 1750637
+            }
+          ],
+          "ipc_median": 3.882,
+          "ipc_range": [
+            3.88,
+            3.889
+          ],
+          "min_kind_cycle_fraction": 0.998525
+        },
+        "p_over": {
+          "core_kind": "p",
+          "nop_block": 49408,
+          "repetitions": 265285,
+          "executable_sha256": "3b661dc968aacd1f58b712f2ea70c202ea0da41314f6f2c7afd976b85a6553a8",
+          "runs": [
+            {
+              "instructions": 13120914061,
+              "cycles": 1818522860,
+              "kind_instructions": 13120892943,
+              "kind_cycles": 1818490193,
+              "checksum": 1613992
+            },
+            {
+              "instructions": 13120816059,
+              "cycles": 1817550708,
+              "kind_instructions": 13120803738,
+              "kind_cycles": 1817524610,
+              "checksum": 1613992
+            },
+            {
+              "instructions": 13120850286,
+              "cycles": 1817881922,
+              "kind_instructions": 13120850286,
+              "kind_cycles": 1817881922,
+              "checksum": 1613992
+            }
+          ],
+          "ipc_median": 7.218,
+          "ipc_range": [
+            7.215,
+            7.219
+          ],
+          "min_kind_cycle_fraction": 0.999982
+        },
+        "p_at": {
+          "core_kind": "p",
+          "nop_block": 49152,
+          "repetitions": 266667,
+          "executable_sha256": "6e299e5fdaa903277f11cd954029c309d71d9af3fc0cb5356ab76550dfdeb6ea",
+          "runs": [
+            {
+              "instructions": 13120800951,
+              "cycles": 1663648956,
+              "kind_instructions": 13120617002,
+              "kind_cycles": 1663486197,
+              "checksum": 1621318
+            },
+            {
+              "instructions": 13120775225,
+              "cycles": 1663063091,
+              "kind_instructions": 13120659504,
+              "kind_cycles": 1662930212,
+              "checksum": 1621318
+            },
+            {
+              "instructions": 13120543922,
+              "cycles": 1661117164,
+              "kind_instructions": 13120543922,
+              "kind_cycles": 1661117164,
+              "checksum": 1621318
+            }
+          ],
+          "ipc_median": 7.89,
+          "ipc_range": [
+            7.887,
+            7.899
+          ],
+          "min_kind_cycle_fraction": 0.999902
+        }
+      }
+    },
+    "source_revision": "ab01e9ad8fd388bd195cbaed909c74044eb89e57",
+    "cold_text_hot_loop_control": {
+      "purpose": "Large unexecuted text with compact executed NOP loop",
+      "hot_nop_block": 256,
+      "hot_groups_per_repetition": 256,
+      "cold_nop_block": 65536,
+      "repetitions": 200000,
+      "nominal_hot_nops": 13107200000,
+      "text_bytes": 263448,
+      "executable_sha256": "e63d4eb81acbc7597762675987fc1da0ca9c0b5157bcf8a01781e78af2cb66db",
+      "runs": {
+        "p": [
+          {
+            "instructions": 13222689063,
+            "cycles": 1671344776,
+            "kind_instructions": 13213652816,
+            "kind_cycles": 1661329428,
+            "checksum": 2073005
+          },
+          {
+            "instructions": 13222425779,
+            "cycles": 1665738733,
+            "kind_instructions": 13222414773,
+            "kind_cycles": 1665723638,
+            "checksum": 2073005
+          },
+          {
+            "instructions": 13221964104,
+            "cycles": 1663383612,
+            "kind_instructions": 13220859026,
+            "kind_cycles": 1663077826,
+            "checksum": 2073005
+          }
+        ],
+        "e": [
+          {
+            "instructions": 13241189563,
+            "cycles": 3342097916,
+            "kind_instructions": 13232123142,
+            "kind_cycles": 3337199977,
+            "checksum": 2073005
+          },
+          {
+            "instructions": 13242963813,
+            "cycles": 3343623580,
+            "kind_instructions": 13233901944,
+            "kind_cycles": 3338742308,
+            "checksum": 2073005
+          },
+          {
+            "instructions": 13241975894,
+            "cycles": 3346351364,
+            "kind_instructions": 13232816224,
+            "kind_cycles": 3341366198,
+            "checksum": 2073005
+          }
+        ]
+      },
+      "source_sha256": "1e9cc39044a02e38ba92d662916df169ecf75cff004afcdba5b86fe2590c5e74",
+      "p": {
+        "ipc_median": 7.95,
+        "ipc_range": [
+          7.938,
+          7.954
+        ],
+        "min_kind_cycle_fraction": 0.994008
+      },
+      "e": {
+        "ipc_median": 3.964,
+        "ipc_range": [
+          3.96,
+          3.965
+        ],
+        "min_kind_cycle_fraction": 0.99851
       }
     }
   }
