@@ -186,7 +186,9 @@ other-core IPC of 2.074. These observations validate the instruction footprint
 and execution on both core kinds; an L1I miss count still needs
 an authorized programmable-counter capture. [M1 validation](apple-m1-validation.json)
 retains each run and the compiled binary hash. The `nop` stream is a fetch
-footprint control, not a test of useful mapped or retired uops.
+footprint control. [Firestorm measurements](https://dougallj.github.io/applecpu/firestorm.html)
+find that `nop` retires without issuing to an execution unit, so this workload
+must not calibrate useful work from scheduler issues or retired instructions.
 
 ### What a full four-category result still needs
 
@@ -200,9 +202,11 @@ unknown. `SCHEDULE_UOP` counts execution-unit issues, not all allocated uops:
 [Firestorm measurements](https://dougallj.github.io/applecpu/firestorm.html)
 show instructions whose issue and retired-uop counts differ. Subtracting
 `RETIRE_UOP` from `SCHEDULE_UOP` therefore does not measure bad speculation.
-The same research finds an eight-uop P-core pipeline limit, but that alone does
-not establish a denominator for mixed P/E execution or prove the observable
-fixed-cycle event matches the relevant active pipeline cycles.
+The same research finds an eight-uop P-core pipeline limit and [up to four
+retired uops per E-core cycle](https://dougallj.github.io/applecpu/icestorm.html).
+These black-box throughput limits do not establish which pipeline stage defines
+the slot denominator for mixed P/E execution or prove the observable fixed-cycle
+event matches the relevant active pipeline cycles.
 
 Arm's [Neoverse V1 top-down methodology](https://documentation-service.arm.com/static/668cffe969e89f01e39c7ba7)
 illustrates the missing information: its four-way formulas require a documented
@@ -228,6 +232,23 @@ partially filled map cycles, counter sampling scope and core migration. A
 cycle count for "no uops" cannot by itself reveal how many of the other
 cycles delivered fewer than the pipeline's possible uops. An event plan
 accepted by KPEP is not evidence that these identities hold on hardware.
+
+Use the two packages as paired experiments on stable workloads. Each capture
+has its own event group, so compare normalized responses across repeated runs
+rather than subtracting one group's raw sample from another's. The immediate
+checks are:
+
+| Control comparison | Event response to check | Interpretation if absent |
+|---|---|---|
+| Random versus predictable branch | Mispredicted branches in `m1`; `MAP_REWIND` in `m1-map` | Recheck the executed branch, vector positions, event support and sample scope |
+| Pointer chase versus wide ALU | Load-cache misses in `m1`; map backpressure in `m1-map` | Recheck cache footprint and distinguish memory latency from unrelated stalls |
+| Large `nop` stream versus wide ALU | Demand L1I misses in `m1`; delivery bubbles in both groups | Recheck the instruction footprint and whether either event captures partial delivery loss |
+| Wide ALU on P versus E cores | Retired/mapped uops, fixed cycles and Recount core-kind split | Keep separate denominators; reject captures with substantial migration |
+
+On the same map-state samples, check whether `MAP_STALL_DISPATCH` is bounded by
+`MAP_STALL`, whether `MAP_REWIND` overlaps those cycles, and whether the three
+mapped-uop classes account for the observed ALU work. A directional response
+is evidence for an event's sensitivity, not a slot-classification formula.
 
 Before enabling `tma_available`, collect actual programmable values on M1 and
 check vector order, scope, sampling semantics, simultaneous availability, loss
