@@ -123,8 +123,8 @@ the two fixed events. `MAP_REWIND` counts cycles blocked during a flush/restart;
 it does not label the cause of the flush. `MAP_STALL` is for any map stall, so
 `MAP_STALL_DISPATCH` may be a subset. The three mapped-uop classes have no
 published guarantee that they exhaust map throughput or correspond one-to-one
-with retired uops. This is an offline configuration for a later calibration
-recording; the local `m1` Instruments package requests only the first group.
+with retired uops. A separate experimental `m1-map` package requests this group;
+each recording uses one group and retains raw vectors.
 
 An experimental `m1` mode requests this exact order through a local Instruments
 package and exports the raw counter vector with the stack and core label:
@@ -134,16 +134,21 @@ xcrun clang -O3 -g examples/apple-m1-controls.c -o /tmp/apple-m1-controls
 poetry run topdown apple probe --mode m1 --output /tmp/m1-event-probe-001
 poetry run topdown apple record --mode m1 --duration 5 \
   --output /tmp/m1-event-alu-001 -- /tmp/apple-m1-controls alu_wide 4000000000
+poetry run topdown apple probe --mode m1-map --output /tmp/m1-map-probe-001
+poetry run topdown apple record --mode m1-map --duration 5 \
+  --output /tmp/m1-map-alu-001 -- /tmp/apple-m1-controls alu_wide 4000000000
 ```
 
 The output directory must be new. `m1` mode requires full Xcode's `xctrace` and
 `instrumentbuilder`; on the tested host the probe returns `tool_unavailable`
-before capture. No M1 programmable values have yet been observed. The parser
+before capture in both modes. No M1 programmable values have yet been observed. The parser
 validates the trace's configured event order and timer trigger, retains each
 uint64 vector position without assigning an event name, and never adds sampled
 rows or reports TMA percentages. The exact mapping from vector positions to
 configured events needs calibration; KPEP's physical counter mapping alone does
-not establish Instruments' export order. The package is scoped to one explicit
+not establish Instruments' export order. The M1 probes require at least three
+positive vector positions in one sample containing the control function, beyond
+what the two fixed events alone can explain. The packages are scoped to one explicit
 target. The controls include wide ALU, serial dependence,
 predictable and unpredictable branches, and random pointer chasing; each prints
 a deterministic checksum. Use the matching `apple stat` capture and its V6
