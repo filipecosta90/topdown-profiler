@@ -83,6 +83,71 @@ association; sampling loss, per-core accounting and exact cost attribution remai
 unvalidated. See [CLI validation](apple-m6-cli-validation.json) for the controls,
 root experiments, hashes and test results.
 
+## Hardware execution trace through CLI
+
+The tested M6 also supports the **Processor Trace** template without root or
+programmable-event configuration. Use `trace` mode for decoded execution
+intervals and their native instruction/cycle counts:
+
+```sh
+xcrun clang -O2 -g -c examples/apple-trace-probe.c -o /tmp/apple-trace-probe.o
+xcrun clang -g /tmp/apple-trace-probe.o -o /tmp/apple-trace-probe
+xcrun dsymutil /tmp/apple-trace-probe -o /tmp/apple-trace-probe.dSYM
+
+poetry run topdown apple record --mode trace --duration 1 \
+  --output /tmp/apple-trace-001 -- /tmp/apple-trace-probe 100000
+
+poetry run topdown apple export /path/to/recording.trace \
+  --mode trace --output /tmp/apple-trace-export-001
+```
+
+The example has a five-second alarm, a bounded recurrence and a known checksum.
+The default 100,000 steps produce checksum `2700328192655336907`. Unlike the large
+fixed-counter probe, this example is intended for short hardware traces. Trace
+recordings can still be large: an initial subsecond recording used about 140 MB.
+The unattended `apple probe` command continues to support only its original four
+modes; use `record --mode trace` with an explicitly bounded target.
+
+`profile.json` contains `intervals` and `interval_count`, rather than samples.
+Each interval retains its native label, binary offset, call depth and frames,
+start/duration, `self_instructions`, `self_cycles`, and `self_duration_ns`.
+Unreported self duration stays null. The exporter also requires and retains the
+native gap table as `gaps.xml`, with its hash and selected PID/thread markers.
+`coverage_complete` remains false, even for a window without gap markers.
+
+The time window includes only intervals wholly inside the selected range.
+`boundary_rows_excluded` counts overlapping intervals that cannot be subdivided
+without inventing instruction/cycle attribution. Call intervals can overlap at
+different depths; summing their durations would double-count elapsed time.
+Gap markers are points rather than measured missing durations, so their count
+cannot establish a coverage percentage or guarantee complete decoding.
+
+Some native labels identify an address inside a function. Frames retain the
+binary UUID and load address for offline symbol lookup. With a matching dSYM,
+`xcrun atos -o /path/to/binary.dSYM/Contents/Resources/DWARF/binary -l LOAD_ADDRESS ADDRESS`
+resolved the tested loop to its function and source line. Retain the object file
+until generating the dSYM. An explicit `xctrace symbolicate` attempt exceeded the
+experimental timeout; capture/export does not run it automatically.
+
+On this Xcode build, disassembly of a 100,000-step serial loop predicts 500,004
+instructions, which the trace reproduced in multiple captures. Longer 200,000-step
+controls differed from their predicted count by 1 and 12 instructions despite
+no in-loop gap markers. These observations support retaining decoded costs for
+investigation, with their accuracy limits. They do not establish calibrated
+function costs or four-category TMA. Apple's
+[Processor Trace explanation](https://developer.apple.com/videos/play/wwdc2025/308/?time=923)
+describes its hardware tracing and executable-based reconstruction.
+
+The follow-up also exercised `thread_selfcounts` and `PROC_PIDTHREADCOUNTS`:
+native counters are available separately for Super, Performance and Efficiency
+cores. A separate C reader matched the Python reader's bytes for a stopped owned
+target. Thread lifetime counts differed from process-accounted lifetime totals;
+these sources remain separate and the per-thread interface is not exposed as a
+new product command. Serial/parallel arithmetic controls produced different
+native instruction/cycle ratios, which cannot identify a unique stall cause.
+See [follow-up validation](apple-m6-trace-validation.json) for the measured controls
+and limitations.
+
 ## Unattended capability probe
 
 One command compiles and launches the fixed-work probe, checks completion and the

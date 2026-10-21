@@ -18,6 +18,7 @@ MODES = {
     "cpu": ("CPU Profiler", "cpu-profile", "cycle-sampled-stacks"),
     "time": ("Time Profiler", "time-profile", "timer-sampled-stacks"),
     "fixed": (None, "counters-profile", "native-fixed-counter-samples"),
+    "trace": ("Processor Trace", "processor-trace-intervals", "hardware-traced-execution-intervals"),
 }
 FIXED_EVENTS = ("FIXED_CYCLES", "FIXED_INSTRUCTIONS")
 FIXED_PACKAGE = Path(__file__).with_name("apple_fixed.instrpkg")
@@ -157,6 +158,8 @@ def parse_profile(path: Path, schema: str, pid: int, start_ns: int = 0, end_ns: 
         raise AppleProfileError("Require an explicit PID for XML parsing")
     if schema not in {entry[1] for entry in MODES.values()}:
         raise AppleProfileError(f"Unsupported measurement schema {schema}")
+    if schema == "processor-trace-intervals":
+        raise AppleProfileError("Processor Trace requires its gap table; use export with trace mode")
     fixed = schema == "counters-profile"
     if fixed and fixed_events != FIXED_EVENTS:
         raise AppleProfileError("Require the validated fixed event order from trace metadata")
@@ -284,7 +287,7 @@ def export_profile(trace: Path, output: Path, mode: str, pid: int | None = None,
                    start_ns: int = 0, end_ns: int | None = None) -> dict:
     """Export a selected table; counterless traces fail rather than falling back."""
     if mode not in MODES or run < 1:
-        raise AppleProfileError("Choose counters, fixed, cpu or time mode and a positive run number")
+        raise AppleProfileError("Choose counters, fixed, trace, cpu or time mode and a positive run number")
     _validate_scope(pid, start_ns, end_ns)
     if (output / "toc.xml").exists() or (output / "profile.json").exists():
         raise AppleProfileError(f"Export artifacts already exist in {output}; choose a new directory")
@@ -319,11 +322,23 @@ def export_profile(trace: Path, output: Path, mode: str, pid: int | None = None,
         if target is None or not target.get("pid", "").isdigit():
             raise AppleProfileError("Trace target PID is ambiguous; pass --pid explicitly")
         pid = int(target.get("pid"))
-    xml_path = output / "samples.xml"
+    xml_path = output / ("intervals.xml" if mode == "trace" else "samples.xml")
     xpath = f'/trace-toc/run[@number="{run}"]/data/table[@schema="{schema}"]'
     _run(["xcrun", "xctrace", "export", "--input", str(trace), "--xpath", xpath, "--output", str(xml_path)],
          output, "export", 30)
-    profile = parse_profile(xml_path, schema, pid, start_ns, end_ns, fixed_events=fixed_events)
+    if mode == "trace":
+        from topdown.collector.apple_trace import parse_trace_profile
+
+        if len(selected.findall("./data/table[@schema='processor-trace-gaps']")) != 1:
+            raise AppleProfileError("Processor Trace requires exactly one gap table")
+        gaps_path = output / "gaps.xml"
+        gaps_xpath = f'/trace-toc/run[@number="{run}"]/data/table[@schema="processor-trace-gaps"]'
+        _run(["xcrun", "xctrace", "export", "--input", str(trace), "--xpath", gaps_xpath,
+              "--output", str(gaps_path)], output, "export-gaps", 30)
+        profile = parse_trace_profile(xml_path, gaps_path, pid, start_ns, end_ns)
+        profile["gaps_xml_sha256"] = _sha256(gaps_path)
+    else:
+        profile = parse_profile(xml_path, schema, pid, start_ns, end_ns, fixed_events=fixed_events)
     target = selected.find("./info/target/process")
     profile.update(measurement_kind=kind, run_number=run, raw_xml_sha256=_sha256(xml_path),
                    toc_sha256=_sha256(output / "toc.xml"),
@@ -358,7 +373,7 @@ def record_profile(output: Path, command: list[str], duration: int = 5, mode: st
                    pid: int | None = None, start_ns: int = 0, end_ns: int | None = None) -> dict:
     """Launch one explicit target, retain evidence, then export the requested data."""
     if mode not in MODES or duration <= 0:
-        raise AppleProfileError("Choose counters, fixed, cpu or time mode and a positive duration")
+        raise AppleProfileError("Choose counters, fixed, trace, cpu or time mode and a positive duration")
     _validate_scope(pid, start_ns, end_ns)
     if not command or not Path(command[0]).is_file():
         raise AppleProfileError("Supply an executable path after '--'")

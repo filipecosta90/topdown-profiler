@@ -1,0 +1,164 @@
+{
+  "recorded_at_utc": "2026-10-21T05:53:09.918577+00:00",
+  "base_commit": "73cd3df572cba3f85e709bc038a4b250935c45b7",
+  "participant": "One controller. Native C and raw-XML cross-checks use separate implementations, not separate reviewers.",
+  "machine": {
+    "cpu": "Apple M6",
+    "os": "macOS 27.0.1",
+    "build": "26A434",
+    "xctrace": "27.0 (27A266a)"
+  },
+  "processor_trace": {
+    "root_required": false,
+    "gui_required": false,
+    "programmable_events_required": false,
+    "command": "topdown apple record --mode trace --duration 1 --output <new-directory> -- <bounded-program>",
+    "example_source": "examples/apple-trace-probe.c",
+    "example_target_completed": true,
+    "example_checksum": "2700328192655336907",
+    "example_intervals": 22005,
+    "example_reported_gaps": 4681,
+    "all_native_interval_scalars_match_raw_audit": true,
+    "example_loop_instruction_count": 500004,
+    "example_loop_cycle_count": 300071,
+    "example_loop_gap_markers": 0,
+    "controls": [
+      {
+        "trial": 0,
+        "steps": 0,
+        "expected_instructions_from_disassembly": 3,
+        "decoded_instructions": 3,
+        "instruction_difference": 0,
+        "decoded_cycles": 0,
+        "in_loop_gap_markers": 0,
+        "target_exit_status": "0",
+        "target_checksum": "1"
+      },
+      {
+        "trial": 1,
+        "steps": 200000,
+        "expected_instructions_from_disassembly": 1000004,
+        "decoded_instructions": 1000016,
+        "instruction_difference": 12,
+        "decoded_cycles": 600807,
+        "in_loop_gap_markers": 0,
+        "target_exit_status": "0",
+        "target_checksum": "14156330688393097220"
+      },
+      {
+        "trial": 2,
+        "steps": 100000,
+        "expected_instructions_from_disassembly": 500004,
+        "decoded_instructions": 500004,
+        "instruction_difference": 0,
+        "decoded_cycles": 300111,
+        "in_loop_gap_markers": 0,
+        "target_exit_status": "0",
+        "target_checksum": "2700328192655336907"
+      },
+      {
+        "trial": 3,
+        "steps": 200000,
+        "expected_instructions_from_disassembly": 1000004,
+        "decoded_instructions": 1000005,
+        "instruction_difference": 1,
+        "decoded_cycles": 600049,
+        "in_loop_gap_markers": 0,
+        "target_exit_status": "0",
+        "target_checksum": "14156330688393097220"
+      },
+      {
+        "trial": 4,
+        "steps": 100000,
+        "expected_instructions_from_disassembly": 500004,
+        "decoded_instructions": 500004,
+        "instruction_difference": 0,
+        "decoded_cycles": 300021,
+        "in_loop_gap_markers": 0,
+        "target_exit_status": "0",
+        "target_checksum": "2700328192655336907"
+      }
+    ],
+    "coverage_complete": false,
+    "raw_artifact_sha256": {
+      "intervals.xml": "32e83224358c6f0a154527d01c799ed64446a92a3eed120b66457c6ed4f2d1ac",
+      "gaps.xml": "8ce36f200b3ed5d20fdd9d9da56b9571beb920759f0c09df56e1eef138a1ea3e",
+      "profile.json": "66d1b7824cadf3e27dc1925060b3639fc79172fdcb68baf3abd909020dfa5e30",
+      "toc.xml": "988119a3c71109dacca95a54592f89ac340aee19b420fb3e9e57128b45c4e1f5"
+    },
+    "interpretation": "Hardware-decoded observations. Exact counts in some controls and small drift in others do not establish calibrated instruction costs, loss rates or TMA.",
+    "symbol_lookup": "Explicit offline atos with matching dSYM resolved tested addresses. xctrace symbolicate exceeded 30/40-second timeouts and is not invoked automatically.",
+    "initial_trace_bytes": 143573178
+  },
+  "thread_accounting_experiment": {
+    "exposed_as_new_product_command": false,
+    "root_required": false,
+    "apis": [
+      "thread_selfcounts",
+      "PROC_PIDTHREADCOUNTS"
+    ],
+    "core_classes": [
+      "Super",
+      "Performance",
+      "Efficiency"
+    ],
+    "randomized_controls": 54,
+    "all_control_checksums_verified": true,
+    "separate_C_reader_matches_Python_bytes_for_three_stopped_targets": true,
+    "per_thread_lifetime_totals_equal_process_lifetime_totals": false,
+    "interpretation": "The lifetime APIs disagree on totals; no cross-source IPC or sum equivalence is claimed. Same-source arithmetic controls produce different native ratios without identifying a unique stall cause.",
+    "control_report_sha256": "80c401c77ed8f6036b7c7344bb5a823fb387923381f23a7453008ea270caf68d",
+    "native_abi_report_sha256": "38dc14bee3f062fbf28556d31c855f99dec4bf1e9a95b75060bcb63e8a6107c3"
+  },
+  "validation": {
+    "tests_per_python": 549,
+    "python_versions": [
+      "3.10.21",
+      "3.11.16",
+      "3.12.14",
+      "3.13.15"
+    ],
+    "existing_warnings": 3,
+    "coverage_percent": 70.26406429391504,
+    "previous_coverage_percent": 69.21021377672209,
+    "trace_module_coverage_percent": 100.0,
+    "ruff": "PASS",
+    "git_diff_check": "PASS",
+    "installed_wheel": {
+      "isolated_environment": true,
+      "run_outside_checkout": true,
+      "all_runtime_source_bytes_match": true,
+      "sha256": "4429530da14d2dc0a6af247d79a9b41ae977ff9939506c19866837f4854ae8c6",
+      "native_export_intervals": 22005,
+      "native_export_gap_markers": 4681,
+      "intervals_and_gaps_match_checkout_export": true
+    }
+  },
+  "remaining_topdown_blocker": "Same shipped M6 kernel and toolchain as the earlier fixed-counter investigation. Programmable-event policy remains blocked. No four-category stall decomposition can be inferred uniquely from decoded instructions/cycles.",
+  "primary_references": [
+    "https://developer.apple.com/videos/play/wwdc2025/308/",
+    "https://github.com/apple-oss-distributions/xnu/blob/main/doc/observability/recount.md",
+    "https://github.com/apple-oss-distributions/xnu/blob/main/bsd/sys/proc_info_private.h",
+    "https://github.com/apple-oss-distributions/xnu/blob/main/bsd/sys/resource_private.h",
+    "https://developer.apple.com/forums/thread/849179"
+  ],
+  "source_sha256": {
+    "topdown/collector/apple_trace.py": "7ff7ad99a35d375eed8e735d122e8a865e9df049a52f00593bf97c3d9c07b051",
+    "topdown/collector/apple.py": "d2df562c1e7c707dfeb6d4b32bcfda71df3ff0097a50d203ea6e4e5f70ebc7a3",
+    "topdown/apple_cli.py": "81072f28083c2111514237bb9f4d28a05dc0f302fb21c55169eb90d2c5aa26c9",
+    "topdown/collector/apple_probe.py": "0422095668f178ad8eae0d89249a3d4d484bc7c911f819d13503a52a1078a8a3",
+    "tests/test_apple_trace.py": "85b34e7998210282fdb56cc6e52a348268b4246a98a3a542813fe468c6983c5c",
+    "tests/test_data/apple_processor_intervals_m6.xml": "cddbde6c423f1d12e7bc41fcacfa8d6236b7640a59d6f71ba2ab60240373f885",
+    "tests/test_data/apple_processor_gaps_m6.xml": "f8a9a56fd1dea0d5987194e21e741e59b883290f50cb5f9f5aa7b14e51b3e726",
+    "examples/apple-trace-probe.c": "b9a297984800c1a328f243d214a7bddf06b8919ef398cc3489ba5ed8a0ae3e36"
+  },
+  "tma_available": false,
+  "tma": {
+    "Frontend_Bound": null,
+    "Bad_Speculation": null,
+    "Backend_Bound": null,
+    "Retiring": null
+  },
+  "security_setting_or_boot_changes": false,
+  "raw_artifacts": "Ignored local .local-runs only. Raw traces, binaries and full exports are not published."
+}

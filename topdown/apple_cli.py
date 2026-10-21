@@ -11,6 +11,15 @@ from topdown.collector.apple import AppleProfileError, doctor, export_profile, r
 app = typer.Typer(help="Count, capture and export native Apple silicon profiles; slot TMA remains unavailable.")
 
 
+def _profile_summary(profile, output):
+    count = "interval_count" if "interval_count" in profile else "sample_count"
+    result = {"profile": str(output / "profile.json"), count: profile[count],
+              "measurement_kind": profile["measurement_kind"], "tma": profile["tma"]}
+    if count == "interval_count":
+        result.update(gap_count=profile["gap_count"], coverage_complete=profile["coverage_complete"])
+    return result
+
+
 @app.command(name="stat", context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
 def stat_target(
     ctx: typer.Context,
@@ -69,7 +78,7 @@ def check():
 def record(
     ctx: typer.Context,
     output: Annotated[Path, typer.Option(help="New directory for raw trace, logs, metadata and profile.json")],
-    mode: Annotated[str, typer.Option(help="counters (PMU), fixed (fixed PMU + stacks), cpu (cycle samples), time (timer samples)")] = "counters",
+    mode: Annotated[str, typer.Option(help="counters (PMU), fixed (fixed PMU + stacks), trace (hardware trace), cpu, time")] = "counters",
     duration: Annotated[int, typer.Option(help="Maximum recording duration in seconds", min=1)] = 5,
     pid: Annotated[Optional[int], typer.Option(help="Override target PID from trace metadata", min=1)] = None,
     start_ns: Annotated[int, typer.Option(help="Inclusive trace-relative start, nanoseconds", min=0)] = 0,
@@ -84,15 +93,14 @@ def record(
     except (AppleProfileError, OSError) as exc:
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(1) from exc
-    typer.echo(json.dumps({"profile": str(output / "profile.json"), "sample_count": profile["sample_count"],
-                           "measurement_kind": profile["measurement_kind"], "tma": profile["tma"]}, indent=2))
+    typer.echo(json.dumps(_profile_summary(profile, output), indent=2))
 
 
 @app.command(name="export")
 def export_trace(
     trace: Annotated[Path, typer.Argument(exists=True, help="Existing Instruments .trace bundle")],
     output: Annotated[Path, typer.Option(help="New export directory")],
-    mode: Annotated[str, typer.Option(help="counters, fixed, cpu or time")] = "counters",
+    mode: Annotated[str, typer.Option(help="counters, fixed, trace, cpu or time")] = "counters",
     pid: Annotated[Optional[int], typer.Option(help="Only this PID; otherwise use trace target", min=1)] = None,
     run: Annotated[int, typer.Option(help="Trace run number", min=1)] = 1,
     start_ns: Annotated[int, typer.Option(min=0)] = 0,
@@ -107,5 +115,4 @@ def export_trace(
     except (AppleProfileError, OSError) as exc:
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(1) from exc
-    typer.echo(json.dumps({"profile": str(output / "profile.json"), "sample_count": profile["sample_count"],
-                           "measurement_kind": profile["measurement_kind"], "tma": profile["tma"]}, indent=2))
+    typer.echo(json.dumps(_profile_summary(profile, output), indent=2))

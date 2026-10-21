@@ -7,6 +7,8 @@ Wraps [pmu-tools/toplev](https://github.com/andikleen/pmu-tools) on Intel, [AMD 
 **Apple silicon:** experimental [native CLI profiling](docs/apple-silicon.md)
 via `topdown apple`. M6 supports process instruction/cycle totals (`stat`),
 fixed-counter samples with stacks (`record --mode fixed`), and timer profiles.
+`record --mode trace` also exports hardware-traced execution intervals with native
+instruction/cycle counts and reported trace gaps.
 Programmable events and Apple slot-TMA percentages remain unavailable.
 For an unattended JSON result and stable exit code, run
 `topdown apple probe --mode fixed --output /tmp/m6-probe-001`.

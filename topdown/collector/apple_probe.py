@@ -71,8 +71,8 @@ def probe(output: Path, mode: str = "counters") -> dict:
     }
     created = False
     try:
-        if mode not in MODES:
-            raise AppleProfileError("Choose counters, fixed, cpu or time mode")
+        if mode not in MODES or mode == "trace":
+            raise AppleProfileError("Probe supports counters, fixed, cpu or time; use record --mode trace for Processor Trace")
         output.mkdir(parents=True, exist_ok=False)
         created = True
         environment = doctor()
