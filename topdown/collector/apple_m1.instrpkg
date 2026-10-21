@@ -19,7 +19,7 @@
       <attribute><name>pmc-events</name><array>
         <string>FIXED_CYCLES</string><string>FIXED_INSTRUCTIONS</string>
         <string>RETIRE_UOP</string><string>BRANCH_MISPRED_NONSPEC</string>
-        <string>SCHEDULE_UOP</string><string>SCHEDULE_EMPTY</string>
+        <string>SCHEDULE_UOP</string><string>CORE_ACTIVE_CYCLE</string>
         <string>MAP_DISPATCH_BUBBLE</string><string>MAP_STALL_DISPATCH</string>
         <string>L1D_CACHE_MISS_LD</string><string>L1I_CACHE_MISS_DEMAND</string>
       </array></attribute>

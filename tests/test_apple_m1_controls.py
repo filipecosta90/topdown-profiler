@@ -59,7 +59,7 @@ def test_icache_control_has_large_instruction_stream_and_bounded_input(tmp_path)
 
 @pytest.mark.parametrize("group,expected_events", [
     ("controls", {"RETIRE_UOP", "BRANCH_MISPRED_NONSPEC", "SCHEDULE_UOP",
-                  "SCHEDULE_EMPTY", "MAP_DISPATCH_BUBBLE", "MAP_STALL_DISPATCH",
+                  "CORE_ACTIVE_CYCLE", "MAP_DISPATCH_BUBBLE", "MAP_STALL_DISPATCH",
                   "L1D_CACHE_MISS_LD", "L1I_CACHE_MISS_DEMAND"}),
     ("map-state", {"RETIRE_UOP", "MAP_DISPATCH_BUBBLE", "MAP_STALL", "MAP_REWIND",
                    "MAP_STALL_DISPATCH", "MAP_INT_UOP", "MAP_LDST_UOP", "MAP_SIMD_UOP"}),

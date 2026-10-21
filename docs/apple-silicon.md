@@ -88,6 +88,16 @@ checks ktrace access (root or the blessed PID) before those operations, while
 counter-count queries are public. The unprivileged `EPERM` therefore does not
 show that the M1 event selector itself was rejected. The host has Command Line
 Tools but no full Xcode, so `xctrace` and `instrumentbuilder` could not be run.
+Apple introduced the guided CPU Bottlenecks mode in
+[Xcode 26](https://developer.apple.com/documentation/xcode-release-notes/xcode-26-release-notes);
+the available public documentation does not state whether that mode produces
+counter data on M1. Its initial Xcode 26 release notes flag missing macOS data
+in the separate “Instruction Processing Bottlenecks” and “Streaming SME
+Bottlenecks” modes. A recording on this host is needed to establish support for
+the initial four-category mode. Apple's [Processor Trace hardware
+requirements](https://developer.apple.com/documentation/xcode/analyzing-cpu-usage-with-processor-trace)
+start at M4 for Mac recording, so Processor Trace cannot supply a hardware
+execution trace on this M1.
 Apple's [CPU counter subsystem overview](https://github.com/apple-oss-distributions/xnu/blob/main/doc/observability/cpu_counters.md)
 identifies KPC as the manager of configurable core counters; Monotonic and
 Recount expose fixed instructions/cycles. Those fixed-counter paths cannot
@@ -103,7 +113,7 @@ counter assignments. The command fails on a different CPU family.
 |---:|---|---|
 | 0, 1 | `FIXED_CYCLES`, `FIXED_INSTRUCTIONS` | Fixed cycles and retired instructions |
 | 2 | `SCHEDULE_UOP` | Uops issued to execution units |
-| 3 | `SCHEDULE_EMPTY` | Cycles with an empty uop scheduler |
+| 3 | `CORE_ACTIVE_CYCLE` | Cycles while the core was active; compare with fixed cycles to establish the denominator |
 | 4 | `MAP_DISPATCH_BUBBLE` | Cycles with no map input and no map stall |
 | 5 | `BRANCH_MISPRED_NONSPEC` | Architecturally executed mispredicted branches |
 | 6 | `MAP_STALL_DISPATCH` | Cycles with dispatch backpressure at map |
@@ -163,9 +173,12 @@ P/other split to reject runs with appreciable core migration.
 
 An independent [Xcode counter calibration report](https://tahrioui.com/blog/no-ebpf-for-macos)
 found unnamed vectors, counter resets between samples, and absolute totals that
-did not match a known instruction count on another Apple chip. Treat each raw M1
-vector as an observation until its cumulative/delta behavior and reset points
-are checked against `stat`. If `record` reports a tool error but retains a trace,
+did not match a known instruction count on another Apple chip. Its recording
+used Xcode's guided CPU Bottlenecks mode, whose exported values include derived
+metrics, so its vector interpretation cannot be copied to these custom raw-event
+packages. Treat each raw M1 vector as an observation until its configured event
+order, cumulative/delta behavior and reset points are checked against `stat`.
+If `record` reports a tool error but retains a trace,
 inspect its logs and try `topdown apple export` into a new directory; a trace's
 existence alone does not qualify the counter data.
 
@@ -200,8 +213,8 @@ classifies pipeline slots as Retiring, Frontend Bound, Backend Bound, or Bad
 Speculation. The M1 events above provide useful signals but no established
 disjoint four-way slot classification. For example, `BRANCH_MISPRED_NONSPEC`
 counts branches, not the slots lost during their recovery. `MAP_DISPATCH_BUBBLE`
-and `SCHEDULE_EMPTY` count different kinds of cycles, with overlap and width
-unknown. `SCHEDULE_UOP` counts execution-unit issues, not all allocated uops:
+counts fully empty map cycles, not all empty delivery slots. `SCHEDULE_UOP`
+counts execution-unit issues, not all allocated uops:
 [Firestorm measurements](https://dougallj.github.io/applecpu/firestorm.html)
 show instructions whose issue and retired-uop counts differ. Subtracting
 `RETIRE_UOP` from `SCHEDULE_UOP` therefore does not measure bad speculation.
@@ -223,9 +236,20 @@ semantics. This comparison does not rule out a different M1-specific formula.
 | TMA category | M1 signal to investigate | Missing measurement or proof |
 |---|---|---|
 | Retiring | `RETIRE_UOP` | Per-core-kind slot denominator, counter scope and retire width under each workload |
-| Frontend Bound | `MAP_DISPATCH_BUBBLE`, `SCHEDULE_EMPTY`, instruction-cache misses | Partially empty delivery slots; map-bubble counts fully empty cycles, not every empty slot |
+| Frontend Bound | `MAP_DISPATCH_BUBBLE`, instruction-cache misses | Partially empty delivery slots; map-bubble counts fully empty cycles, not every empty slot |
 | Bad Speculation | `BRANCH_MISPRED_NONSPEC`, mapped versus retired uops, `MAP_REWIND` | Wasted speculative uops plus recovery slots, with proven map/retire units and overlap |
 | Backend Bound | `MAP_STALL_DISPATCH`, `MAP_STALL`, cache/TLB misses | Partial backend stall slots and non-overlap with rewind/front-end stalls |
+
+The controls group also pairs `CORE_ACTIVE_CYCLE` with `FIXED_CYCLES` in one
+configuration. Compare their ratio across idle, ALU, pointer-chase and branch
+controls before using either for the slot denominator. The event's database
+description alone does not establish whether either count is thread-scoped,
+core-scoped, or equivalent to the cycles relevant to a TMA stage.
+An independent [M1/Asahi Linux counter experiment](https://blog.cyyself.name/tso-apple-m1/)
+observed `CORE_ACTIVE_CYCLE`, `MAP_STALL`, `MAP_STALL_DISPATCH`, and
+`MAP_REWIND` change with memory-ordering behavior. In its two workloads,
+`MAP_STALL_DISPATCH` was close to `MAP_STALL`; that is a useful directional
+check for the map-state group, not a universal equality or a macOS calibration.
 
 The map-state group provides a direct experiment for overlap: compare
 `MAP_STALL` with `MAP_STALL_DISPATCH` and `MAP_REWIND`, and compare the sum of

@@ -34,7 +34,7 @@
     "counter_classes": 3,
     "configurable_registers": [
       "0x52",
-      "0x51",
+      "0x2",
       "0xd6",
       "0xcb",
       "0x70",
@@ -48,7 +48,7 @@
       "RETIRE_UOP": 7,
       "BRANCH_MISPRED_NONSPEC": 5,
       "SCHEDULE_UOP": 2,
-      "SCHEDULE_EMPTY": 3,
+      "CORE_ACTIVE_CYCLE": 3,
       "MAP_DISPATCH_BUBBLE": 4,
       "MAP_STALL_DISPATCH": 6,
       "L1D_CACHE_MISS_LD": 8,
