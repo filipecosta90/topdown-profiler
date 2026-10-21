@@ -3,6 +3,7 @@
 import json
 import subprocess
 from pathlib import Path
+from runpy import run_path
 from unittest.mock import patch
 from xml.etree import ElementTree as ET
 
@@ -13,6 +14,7 @@ from topdown.collector.apple import (AppleProfileError, M1_EVENTS, M1_MAP_EVENTS
 
 
 FIXED_FIXTURE = Path(__file__).parent / "test_data/apple_fixed_profile_m6.xml"
+PLANNER = Path(__file__).resolve().parents[1] / "examples/apple-m1-kpep-plan.py"
 
 
 def synthetic_m1_xml(path):
@@ -37,12 +39,22 @@ def fake_m1_export(cmd, events=M1_EVENTS, **kwargs):
     return subprocess.CompletedProcess(cmd, 0, "", "")
 
 
-@pytest.mark.parametrize("package,events", [(M1_PACKAGE, M1_EVENTS), (M1_MAP_PACKAGE, M1_MAP_EVENTS)])
-def test_m1_package_and_export_order_match(package, events):
+@pytest.mark.parametrize("package,events,title", [
+    (M1_PACKAGE, M1_EVENTS, "Topdown M1 Event Controls"),
+    (M1_MAP_PACKAGE, M1_MAP_EVENTS, "Topdown M1 Map State"),
+])
+def test_m1_package_and_export_order_match(package, events, title):
     root = ET.parse(package).getroot()
     names = tuple(node.text for node in root.findall("./instrument/create-table/attribute[name='pmc-events']/array/string"))
     assert names == events
+    assert root.findtext("./instrument/title") == title
     assert root.findtext("./instrument/create-table/attribute[name='trigger']/string") == "time"
+
+
+def test_m1_kpep_plans_match_recorded_event_order():
+    groups = run_path(str(PLANNER))["EVENT_GROUPS"]
+    assert groups["controls"] == M1_EVENTS
+    assert groups["map-state"] == M1_MAP_EVENTS
 
 
 @pytest.mark.parametrize("events", [M1_EVENTS, M1_MAP_EVENTS])

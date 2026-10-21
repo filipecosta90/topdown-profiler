@@ -25,7 +25,9 @@
     "compiled_programmable_name_selector_pairs_matched": 58,
     "compiled_allowlist_check": "kpc_set_config in kernel.release.t8103 at VM 0xfffffe00074b9a18 compares selected event low 16 bits against entries at VM 0xfffffe00071f4e80; unmatched nonzero selector prints not-allowed event and fails. All 58 installed programmable name/selector pairs occur in the referenced table.",
     "compiled_allowlist_limit": "The kernel gate was inspected offline; authorized/root KPC collection and Instruments remain untested.",
-    "kpc_access_gate": "XNU kern_kpc.c calls ktrace_read_check (root or blessed PID) before configuration/reads; public counter-count queries bypass the access check."
+    "kpc_access_gate": "XNU kern_kpc.c calls ktrace_read_check (root or blessed PID) before configuration/reads; public counter-count queries bypass the access check.",
+    "sme_supported": false,
+    "event_description_limit": "MAP_LDST_UOP description mentions SME, but hw.optional.arm.FEAT_SME is 0 on this M1; names/selectors need runtime calibration."
   },
   "kpep_offline_plan": {
     "cpu_family": "0x1b588bb3",
@@ -397,7 +399,7 @@
   "m1_programmable_values_observed": false,
   "tma_available": false,
   "verification": {
-    "pytest": "584 passed on each of Python 3.10, 3.11, 3.12, and 3.13; 3 dependency deprecation warnings per run",
+    "pytest": "585 passed on each of Python 3.10, 3.11, 3.12, and 3.13; 3 dependency deprecation warnings per run",
     "ruff": "all checks passed",
     "coverage_percent": 70.502,
     "git_diff_check": "passed",

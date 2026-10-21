@@ -117,6 +117,9 @@ collision. [Linux's M1 PMU driver](https://github.com/torvalds/linux/blob/master
 independently documents the counter restrictions. KPEP acceptance only proves a
 configuration can be constructed; it does not prove that Instruments or the
 kernel will count these events on this host.
+The installed `MAP_LDST_UOP` description also mentions SME instructions, while
+`hw.optional.arm.FEAT_SME` is zero on this M1. Treat the database text as a
+candidate description shared across chips, not proof of every M1 event detail.
 
 A second KPEP plan replaces branch, cache and scheduler diagnostics with map
 pipeline events. Run `python3 examples/apple-m1-kpep-plan.py --group map-state` to
