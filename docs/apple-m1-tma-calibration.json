@@ -36,9 +36,10 @@
     "denominator": "width * CORE_ACTIVE_CYCLE",
     "useful": "RETIRE_UOP / denominator",
     "processing": "MAP_STALL / CORE_ACTIVE_CYCLE",
-    "delivery": "1 - useful - processing - discarded_clamped",
+    "delivery": "max(MAP_DISPATCH_BUBBLE / CORE_ACTIVE_CYCLE, 1 - useful - processing - discarded_clamped)",
     "discarded_naive": "(MAP_INT_UOP + MAP_LDST_UOP + MAP_SIMD_UOP - RETIRE_UOP + width * MAP_REWIND) / denominator",
-    "discarded_clamped": "max(0, MAP_INT_UOP + MAP_LDST_UOP + MAP_SIMD_UOP - RETIRE_UOP + width * MAP_REWIND) / denominator"
+    "discarded_clamped": "max(0, MAP_INT_UOP + MAP_LDST_UOP + MAP_SIMD_UOP - RETIRE_UOP + width * MAP_REWIND) / denominator",
+    "interval_scope": "Each valid MetricTable interval ends at the matching raw PMU sample time on the same thread and core; match exact active-cycle count before applying the equations."
   },
   "captures": {
     "branch": {
@@ -76,18 +77,6 @@
       "toc_sha256": "dec9e02381ae2546192b087ca2e3c5b4ceb1faf176b92257df6e62712f31f223",
       "counter_xml_sha256": "de928d100a97aae48f8a0c496cbe58271e4f1edcf5404cf6554d7cad5ba57c3a",
       "metric_xml_sha256": "fa411aded0a3bef095e3e2c37554ce512463183b29e0f061dc6813afd36fd148",
-      "clamped_candidate_shares": {
-        "useful": 0.07654073873976082,
-        "processing": 9.56542464641444e-05,
-        "discarded": 0.34844224363102694,
-        "delivery": 0.5749213633827481
-      },
-      "absolute_difference_clamped_percentage_points": {
-        "useful": 2.2766845922395085e-05,
-        "processing": 0.0003124105213405255,
-        "discarded": 0.0002794811446438228,
-        "delivery": 1.0360991009594755e-05
-      },
       "naive_candidate_shares": {
         "useful": 0.07654073873976082,
         "processing": 9.56542464641444e-05,
@@ -95,6 +84,31 @@
         "delivery": 0.5749213633827481
       },
       "absolute_difference_naive_percentage_points": {
+        "useful": 2.2766845922395085e-05,
+        "processing": 0.0003124105213405255,
+        "discarded": 0.0002794811446438228,
+        "delivery": 1.0360991009594755e-05
+      },
+      "interval_formula_check": {
+        "raw_samples_with_active_cycles": 3055,
+        "intervals_matched_by_end_time_tid_core_and_active_cycles": 2788,
+        "maximum_absolute_difference_percentage_points": {
+          "useful": 9.994502447874254e-08,
+          "processing": 9.998973401680272e-08,
+          "discarded": 9.997844774289888e-08,
+          "delivery": 9.995032579368512e-08
+        },
+        "intervals_matching_to_exported_rounding": 2788,
+        "p99_maximum_category_difference_percentage_points": 9.965798741795595e-08,
+        "matched_formula_note": "Every interval matched by end time, thread, core, and active cycles reproduces all four guided shares to the nine-decimal fractional export precision."
+      },
+      "aggregate_residual_candidate_shares": {
+        "useful": 0.07654073873976082,
+        "processing": 9.56542464641444e-05,
+        "discarded": 0.34844224363102694,
+        "delivery": 0.5749213633827481
+      },
+      "absolute_difference_aggregate_residual_percentage_points": {
         "useful": 2.2766845922395085e-05,
         "processing": 0.0003124105213405255,
         "discarded": 0.0002794811446438228,
@@ -136,18 +150,6 @@
       "toc_sha256": "6d168d6e8b90c62506ef904826126bee5c9a4841d7925e02a23d8499d3a60bf4",
       "counter_xml_sha256": "6b7fd024aa74aadd014c15d6e744a01653caed3f45f28d770e3dad1d41f84140",
       "metric_xml_sha256": "6fe506681155982284aa889dc308124b0f32cd6bf05e76f5f26ad3f6810f3fb4",
-      "clamped_candidate_shares": {
-        "useful": 0.8331850966605157,
-        "processing": 0.16667259154277458,
-        "discarded": 5.325859277177888e-05,
-        "delivery": 8.90532039379277e-05
-      },
-      "absolute_difference_clamped_percentage_points": {
-        "useful": 0.000661651394340268,
-        "processing": 8.103528249259195e-05,
-        "discarded": 0.00011564870431121264,
-        "delivery": 0.000599119504182792
-      },
       "naive_candidate_shares": {
         "useful": 0.8331850966605157,
         "processing": 0.16667259154277458,
@@ -155,6 +157,31 @@
         "delivery": 8.90532039379277e-05
       },
       "absolute_difference_naive_percentage_points": {
+        "useful": 0.000661651394340268,
+        "processing": 8.103528249259195e-05,
+        "discarded": 0.00011564870431121264,
+        "delivery": 0.000599119504182792
+      },
+      "interval_formula_check": {
+        "raw_samples_with_active_cycles": 2839,
+        "intervals_matched_by_end_time_tid_core_and_active_cycles": 2589,
+        "maximum_absolute_difference_percentage_points": {
+          "useful": 9.993192939816709e-08,
+          "processing": 9.99585886285459e-08,
+          "discarded": 9.990954726150247e-08,
+          "delivery": 9.998763160162889e-08
+        },
+        "intervals_matching_to_exported_rounding": 2589,
+        "p99_maximum_category_difference_percentage_points": 9.978277267027333e-08,
+        "matched_formula_note": "Every interval matched by end time, thread, core, and active cycles reproduces all four guided shares to the nine-decimal fractional export precision."
+      },
+      "aggregate_residual_candidate_shares": {
+        "useful": 0.8331850966605157,
+        "processing": 0.16667259154277458,
+        "discarded": 5.325859277177888e-05,
+        "delivery": 8.90532039379277e-05
+      },
+      "absolute_difference_aggregate_residual_percentage_points": {
         "useful": 0.000661651394340268,
         "processing": 8.103528249259195e-05,
         "discarded": 0.00011564870431121264,
@@ -197,18 +224,6 @@
       "toc_sha256": "48b45f9de5625e5975184f82a2ed5be4fa103f1312b1315f59c3828431f07b73",
       "counter_xml_sha256": "9d3b976d5c20ec0546af6e13d3534dbab89cc060b4c957bd7de971829bfa8196",
       "metric_xml_sha256": "07a6236f236ac0569c872120232f96ca6caea99dd2c84218eee41fc11b894021",
-      "clamped_candidate_shares": {
-        "useful": 0.0036344621715116484,
-        "processing": 0.9955795224534871,
-        "discarded": 6.67880624049365e-05,
-        "delivery": 0.0007192273125963267
-      },
-      "absolute_difference_clamped_percentage_points": {
-        "useful": 8.57971422342247e-05,
-        "processing": 1.439229198041403e-05,
-        "discarded": 0.0003659752583639125,
-        "delivery": 0.0005421993852840006
-      },
       "naive_candidate_shares": {
         "useful": 0.0036344621715116484,
         "processing": 0.9955795224534871,
@@ -216,6 +231,31 @@
         "delivery": 0.0007192273125963267
       },
       "absolute_difference_naive_percentage_points": {
+        "useful": 8.57971422342247e-05,
+        "processing": 1.439229198041403e-05,
+        "discarded": 0.0003659752583639125,
+        "delivery": 0.0005421993852840006
+      },
+      "interval_formula_check": {
+        "raw_samples_with_active_cycles": 4416,
+        "intervals_matched_by_end_time_tid_core_and_active_cycles": 4011,
+        "maximum_absolute_difference_percentage_points": {
+          "useful": 9.994854596739877e-08,
+          "processing": 9.996869998474267e-08,
+          "discarded": 9.999855295217148e-08,
+          "delivery": 9.998384266785704e-08
+        },
+        "intervals_matching_to_exported_rounding": 4011,
+        "p99_maximum_category_difference_percentage_points": 9.973766838464182e-08,
+        "matched_formula_note": "Every interval matched by end time, thread, core, and active cycles reproduces all four guided shares to the nine-decimal fractional export precision."
+      },
+      "aggregate_residual_candidate_shares": {
+        "useful": 0.0036344621715116484,
+        "processing": 0.9955795224534871,
+        "discarded": 6.67880624049365e-05,
+        "delivery": 0.0007192273125963267
+      },
+      "absolute_difference_aggregate_residual_percentage_points": {
         "useful": 8.57971422342247e-05,
         "processing": 1.439229198041403e-05,
         "discarded": 0.0003659752583639125,
@@ -259,18 +299,6 @@
       "toc_sha256": "238582f9e5692e64ac8ee36a0298885bab06fee724cc14e56946c7a66bb75e85",
       "counter_xml_sha256": "b5792f8392743f8290b326f8608c564f442e3bece5d78a860d0535b312968ada",
       "metric_xml_sha256": "9eb415878d41239e7f41cbbdce8a2528c41edbfb3c63e967f900b99b75226e96",
-      "clamped_candidate_shares": {
-        "useful": 0.8329498514254575,
-        "processing": 0.00013253114182161315,
-        "discarded": 8.951843708643725e-05,
-        "delivery": 0.16682809899563444
-      },
-      "absolute_difference_clamped_percentage_points": {
-        "useful": 0.0015863097922341751,
-        "processing": 9.470434787629378e-05,
-        "discarded": 0.0002675811074943655,
-        "delivery": 0.0012238227271865743
-      },
       "naive_candidate_shares": {
         "useful": 0.8329498514254575,
         "processing": 0.00013253114182161315,
@@ -278,6 +306,31 @@
         "delivery": 0.16682809899563444
       },
       "absolute_difference_naive_percentage_points": {
+        "useful": 0.0015863097922341751,
+        "processing": 9.470434787629378e-05,
+        "discarded": 0.0002675811074943655,
+        "delivery": 0.0012238227271865743
+      },
+      "interval_formula_check": {
+        "raw_samples_with_active_cycles": 4078,
+        "intervals_matched_by_end_time_tid_core_and_active_cycles": 2257,
+        "maximum_absolute_difference_percentage_points": {
+          "useful": 9.996274918933068e-08,
+          "processing": 9.994023744120913e-08,
+          "discarded": 9.999891675892096e-08,
+          "delivery": 9.997168926023647e-08
+        },
+        "intervals_matching_to_exported_rounding": 2257,
+        "p99_maximum_category_difference_percentage_points": 9.953267099405139e-08,
+        "matched_formula_note": "Every interval matched by end time, thread, core, and active cycles reproduces all four guided shares to the nine-decimal fractional export precision."
+      },
+      "aggregate_residual_candidate_shares": {
+        "useful": 0.8329498514254575,
+        "processing": 0.00013253114182161315,
+        "discarded": 8.951843708643725e-05,
+        "delivery": 0.16682809899563444
+      },
+      "absolute_difference_aggregate_residual_percentage_points": {
         "useful": 0.0015863097922341751,
         "processing": 9.470434787629378e-05,
         "discarded": 0.0002675811074943655,
@@ -322,18 +375,6 @@
       "toc_sha256": "98107ef2b28be63ef1dc0a3af16ca1a613170d16cde4c0705433a3f26678ccd4",
       "counter_xml_sha256": "36a7d52aae4bf8243e7f550ff9b8e90b20d1d15c6c08e6b163f9ff127097676d",
       "metric_xml_sha256": "8fb606839dfdd62c77bc436c00d5a4514a8801966dd263bdaad97947e70ff2ca",
-      "clamped_candidate_shares": {
-        "useful": 0.004715883164551314,
-        "processing": 0.9945410784287045,
-        "discarded": 6.684205955724769e-05,
-        "delivery": 0.0006761963471868526
-      },
-      "absolute_difference_clamped_percentage_points": {
-        "useful": 0.006099439556059381,
-        "processing": 0.01254505467432887,
-        "discarded": 0.0010131681519227542,
-        "delivery": 0.005491831691904118
-      },
       "naive_candidate_shares": {
         "useful": 0.004715883164551314,
         "processing": 0.9945410784287045,
@@ -341,6 +382,31 @@
         "delivery": 0.0006761963471868526
       },
       "absolute_difference_naive_percentage_points": {
+        "useful": 0.006099439556059381,
+        "processing": 0.01254505467432887,
+        "discarded": 0.0010131681519227542,
+        "delivery": 0.005491831691904118
+      },
+      "interval_formula_check": {
+        "raw_samples_with_active_cycles": 11085,
+        "intervals_matched_by_end_time_tid_core_and_active_cycles": 6224,
+        "maximum_absolute_difference_percentage_points": {
+          "useful": 9.998894928177349e-08,
+          "processing": 9.995098082526965e-08,
+          "discarded": 9.996757363404132e-08,
+          "delivery": 9.996868224719513e-08
+        },
+        "intervals_matching_to_exported_rounding": 6224,
+        "p99_maximum_category_difference_percentage_points": 9.972457356427489e-08,
+        "matched_formula_note": "Every interval matched by end time, thread, core, and active cycles reproduces all four guided shares to the nine-decimal fractional export precision."
+      },
+      "aggregate_residual_candidate_shares": {
+        "useful": 0.004715883164551314,
+        "processing": 0.9945410784287045,
+        "discarded": 6.684205955724769e-05,
+        "delivery": 0.0006761963471868526
+      },
+      "absolute_difference_aggregate_residual_percentage_points": {
         "useful": 0.006099439556059381,
         "processing": 0.01254505467432887,
         "discarded": 0.0010131681519227542,
@@ -384,18 +450,6 @@
       "toc_sha256": "8035006dd3e311e29f509c58acc14bfd1eb1260fff7704db58856aa89a662d1a",
       "counter_xml_sha256": "262a9d26e48384c110011b024ec997b69b602c8f848ecd66625cffb1ecfa13f4",
       "metric_xml_sha256": "3f1d30a1e3d066b3bf4db5b967e0e2cf72c3d91efb2beab1f35d782b6880855b",
-      "clamped_candidate_shares": {
-        "useful": 0.1533864598823142,
-        "processing": 0.002674475022707447,
-        "discarded": 0.40548111250825847,
-        "delivery": 0.43845795258671993
-      },
-      "absolute_difference_clamped_percentage_points": {
-        "useful": 4.436378741312641e-05,
-        "processing": 0.0007629443454722478,
-        "discarded": 0.001970311044552364,
-        "delivery": 0.0012515310026328663
-      },
       "naive_candidate_shares": {
         "useful": 0.1533864598823142,
         "processing": 0.002674475022707447,
@@ -403,6 +457,31 @@
         "delivery": 0.43845795258671993
       },
       "absolute_difference_naive_percentage_points": {
+        "useful": 4.436378741312641e-05,
+        "processing": 0.0007629443454722478,
+        "discarded": 0.001970311044552364,
+        "delivery": 0.0012515310026328663
+      },
+      "interval_formula_check": {
+        "raw_samples_with_active_cycles": 2589,
+        "intervals_matched_by_end_time_tid_core_and_active_cycles": 1396,
+        "maximum_absolute_difference_percentage_points": {
+          "useful": 9.984262028250868e-08,
+          "processing": 9.996198439311821e-08,
+          "discarded": 9.980976600765246e-08,
+          "delivery": 9.998084582463207e-08
+        },
+        "intervals_matching_to_exported_rounding": 1396,
+        "p99_maximum_category_difference_percentage_points": 9.973551151620796e-08,
+        "matched_formula_note": "Every interval matched by end time, thread, core, and active cycles reproduces all four guided shares to the nine-decimal fractional export precision."
+      },
+      "aggregate_residual_candidate_shares": {
+        "useful": 0.1533864598823142,
+        "processing": 0.002674475022707447,
+        "discarded": 0.40548111250825847,
+        "delivery": 0.43845795258671993
+      },
+      "absolute_difference_aggregate_residual_percentage_points": {
         "useful": 4.436378741312641e-05,
         "processing": 0.0007629443454722478,
         "discarded": 0.001970311044552364,
@@ -443,18 +522,6 @@
       "toc_sha256": "5edb10ed35256a646705bca5e43162839973b45c38e5a5ccf514738f607d54c0",
       "counter_xml_sha256": "907f28a991ddc7136670208de792f70cae3b97c291846231b447bbfd714c54c6",
       "metric_xml_sha256": "8c097403a76a96d20f98b84160be786051dbdffebec87a2386453f70d75c57da",
-      "clamped_candidate_shares": {
-        "useful": 0.9982983240414319,
-        "processing": 5.040233537221641e-05,
-        "discarded": 0.0,
-        "delivery": 0.001651273623195837
-      },
-      "absolute_difference_clamped_percentage_points": {
-        "useful": 0.005855429122691991,
-        "processing": 0.0015159827773547558,
-        "discarded": 0.004995060518139887,
-        "delivery": 0.0006557619066711005
-      },
       "naive_candidate_shares": {
         "useful": 0.9982983240414319,
         "processing": 5.040233537221641e-05,
@@ -466,6 +533,31 @@
         "processing": 0.0015159827773547558,
         "discarded": 99.00807826805503,
         "delivery": 99.00373896944356
+      },
+      "interval_formula_check": {
+        "raw_samples_with_active_cycles": 2086,
+        "intervals_matched_by_end_time_tid_core_and_active_cycles": 1907,
+        "maximum_absolute_difference_percentage_points": {
+          "useful": 9.996823369107233e-08,
+          "processing": 9.986728780694215e-08,
+          "discarded": 5.260457347500136e-08,
+          "delivery": 9.996470916665001e-08
+        },
+        "intervals_matching_to_exported_rounding": 1907,
+        "p99_maximum_category_difference_percentage_points": 9.966793341578784e-08,
+        "matched_formula_note": "Every interval matched by end time, thread, core, and active cycles reproduces all four guided shares to the nine-decimal fractional export precision."
+      },
+      "aggregate_residual_candidate_shares": {
+        "useful": 0.9982983240414319,
+        "processing": 5.040233537221641e-05,
+        "discarded": 0.0,
+        "delivery": 0.001651273623195837
+      },
+      "absolute_difference_aggregate_residual_percentage_points": {
+        "useful": 0.005855429122691991,
+        "processing": 0.0015159827773547558,
+        "discarded": 0.004995060518139887,
+        "delivery": 0.0006557619066711005
       }
     },
     "p-large": {
@@ -502,18 +594,6 @@
       "toc_sha256": "b2e1948c853ff0f9482f93ba1e7c1fd4665ee6905786f91518ca1b1ba78b0865",
       "counter_xml_sha256": "bc00a0e0cb388d251b2bbd068c30246cc96a666e927e48f0f933d76f53811c8c",
       "metric_xml_sha256": "7109ad23e278989bf6cab7db614d34aad0a2ec4b57c447454751c563a7d7cd84",
-      "clamped_candidate_shares": {
-        "useful": 0.2717107194174437,
-        "processing": 4.467105510541783e-05,
-        "discarded": 0.0,
-        "delivery": 0.7282446095274508
-      },
-      "absolute_difference_clamped_percentage_points": {
-        "useful": 0.007342664738901883,
-        "processing": 0.0020968351333947787,
-        "discarded": 0.005454709022963414,
-        "delivery": 0.00020900675801183155
-      },
       "naive_candidate_shares": {
         "useful": 0.2717107194174437,
         "processing": 4.467105510541783e-05,
@@ -525,6 +605,31 @@
         "processing": 0.0020968351333947787,
         "discarded": 27.164603478856105,
         "delivery": 27.159357776591154
+      },
+      "interval_formula_check": {
+        "raw_samples_with_active_cycles": 1903,
+        "intervals_matched_by_end_time_tid_core_and_active_cycles": 1736,
+        "maximum_absolute_difference_percentage_points": {
+          "useful": 9.994903793497656e-08,
+          "processing": 9.999912515558047e-08,
+          "discarded": 3.2456379250866974e-08,
+          "delivery": 9.995719807420755e-08
+        },
+        "intervals_matching_to_exported_rounding": 1736,
+        "p99_maximum_category_difference_percentage_points": 9.969577940971419e-08,
+        "matched_formula_note": "Every interval matched by end time, thread, core, and active cycles reproduces all four guided shares to the nine-decimal fractional export precision."
+      },
+      "aggregate_residual_candidate_shares": {
+        "useful": 0.2717107194174437,
+        "processing": 4.467105510541783e-05,
+        "discarded": 0.0,
+        "delivery": 0.7282446095274508
+      },
+      "absolute_difference_aggregate_residual_percentage_points": {
+        "useful": 0.007342664738901883,
+        "processing": 0.0020968351333947787,
+        "discarded": 0.005454709022963414,
+        "delivery": 0.00020900675801183155
       }
     },
     "e-large": {
@@ -563,18 +668,6 @@
       "toc_sha256": "92729ddb101daedb36d2fda7c78422ef099f1299bffcc79340a795a0e9f2e507",
       "counter_xml_sha256": "1e4ac2ead1586fea17f7f08fd9ed904afdfbbe6c358bcf4eff6b66980c6f0a79",
       "metric_xml_sha256": "21a56c436827009120f5e1e1d8d868a6f5580cf344df09388eee359251bf8f7b",
-      "clamped_candidate_shares": {
-        "useful": 0.5222853105976608,
-        "processing": 0.0001287178731397572,
-        "discarded": 0.0,
-        "delivery": 0.47758597152919946
-      },
-      "absolute_difference_clamped_percentage_points": {
-        "useful": 0.038666980137014306,
-        "processing": 0.00036437762364891,
-        "discarded": 0.004774385602606169,
-        "delivery": 0.033528071161209594
-      },
       "naive_candidate_shares": {
         "useful": 0.5222853105976608,
         "processing": 0.0001287178731397572,
@@ -586,6 +679,31 @@
         "processing": 0.00036437762364891,
         "discarded": 52.20446607029291,
         "delivery": 52.16616361352911
+      },
+      "interval_formula_check": {
+        "raw_samples_with_active_cycles": 4221,
+        "intervals_matched_by_end_time_tid_core_and_active_cycles": 2370,
+        "maximum_absolute_difference_percentage_points": {
+          "useful": 9.993396110630215e-08,
+          "processing": 9.997285600102628e-08,
+          "discarded": 8.162545084289263e-08,
+          "delivery": 9.995975158716419e-08
+        },
+        "intervals_matching_to_exported_rounding": 2370,
+        "p99_maximum_category_difference_percentage_points": 9.964537528439621e-08,
+        "matched_formula_note": "Every interval matched by end time, thread, core, and active cycles reproduces all four guided shares to the nine-decimal fractional export precision."
+      },
+      "aggregate_residual_candidate_shares": {
+        "useful": 0.5222853105976608,
+        "processing": 0.0001287178731397572,
+        "discarded": 0.0,
+        "delivery": 0.47758597152919946
+      },
+      "absolute_difference_aggregate_residual_percentage_points": {
+        "useful": 0.038666980137014306,
+        "processing": 0.00036437762364891,
+        "discarded": 0.004774385602606169,
+        "delivery": 0.033528071161209594
       }
     },
     "e-hot": {
@@ -624,18 +742,6 @@
       "toc_sha256": "eb1174087703f0f8b1bedbf4f32a521b4be7be59880d337e68ccf106f75c8c75",
       "counter_xml_sha256": "bf54c09767963ca48f8c55b1b89745d2885cef6f01a1f1ff93834e41e1c8c1ec",
       "metric_xml_sha256": "7c8d3413730148015bf9997b624432deab33e4d589da50bafb1492ca19057d0b",
-      "clamped_candidate_shares": {
-        "useful": 0.9989738348488549,
-        "processing": 7.015740806031775e-05,
-        "discarded": 0.0,
-        "delivery": 0.0009560077430847969
-      },
-      "absolute_difference_clamped_percentage_points": {
-        "useful": 0.004584787357764242,
-        "processing": 0.00034179353414406504,
-        "discarded": 0.001969513955431354,
-        "delivery": 0.002273352523296979
-      },
       "naive_candidate_shares": {
         "useful": 0.9989738348488549,
         "processing": 7.015740806031775e-05,
@@ -647,6 +753,31 @@
         "processing": 0.00034179353414406504,
         "discarded": 99.08794568371422,
         "delivery": 99.08370281723549
+      },
+      "interval_formula_check": {
+        "raw_samples_with_active_cycles": 8573,
+        "intervals_matched_by_end_time_tid_core_and_active_cycles": 4780,
+        "maximum_absolute_difference_percentage_points": {
+          "useful": 9.998513128550712e-08,
+          "processing": 9.995906991402178e-08,
+          "discarded": 8.022422448572541e-08,
+          "delivery": 9.992613824068297e-08
+        },
+        "intervals_matching_to_exported_rounding": 4780,
+        "p99_maximum_category_difference_percentage_points": 9.973568419539391e-08,
+        "matched_formula_note": "Every interval matched by end time, thread, core, and active cycles reproduces all four guided shares to the nine-decimal fractional export precision."
+      },
+      "aggregate_residual_candidate_shares": {
+        "useful": 0.9989738348488549,
+        "processing": 7.015740806031775e-05,
+        "discarded": 0.0,
+        "delivery": 0.0009560077430847969
+      },
+      "absolute_difference_aggregate_residual_percentage_points": {
+        "useful": 0.004584787357764242,
+        "processing": 0.00034179353414406504,
+        "discarded": 0.001969513955431354,
+        "delivery": 0.002273352523296979
       }
     },
     "p-branch-nop": {
@@ -683,18 +814,6 @@
       "toc_sha256": "264d3e93bd33aee0ef57c637f8210bec866fc6c791c63190172655329f01a734",
       "counter_xml_sha256": "6e0d1c2eec53ac8cd3376d04c156c6d27f7ba3a953b67e8e4db2482ee916f9ff",
       "metric_xml_sha256": "4b82503ee91999f88d07ab87e93d34ac67c1b85f64d1f33ffa560f840984e192",
-      "clamped_candidate_shares": {
-        "useful": 0.49684963566653073,
-        "processing": 5.2545597011176944e-05,
-        "discarded": 0.0,
-        "delivery": 0.5030978187364581
-      },
-      "absolute_difference_clamped_percentage_points": {
-        "useful": 0.0003857720844546719,
-        "processing": 0.0002433150128287008,
-        "discarded": 0.0025001022262926046,
-        "delivery": 0.0023577969948673783
-      },
       "naive_candidate_shares": {
         "useful": 0.49684963566653073,
         "processing": 5.2545597011176944e-05,
@@ -706,6 +825,31 @@
         "processing": 0.0002433150128287008,
         "discarded": 29.900267902797182,
         "delivery": 29.90012559756576
+      },
+      "interval_formula_check": {
+        "raw_samples_with_active_cycles": 2875,
+        "intervals_matched_by_end_time_tid_core_and_active_cycles": 2612,
+        "maximum_absolute_difference_percentage_points": {
+          "useful": 9.999437944330225e-08,
+          "processing": 9.99093952129898e-08,
+          "discarded": 9.712522452964834e-08,
+          "delivery": 9.99998639450439e-08
+        },
+        "intervals_matching_to_exported_rounding": 2612,
+        "p99_maximum_category_difference_percentage_points": 9.965576142079158e-08,
+        "matched_formula_note": "Every interval matched by end time, thread, core, and active cycles reproduces all four guided shares to the nine-decimal fractional export precision."
+      },
+      "aggregate_residual_candidate_shares": {
+        "useful": 0.49684963566653073,
+        "processing": 5.2545597011176944e-05,
+        "discarded": 0.0,
+        "delivery": 0.5030978187364581
+      },
+      "absolute_difference_aggregate_residual_percentage_points": {
+        "useful": 0.0003857720844546719,
+        "processing": 0.0002433150128287008,
+        "discarded": 0.0025001022262926046,
+        "delivery": 0.0023577969948673783
       }
     },
     "e-branch-nop": {
@@ -744,18 +888,6 @@
       "toc_sha256": "e397a5f165651372656d9280d3360150a9a40551762c23e7329bf0bd5f7046a5",
       "counter_xml_sha256": "f1a9822a83c4d17bd3455bd4704c48a0b20eb8b103d70537bebda12403bfab43",
       "metric_xml_sha256": "cac22e347b6821afec01b589ba641de2ebc21a48fb05df3b17e2548b1ff06fd6",
-      "clamped_candidate_shares": {
-        "useful": 0.6777325304113335,
-        "processing": 0.0001417239924990595,
-        "discarded": 0.0,
-        "delivery": 0.32212574559616747
-      },
-      "absolute_difference_clamped_percentage_points": {
-        "useful": 0.0036376387894332396,
-        "processing": 0.0001275545229126188,
-        "discarded": 0.005377932001801175,
-        "delivery": 0.001867970576430178
-      },
       "naive_candidate_shares": {
         "useful": 0.6777325304113335,
         "processing": 0.0001417239924990595,
@@ -767,6 +899,31 @@
         "processing": 0.0001275545229126188,
         "discarded": 53.73174933613728,
         "delivery": 53.728239374711904
+      },
+      "interval_formula_check": {
+        "raw_samples_with_active_cycles": 3564,
+        "intervals_matched_by_end_time_tid_core_and_active_cycles": 2003,
+        "maximum_absolute_difference_percentage_points": {
+          "useful": 9.991524274610697e-08,
+          "processing": 9.997731991107572e-08,
+          "discarded": 9.721917437754968e-08,
+          "delivery": 9.998993855120375e-08
+        },
+        "intervals_matching_to_exported_rounding": 2003,
+        "p99_maximum_category_difference_percentage_points": 9.961965578438693e-08,
+        "matched_formula_note": "Every interval matched by end time, thread, core, and active cycles reproduces all four guided shares to the nine-decimal fractional export precision."
+      },
+      "aggregate_residual_candidate_shares": {
+        "useful": 0.6777325304113335,
+        "processing": 0.0001417239924990595,
+        "discarded": 0.0,
+        "delivery": 0.32212574559616747
+      },
+      "absolute_difference_aggregate_residual_percentage_points": {
+        "useful": 0.0036376387894332396,
+        "processing": 0.0001275545229126188,
+        "discarded": 0.005377932001801175,
+        "delivery": 0.001867970576430178
       }
     },
     "p-branch-nop8": {
@@ -803,18 +960,6 @@
       "toc_sha256": "b427ccbb20c13e048b22b6bc9e41d2980f0566286fbc5fc6324e31fc7ae37e62",
       "counter_xml_sha256": "c6c0c6bcc6bf5a72e7edb819c1a97e4f033df4d9a0ebb426f18b91c952a87ab6",
       "metric_xml_sha256": "ae330c2575f1bd1657d103648c926597f6ec4fc6926a69f961d106922aefb6ea",
-      "clamped_candidate_shares": {
-        "useful": 0.15307421507773478,
-        "processing": 5.764526573087903e-05,
-        "discarded": 0.28470899662695004,
-        "delivery": 0.5621591430295843
-      },
-      "absolute_difference_clamped_percentage_points": {
-        "useful": 0.00018439585018070748,
-        "processing": 0.00023054481989942343,
-        "discarded": 6.341771435769417e-05,
-        "delivery": 1.707010042206747e-05
-      },
       "naive_candidate_shares": {
         "useful": 0.15307421507773478,
         "processing": 5.764526573087903e-05,
@@ -822,6 +967,31 @@
         "delivery": 0.5621591430295843
       },
       "absolute_difference_naive_percentage_points": {
+        "useful": 0.00018439585018070748,
+        "processing": 0.00023054481989942343,
+        "discarded": 6.341771435769417e-05,
+        "delivery": 1.707010042206747e-05
+      },
+      "interval_formula_check": {
+        "raw_samples_with_active_cycles": 2124,
+        "intervals_matched_by_end_time_tid_core_and_active_cycles": 1932,
+        "maximum_absolute_difference_percentage_points": {
+          "useful": 9.998632755081616e-08,
+          "processing": 9.996289480488222e-08,
+          "discarded": 9.990885341260025e-08,
+          "delivery": 9.989488125583534e-08
+        },
+        "intervals_matching_to_exported_rounding": 1932,
+        "p99_maximum_category_difference_percentage_points": 9.966188985188751e-08,
+        "matched_formula_note": "Every interval matched by end time, thread, core, and active cycles reproduces all four guided shares to the nine-decimal fractional export precision."
+      },
+      "aggregate_residual_candidate_shares": {
+        "useful": 0.15307421507773478,
+        "processing": 5.764526573087903e-05,
+        "discarded": 0.28470899662695004,
+        "delivery": 0.5621591430295843
+      },
+      "absolute_difference_aggregate_residual_percentage_points": {
         "useful": 0.00018439585018070748,
         "processing": 0.00023054481989942343,
         "discarded": 6.341771435769417e-05,
@@ -862,18 +1032,6 @@
       "toc_sha256": "edd89470254e0aa17bea264bc845d28929f4bee388824042ca255d6d76058269",
       "counter_xml_sha256": "86db5d4b202c589693a941836adce9ccb8c5ad6f3e549848ccb5531dac89f696",
       "metric_xml_sha256": "7f4f7eaa93326a2b6dcfdf3b56a2bfd7675cb3e0e7b2e43cdeb833f7cb880c21",
-      "clamped_candidate_shares": {
-        "useful": 0.22042098087100928,
-        "processing": 5.504839261465282e-05,
-        "discarded": 0.135447669161841,
-        "delivery": 0.644076301574535
-      },
-      "absolute_difference_clamped_percentage_points": {
-        "useful": 0.00019912338423966336,
-        "processing": 0.00023941257162122455,
-        "discarded": 6.417179751472268e-05,
-        "delivery": 2.368175334721556e-05
-      },
       "naive_candidate_shares": {
         "useful": 0.22042098087100928,
         "processing": 5.504839261465282e-05,
@@ -881,6 +1039,31 @@
         "delivery": 0.644076301574535
       },
       "absolute_difference_naive_percentage_points": {
+        "useful": 0.00019912338423966336,
+        "processing": 0.00023941257162122455,
+        "discarded": 6.417179751472268e-05,
+        "delivery": 2.368175334721556e-05
+      },
+      "interval_formula_check": {
+        "raw_samples_with_active_cycles": 2190,
+        "intervals_matched_by_end_time_tid_core_and_active_cycles": 1995,
+        "maximum_absolute_difference_percentage_points": {
+          "useful": 9.998497862984124e-08,
+          "processing": 9.987509795546277e-08,
+          "discarded": 9.999709948971258e-08,
+          "delivery": 9.998458727622506e-08
+        },
+        "intervals_matching_to_exported_rounding": 1995,
+        "p99_maximum_category_difference_percentage_points": 9.985387239286325e-08,
+        "matched_formula_note": "Every interval matched by end time, thread, core, and active cycles reproduces all four guided shares to the nine-decimal fractional export precision."
+      },
+      "aggregate_residual_candidate_shares": {
+        "useful": 0.22042098087100928,
+        "processing": 5.504839261465282e-05,
+        "discarded": 0.135447669161841,
+        "delivery": 0.644076301574535
+      },
+      "absolute_difference_aggregate_residual_percentage_points": {
         "useful": 0.00019912338423966336,
         "processing": 0.00023941257162122455,
         "discarded": 6.417179751472268e-05,
@@ -933,13 +1116,26 @@
         "discarded": 0.00013970636278614842,
         "delivery": 0.0008383921064843174
       },
-      "clamped_candidate_shares": {
+      "interval_formula_check": {
+        "raw_samples_with_active_cycles": 945,
+        "intervals_matched_by_end_time_tid_core_and_active_cycles": 857,
+        "maximum_absolute_difference_percentage_points": {
+          "useful": 9.957514812697355e-08,
+          "processing": 9.977668691263375e-08,
+          "discarded": 9.976294095652563e-08,
+          "delivery": 9.992910038698202e-08
+        },
+        "intervals_matching_to_exported_rounding": 857,
+        "p99_maximum_category_difference_percentage_points": 9.977668691263375e-08,
+        "matched_formula_note": "Every interval matched by end time, thread, core, and active cycles reproduces all four guided shares to the nine-decimal fractional export precision."
+      },
+      "aggregate_residual_candidate_shares": {
         "useful": 0.4165826983621837,
         "processing": 0.5830589364806024,
         "discarded": 0.0001326235559651746,
         "delivery": 0.00022574160124877451
       },
-      "absolute_difference_clamped_percentage_points": {
+      "absolute_difference_aggregate_residual_percentage_points": {
         "useful": 0.0005334654275046535,
         "processing": 0.00015679322243888905,
         "discarded": 0.00013970636278614842,
@@ -994,13 +1190,26 @@
         "discarded": 5.452546675782199e-05,
         "delivery": 0.0027319544511724162
       },
-      "clamped_candidate_shares": {
+      "interval_formula_check": {
+        "raw_samples_with_active_cycles": 1448,
+        "intervals_matched_by_end_time_tid_core_and_active_cycles": 777,
+        "maximum_absolute_difference_percentage_points": {
+          "useful": 9.985817728264124e-08,
+          "processing": 9.993921246120863e-08,
+          "discarded": 9.992772608186963e-08,
+          "delivery": 9.993921280586633e-08
+        },
+        "intervals_matching_to_exported_rounding": 777,
+        "p99_maximum_category_difference_percentage_points": 9.964659097860817e-08,
+        "matched_formula_note": "Every interval matched by end time, thread, core, and active cycles reproduces all four guided shares to the nine-decimal fractional export precision."
+      },
+      "aggregate_residual_candidate_shares": {
         "useful": 0.624477493000241,
         "processing": 0.37467878423091766,
         "discarded": 0.00020148508735417744,
         "delivery": 0.00064223768148719
       },
-      "absolute_difference_clamped_percentage_points": {
+      "absolute_difference_aggregate_residual_percentage_points": {
         "useful": 0.0017610533586731592,
         "processing": 7.659060738407497e-05,
         "discarded": 5.452546675782199e-05,
@@ -1010,12 +1219,16 @@
   },
   "package_source": "examples/apple-m1-tma-calibration.instrpkg",
   "mixed_control_source": "examples/apple-m1-branch-nop.c",
-  "formula_note": "These are empirical candidate equations for Xcode 27.1 guided Apple bottlenecks, not certified hardware definitions or validated Intel slot-TMA formulas. Guided and custom tables were captured in the same trace on dominant P or E cores, but have different sampling and weighting. The raw array event-position labels are inferred, not exported by Xcode.",
+  "formula_note": "These equations exactly reconstruct Xcode 27.1 guided Apple bottlenecks on all matched M1 intervals in these controls, to the nine-decimal fractional export precision. The raw array event-position labels remain inferred; the equations are not certified hardware definitions or validated Intel slot-TMA formulas. Unmatched raw samples and rejected intervals are excluded.",
   "summary": {
     "capture_count": 16,
-    "maximum_clamped_absolute_difference_percentage_points": 0.038666980137014306,
     "naive_formula_counterexample": "Pure and mixed NOP streams make mapped minus retired uops negative because many NOPs retire without map uops; unclamped Discarded can be strongly negative.",
-    "clamped_formula_limit": "A nonnegative clamp fits these controls but does not prove behavior for other instruction classes, overlapping stalls, or all Xcode versions."
+    "clamped_formula_limit": "A nonnegative clamp fits these controls but does not prove behavior for other instruction classes, overlapping stalls, or all Xcode versions.",
+    "intervals_matched": 40234,
+    "intervals_matching_exported_rounding": 40234,
+    "maximum_matched_interval_category_difference_percentage_points": 9.99998639450439e-08,
+    "aggregate_residual_note": "Whole-run estimates from summed raw vectors use Delivery as a residual. The exact Delivery maximum must be applied to individual intervals before aggregation.",
+    "maximum_aggregate_residual_difference_percentage_points": 0.038666980137014306
   },
   "standalone_order_check": {
     "template": "Blank",

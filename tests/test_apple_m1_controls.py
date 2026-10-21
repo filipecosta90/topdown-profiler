@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from runpy import run_path
 
 import pytest
 
@@ -64,6 +65,45 @@ def test_simd_control_compiles_and_completes(tmp_path):
     subprocess.run(["clang", "-O3", str(SIMD_SOURCE), "-o", str(output)], check=True, timeout=30)
     result = subprocess.run([str(output), "1000"], capture_output=True, text=True, timeout=5, check=True)
     assert result.stdout.strip() == "1000"
+
+
+def test_calibration_uses_map_bubble_delivery_floor(tmp_path):
+    validator = Path(__file__).resolve().parents[1] / "examples/apple-m1-validate-tma.py"
+    validate = run_path(str(validator))["validate"]
+    metrics = tmp_path / "metrics.xml"
+    counters = tmp_path / "counters.xml"
+    columns = {"timestamp": "start-time", "duration": "duration", "pmi-event": "string",
+               "metric-display-name": "string", "thread": "thread", "process": "process",
+               "metric-value": "fixed-decimal", "core": "core", "is-ratio": "boolean",
+               "documentation": "markdown-text"}
+    header = "".join(f"<col><mnemonic>{name}</mnemonic><engineering-type>{kind}</engineering-type></col>"
+                     for name, kind in columns.items())
+    rows = []
+    for event, value in (("cycle", 1000), ("delivery", 0.105), ("discarded", 0.2),
+                         ("processing", 0.2), ("useful", 0.5)):
+        rows.append(f'<row><start-time>100</start-time><duration>1000</duration>'
+                    f'<string>{event}</string><string>{event}</string>'
+                    '<thread><tid>2</tid><process><pid>42</pid></process></thread>'
+                    f'<process><pid>42</pid></process><fixed-decimal>{value}</fixed-decimal>'
+                    f'<core fmt="CPU 7">7</core><boolean>{int(event != "cycle")}</boolean>'
+                    '<sentinel/></row>')
+    metrics.write_text(f'<trace-query-result><node><schema name="MetricTable">{header}</schema>'
+                       f'{"".join(rows)}</node></trace-query-result>')
+    counters.write_text('<trace-query-result><node><schema name="counters-profile">'
+                        '<col><mnemonic>time</mnemonic></col><col><mnemonic>thread</mnemonic></col>'
+                        '<col><mnemonic>process</mnemonic></col><col><mnemonic>core</mnemonic></col>'
+                        '<col><mnemonic>counters-array</mnemonic></col></schema><row>'
+                        '<sample-time>1100</sample-time>'
+                        '<thread><tid>2</tid><process><pid>42</pid></process></thread>'
+                        '<process><pid>42</pid></process><core>7</core>'
+                        '<pmc-events>1000 4000 1000 100 200 4800 0 4000 0 105 0 0</pmc-events>'
+                        '</row></node></trace-query-result>')
+    result = validate(counters, metrics, 42)
+    assert result["matched_intervals"] == 1
+    assert result["matches_exported_rounding"] is True
+    metrics.write_text(metrics.read_text().replace("<fixed-decimal>0.105</fixed-decimal>",
+                                                   "<fixed-decimal>0.1</fixed-decimal>"))
+    assert validate(counters, metrics, 42)["matches_exported_rounding"] is False
 
 
 def test_icache_control_matches_hot_and_large_instruction_streams(tmp_path):

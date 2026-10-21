@@ -454,28 +454,33 @@ four Apple categories on this host:
 | Useful | `RETIRE_UOP / (W × A)` |
 | Processing | `MAP_STALL / A` |
 | Discarded | `max(0, M - RETIRE_UOP + W × MAP_REWIND) / (W × A)` |
-| Delivery | `1 - Useful - Processing - Discarded` |
+| Delivery | `max(MAP_DISPATCH_BUBBLE / A, 1 - Useful - Processing - Discarded)` |
 
-Across sixteen same-trace controls, the largest absolute difference between
-these candidates and the guided, dominant-core-kind shares was 0.039
-percentage points. The controls included P/E ALU, branch, pointer chase, SIMD,
-compact and large executed NOP streams, and random branches mixed with 8,
-16, or 64 NOPs per iteration. The P branch's guided Discarded share was
-34.8439% versus 34.8442% from the candidate; the P pointer chase's guided
-Processing was 99.5579% versus 99.5580%. The E large executed NOP stream
-had the largest difference. The P/E SIMD controls counted 7.9 and 3.8 billion
-in the inferred `MAP_SIMD_UOP` position, with maximum share differences of
-0.00084 and 0.00273 percentage points. Each target exited successfully, and
-99.9% or more of the guided cycles in each run were on the intended core kind. The
-requested order, inferred position sums, XML hashes, guided shares, and
-per-category errors are in [M1 TMA calibration](apple-m1-tma-calibration.json).
+Each `MetricTable` interval ends at the corresponding raw PMU sample time.
+Matching by end time, thread, core, and active-cycle count joined 40,234
+intervals across sixteen same-trace controls. All four equations reproduced
+every matched Xcode ratio to its nine-decimal fractional export precision;
+the largest absolute difference was below 0.0000001 percentage points.
+The controls included P/E ALU, branch, pointer chase, SIMD, compact and large
+executed NOP streams, and random branches mixed with 8, 16, or 64 NOPs per
+iteration. Another 17,757 active raw samples had no complete matching guided
+interval and were excluded from this comparison. All targets exited
+successfully, and 99.9% or more of each run's guided cycles were on the
+intended core kind. The P/E SIMD controls counted 7.9 and 3.8 billion in the
+inferred `MAP_SIMD_UOP` position. The requested order, inferred position
+sums, XML hashes, matched counts, and errors are in
+[M1 TMA calibration](apple-m1-tma-calibration.json).
 
 The nonnegative clamp matters: a plain `M - RETIRE_UOP` term produces a
 strongly negative Discarded value for eliminated NOPs. In the 16-NOP mixed
 branch control, `M - RETIRE_UOP` was also negative, but adding the rewind
 term gave 13.5448% Discarded, matching Xcode's 13.5447%. With 64 NOPs, the
 combined term was negative and Xcode reported almost no Discarded share.
-This is strong empirical agreement for these Apple categories, not proof of
+Delivery's maximum also matters: on many ALU and SIMD intervals, the full
+map-bubble share slightly exceeds the residual, so Xcode's four reported
+ratios sum slightly above one. A residual-only Delivery estimate does not
+reproduce those intervals. This is strong empirical agreement for these
+Apple categories, not proof of
 Xcode's private formulas, the raw vector labels, or Intel slot-TMA
 equivalence. The CLI therefore uses Xcode's named guided metrics and leaves
 the Intel `tma` fields unset.
@@ -498,6 +503,11 @@ The mixed branch/NOP control is in
 [apple-m1-branch-nop.c](../examples/apple-m1-branch-nop.c); compile with
 `-DNOP_COUNT=8`, `16`, or `64` to repeat the threshold test.
 The SIMD control is in [apple-m1-simd.c](../examples/apple-m1-simd.c).
+Export the trace's `counters-profile` and `MetricTable` tables with
+`xcrun xctrace export --xpath`, then pass both XML files and the launched PID
+to [apple-m1-validate-tma.py](../examples/apple-m1-validate-tma.py). The
+validator joins interval end times to PMU samples and fails if any matched
+category differs beyond Xcode's export rounding.
 
 ### What Intel slot-TMA still needs
 
