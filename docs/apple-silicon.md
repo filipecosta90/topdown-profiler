@@ -178,9 +178,16 @@ available for this investigation.
 Apple introduced the guided CPU Bottlenecks mode in
 [Xcode 26](https://developer.apple.com/documentation/xcode-release-notes/xcode-26-release-notes);
 Xcode 27.1's initial four-category mode produced counter data on this M1, as
-measured above. The initial Xcode 26 release notes flagged missing macOS data
-in the separate “Instruction Processing Bottlenecks” and “Streaming SME
-Bottlenecks” modes; those deeper modes have not been verified here. Apple's [Processor Trace hardware
+measured above. Its deeper Instruction Delivery mode also produced named
+Bandwidth and Latency ratios on a random-branch control: 27.377% and
+30.116% of P-core cycles, summing to 57.493%, close to the initial Delivery
+share in a separate run. An attempted Instruction Processing mode produced no
+`MetricTable`, and that mode was absent from the trace's M1 mode catalogue;
+the recording-option identifier was inferred, so this is not an exhaustive
+UI-level support test. The initial [Xcode 26 release notes](https://developer.apple.com/documentation/xcode-release-notes/xcode-26-release-notes)
+also flagged missing macOS data in “Instruction Processing Bottlenecks” and
+“Streaming SME Bottlenecks” modes. The commands, ratios, and trace hashes are
+in [M1 Xcode validation](apple-m1-xcode27-validation.json). Apple's [Processor Trace hardware
 requirements](https://developer.apple.com/documentation/xcode/analyzing-cpu-usage-with-processor-trace)
 start at M4 for Mac recording, so Processor Trace cannot supply a hardware
 execution trace on this M1.
@@ -419,6 +426,68 @@ footprint control.
 find that `nop` retires without issuing to an execution unit, so this workload
 must not calibrate useful work from scheduler issues or retired instructions.
 
+### Same-trace M1 formula calibration
+
+A separate [calibration package](../examples/apple-m1-tma-calibration.instrpkg)
+records `RETIRE_UOP`, `CORE_ACTIVE_CYCLE`, `MAP_STALL`, `MAP_REWIND`, and the
+three mapped-uop classes alongside Xcode's guided CPU Bottlenecks instrument
+in one trace. Xcode exported both its named `MetricTable` ratios and the
+custom PMU vector. The vector has no event labels and reordered the requested
+events; its position labels below are inferred from ALU, branch, memory, and
+NOP controls. They are not certified by Xcode.
+
+Let `A` be active cycles, `W` an assumed peak width of eight P-core or four
+E-core uops per cycle, and `M` the sum of `MAP_INT_UOP`, `MAP_LDST_UOP`, and
+`MAP_SIMD_UOP`. The following candidate equations reconstructed Xcode 27.1's
+four Apple categories on this host:
+
+| Apple category | Empirical candidate |
+|---|---|
+| Useful | `RETIRE_UOP / (W × A)` |
+| Processing | `MAP_STALL / A` |
+| Discarded | `max(0, M - RETIRE_UOP + W × MAP_REWIND) / (W × A)` |
+| Delivery | `1 - Useful - Processing - Discarded` |
+
+Across fourteen same-trace controls, the largest absolute difference between
+these candidates and the guided, dominant-core-kind shares was 0.039
+percentage points. The controls included P/E ALU, branch, pointer chase,
+compact and large executed NOP streams, and random branches mixed with 8,
+16, or 64 NOPs per iteration. The P branch's guided Discarded share was
+34.8439% versus 34.8442% from the candidate; the P pointer chase's guided
+Processing was 99.5579% versus 99.5580%. The E large executed NOP stream
+had the largest difference. Each target exited successfully, and 99.9% or
+more of the guided cycles in each run were on the intended core kind. The
+requested order, inferred position sums, XML hashes, guided shares, and
+per-category errors are in [M1 TMA calibration](apple-m1-tma-calibration.json).
+
+The nonnegative clamp matters: a plain `M - RETIRE_UOP` term produces a
+strongly negative Discarded value for eliminated NOPs. In the 16-NOP mixed
+branch control, `M - RETIRE_UOP` was also negative, but adding the rewind
+term gave 13.5448% Discarded, matching Xcode's 13.5447%. With 64 NOPs, the
+combined term was negative and Xcode reported almost no Discarded share.
+This is strong empirical agreement for these Apple categories, not proof of
+Xcode's private formulas, the raw vector labels, or Intel slot-TMA
+equivalence. The CLI therefore uses Xcode's named guided metrics and leaves
+the Intel `tma` fields unset.
+
+Build the package and record a control with:
+
+```sh
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
+  xcrun instrumentbuilder -i examples/apple-m1-tma-calibration.instrpkg \
+  -o /tmp/m1-calibration.instrdst -l 'CPU Counters'
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
+  xcrun xctrace record --template 'CPU Counters' \
+  --package /tmp/m1-calibration.instrdst \
+  --instrument 'Topdown M1 Calibration' --time-limit 20s \
+  --output /tmp/m1-calibration-example.trace --launch -- \
+  /tmp/apple-m1-controls-xcode271 branch_random 700000000
+```
+
+The mixed branch/NOP control is in
+[apple-m1-branch-nop.c](../examples/apple-m1-branch-nop.c); compile with
+`-DNOP_COUNT=8`, `16`, or `64` to repeat the threshold test.
+
 ### What Intel slot-TMA still needs
 
 Intel's [Top-Down Microarchitecture Analysis Method](https://www.intel.com/content/www/us/en/docs/vtune-profiler/cookbook/2024-1/top-down-microarchitecture-analysis-method.html)
@@ -447,6 +516,13 @@ so the close agreement supports an interpretation of Useful as normalized
 retired-uop throughput but does not certify Xcode's formula or the other
 categories. The five P/E footprint comparisons are retained in the Xcode
 validation JSON.
+The same calculation on six wide-ALU, random-branch, and pointer-chase controls
+on P and E cores differed from guided Useful by at most 0.066 percentage
+points. Within each custom-event capture, `CORE_ACTIVE_CYCLE / FIXED_CYCLES`
+was 0.996–0.999 on P cores and 0.987–0.988 on E cores. This checks the
+candidate denominator on active workloads, but the guided and custom-event
+runs were separate, the event vectors lack per-position labels, and the peak
+widths are assumed. Exact identity and cross-core aggregation remain unproved.
 The same research finds an eight-uop P-core pipeline limit and [up to four
 retired uops per E-core cycle](https://dougallj.github.io/applecpu/icestorm.html).
 These black-box throughput limits do not establish which pipeline stage defines
@@ -488,11 +564,11 @@ instructions.
 | Bad Speculation | `BRANCH_MISPRED_NONSPEC`, `FLUSH_RESTART_OTHER_NONSPEC`, `MAP_REWIND` | Wasted speculative uops plus recovery slots; these count flushes or rewind cycles, not all lost slots |
 | Backend Bound | `MAP_STALL_DISPATCH`, `MAP_STALL`, cache/TLB misses | Partial backend stall slots and non-overlap with rewind/front-end stalls |
 
-The controls group also pairs `CORE_ACTIVE_CYCLE` with `FIXED_CYCLES` in one
-configuration. Compare their ratio across idle, ALU, pointer-chase and branch
-controls before using either for the slot denominator. The event's database
-description alone does not establish whether either count is thread-scoped,
-core-scoped, or equivalent to the cycles relevant to a TMA stage.
+The same-trace calibration group pairs `CORE_ACTIVE_CYCLE` with
+`FIXED_CYCLES`. Their sampled ratio ranged from 0.9934 to 0.9981 on the P
+controls and from 0.9854 to 0.9885 on the E controls. This supports active
+cycles as the candidate denominator, but the event's database description
+does not establish its precise thread scope or equivalence to Intel slots.
 An independent [M1/Asahi Linux counter experiment](https://blog.cyyself.name/tso-apple-m1/)
 observed `CORE_ACTIVE_CYCLE`, `MAP_STALL`, `MAP_STALL_DISPATCH`, and
 `MAP_REWIND` change with memory-ordering behavior. In its two workloads,
@@ -501,18 +577,18 @@ check for the map-state group, not a universal equality or a macOS calibration.
 Its reported active cycles per instruction are consistent with reciprocal IPC
 from `perf` cycles/instructions within the rounding of the reader and writer
 cases. This makes `CORE_ACTIVE_CYCLE` a credible M1 denominator candidate, but
-its scope and equivalence to fixed cycles still need a same-run macOS check.
+the same-run macOS comparison above does not establish its precise scope or
+equivalence to Intel slots.
 
-The map-state group provides a direct experiment for overlap: compare
-`MAP_STALL` with `MAP_STALL_DISPATCH` and `MAP_REWIND`, and compare the sum of
-mapped-uop classes with retired uops on the same P-core controls. The NOP
-counterexample above already rules out using that sum as a general all-uop
-counter or subtracting it from `RETIRE_UOP` to estimate discarded work. Any apparent
-cycle partition must also account for cycles in which map is processing uops,
-partially filled map cycles, counter sampling scope and core migration. A
-cycle count for "no uops" cannot by itself reveal how many of the other
-cycles delivered fewer than the pipeline's possible uops. An event plan
-accepted by KPEP is not evidence that these identities hold on hardware.
+The map-state controls found mapped-uop sums close to retired uops for wide
+ALU, above retired uops for random branches, and far below retired uops for
+eliminated NOPs. This rules out treating the mapped sum as a general all-uop
+count or subtracting it directly from `RETIRE_UOP` to measure discarded work.
+`MAP_STALL` and `MAP_STALL_DISPATCH` were close on the P-core ALU and memory
+controls, but their overlap with rewind cycles and partially filled map
+cycles is not established. A cycle count for "no uops" cannot reveal how many
+other cycles delivered fewer than the pipeline's possible uops. An accepted
+KPEP event plan alone does not establish these identities on hardware.
 
 Use the three packages as paired experiments on stable workloads. Each capture
 has its own event group, so compare normalized responses across repeated runs
@@ -531,13 +607,13 @@ On the same map-state samples, check whether `MAP_STALL_DISPATCH` is bounded by
 mapped-uop classes account for the observed ALU work. A directional response
 is evidence for an event's sensitivity, not a slot-classification formula.
 
-Before enabling `tma_available`, collect actual programmable values on M1 and
-check vector order, scope, sampling semantics, simultaneous availability, loss
-and counter multiplexing. Calibrate each event against the control workloads,
-including P-only and E-only runs. Establish per-core-kind slot widths and
-event formulas with explicit overlap rules, then verify that the four shares
-sum to 100% across independent controls and correlate with an authorized
-Instruments CPU Bottlenecks recording. Apple's [CPU Bottlenecks
+Before enabling `tma_available`, verify the inferred vector labels and
+sampling semantics independently, establish counter scope, loss and
+multiplexing behavior, and test the candidate equations across more
+instruction classes and migrations. In particular, show that Apple's
+discarded-uop and recovery treatment corresponds to Intel's Bad Speculation
+slots, and that the other three categories use compatible slot boundaries.
+Apple's [CPU Bottlenecks
 categories](https://developer.apple.com/documentation/xcode/addressing-cpu-bottlenecks)
 partition maximum sustainable CPU bandwidth into Useful, Instruction Delivery,
 Instruction Processing and Discarded; their correspondence to Intel slot TMA

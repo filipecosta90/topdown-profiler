@@ -887,5 +887,107 @@
         "inferred_retire_over_active_width": 0.5181182820216947
       }
     }
+  },
+  "useful_cross_control_checks": {
+    "note": "Custom-event vectors and guided metrics came from separate runs. Vector positions follow requested order but lack Xcode event-name labels; peak widths are assumptions from external throughput measurements.",
+    "checks": {
+      "p_wide_alu": {
+        "assumed_peak_uops_per_cycle": 8,
+        "requested_retire_uop_position": 59007376790,
+        "requested_core_active_cycle_position": 8852979773,
+        "estimated_retire_over_peak_active_cycles": 0.833157003390569,
+        "guided_useful": 0.8331473806673,
+        "absolute_difference_percentage_points": 0.0009622723268987166,
+        "active_to_fixed_cycle_ratio": 0.9967104171341464
+      },
+      "p_random_branch": {
+        "assumed_peak_uops_per_cycle": 8,
+        "requested_retire_uop_position": 5862130038,
+        "requested_core_active_cycle_position": 9571644834,
+        "estimated_retire_over_peak_active_cycles": 0.07655593865613339,
+        "guided_useful": 0.0765701580602366,
+        "absolute_difference_percentage_points": 0.001421940410321898,
+        "active_to_fixed_cycle_ratio": 0.9988098266613246
+      },
+      "p_pointer_chase": {
+        "assumed_peak_uops_per_cycle": 8,
+        "requested_retire_uop_position": 312555970,
+        "requested_core_active_cycle_position": 8268068307,
+        "estimated_retire_over_peak_active_cycles": 0.004725347541810046,
+        "guided_useful": 0.004827986798984024,
+        "absolute_difference_percentage_points": 0.010263925717397815,
+        "active_to_fixed_cycle_ratio": 0.9963626898321595
+      },
+      "e_wide_alu": {
+        "assumed_peak_uops_per_cycle": 4,
+        "requested_retire_uop_position": 17531052972,
+        "requested_core_active_cycle_position": 5261522351,
+        "estimated_retire_over_peak_active_cycles": 0.832983868664364,
+        "guided_useful": 0.8327275966717623,
+        "absolute_difference_percentage_points": 0.025627199260169764,
+        "active_to_fixed_cycle_ratio": 0.9876896732987064
+      },
+      "e_random_branch": {
+        "assumed_peak_uops_per_cycle": 4,
+        "requested_retire_uop_position": 2192166928,
+        "requested_core_active_cycle_position": 3568036141,
+        "estimated_retire_over_peak_active_cycles": 0.15359758431325823,
+        "guided_useful": 0.15340225346473213,
+        "absolute_difference_percentage_points": 0.019533084852610405,
+        "active_to_fixed_cycle_ratio": 0.98812885976293
+      },
+      "e_pointer_chase": {
+        "assumed_peak_uops_per_cycle": 4,
+        "requested_retire_uop_position": 235494922,
+        "requested_core_active_cycle_position": 6214248787,
+        "estimated_retire_over_peak_active_cycles": 0.009473989941175492,
+        "guided_useful": 0.008822439726157047,
+        "absolute_difference_percentage_points": 0.06515502150184448,
+        "active_to_fixed_cycle_ratio": 0.9867252255655536
+      }
+    }
+  },
+  "deeper_guided_mode_checks": {
+    "delivery": {
+      "recording_options": {
+        "selectedCountingMode": {
+          "analysisMode": "bottleneck",
+          "countingMode": "delivery"
+        },
+        "selectedCountingModeDisplayName": "Instruction Delivery Bottlenecks"
+      },
+      "target_command": [
+        "/tmp/apple-m1-controls-xcode271",
+        "branch_random",
+        "500000000"
+      ],
+      "target_exit_status": "0",
+      "toc_sha256": "7169209c6f21a69f504d46dc2103090eaf0d05f218b5c11759f909da1bfda128",
+      "metric_xml_sha256": "33d68105c3ce47c36a906c5ffaadd5fbd90e00c976f9f24a2827e364ed2358f5",
+      "p_core_cycles": 6944817291,
+      "p_core_complete_intervals": 2467,
+      "delivery_bandwidth_share": 0.2737712882326004,
+      "delivery_latency_share": 0.3011628237102523,
+      "note": "The two native subcategories sum to 57.4934% of P-core cycles in this separate random-branch run."
+    },
+    "processing_attempt": {
+      "recording_options": {
+        "selectedCountingMode": {
+          "analysisMode": "bottleneck",
+          "countingMode": "processing"
+        },
+        "selectedCountingModeDisplayName": "Instruction Processing Bottlenecks"
+      },
+      "target_command": [
+        "/tmp/apple-m1-controls-xcode271",
+        "memory",
+        "50000000",
+        "8388608"
+      ],
+      "target_exit_status": "0",
+      "toc_sha256": "4f260ce0b0aec3cd7612e95345abe5382f56ef9174c0a65d400d015336617bb1",
+      "metric_table_present": false,
+      "limitation": "The processing mode identifier was inferred rather than documented. Its absence from the M1 mode catalog and the trace with no MetricTable do not establish that every possible UI path is unavailable."
+    }
   }
 }
