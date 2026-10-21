@@ -11,7 +11,12 @@ fixed-counter samples with stacks (`record --mode fixed`), and timer profiles.
 instruction/cycle counts, reported trace gaps, and observed thread states/cores.
 `apple soc` reads native cluster stall and bandwidth histograms, with system-wide
 scope and explicit native units.
-Programmable events and Apple slot-TMA percentages remain unavailable.
+On M1, `stat` also reports the performance-core and other-core split, and
+`record --mode m1`, `m1-map`, and `m1-fetch` provide experimental
+programmable-event captures verified with Xcode 27.1. The standard CPU Counters
+template provides Apple's four-category guided bottleneck shares through
+`record --mode counters`. Their equivalence to Intel slot-TMA percentages is
+unvalidated.
 For an unattended JSON result and stable exit code, run
 `topdown apple probe --mode fixed --output /tmp/m6-probe-001`.
 For the development-kernel experiment, see the [resume handoff](docs/apple-m6-resume.md).
@@ -116,7 +121,7 @@ AMDuProfPcm --help  # sanity check
 | `x86_64` + `AuthenticAMD` (uProf installed) | `uprof_pcm` | `TOPDOWN_COLLECTOR=uprof_pcm` |
 | `x86_64` + `AuthenticAMD` (no uProf) | `perf_stat_amd` | `TOPDOWN_COLLECTOR=perf_stat_amd` |
 | `aarch64` | `perf_stat` | `TOPDOWN_COLLECTOR=perf_stat` |
-| macOS `arm64` | Native `topdown apple` commands; slot TMA unavailable | — |
+| macOS `arm64` | Native `topdown apple` commands; M1 Apple guided four-way bottlenecks; Intel slot TMA unvalidated | — |
 
 `/proc/cpuinfo` `vendor_id` drives the Intel vs AMD split on x86_64.
 On AMD, the presence of `AMDuProfPcm` in `PATH` (or `TOPDOWN_UPROF_PCM_PATH`)

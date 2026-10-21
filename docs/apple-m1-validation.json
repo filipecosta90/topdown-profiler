@@ -1,0 +1,1462 @@
+{
+  "date_utc": "2026-10-21",
+  "host": {
+    "model": "MacBookAir10,1",
+    "chip": "Apple M1",
+    "macos": "27.0.1 (26A434)",
+    "darwin_kernel": "27.0.0 xnu-13432.1.9~1/RELEASE_ARM64_T8103",
+    "cpu_family": "0x1b588bb3",
+    "p_cores": 4,
+    "e_cores": 4,
+    "kernel_uuid": "1F15A5DA-11D6-39EE-88D2-153E2F90F066",
+    "kernel_sha256": "7ebe68bdba49e38fc601d91bc52d02080f65919aaa5e2c3bd9156c67cedaa3c3",
+    "event_database_sha256": "45b779879acf8eefb522d0027653e161dce44f56405f3ce4b74fc358fcdfe908",
+    "installed_programmable_events": 58,
+    "m1_catalogue_missing_pipeline_events": [
+      "MAP_UOP",
+      "MAP_DISPATCH_BUBBLE_SLOT",
+      "OP_SPEC",
+      "STALL_SLOT_FRONTEND",
+      "STALL_SLOT_BACKEND",
+      "MAP_DISPATCH_BUBBLE_IC",
+      "MAP_DISPATCH_BUBBLE_ITLB",
+      "ARM_STALL_FRONTEND"
+    ],
+    "other_installed_catalogues_with_map_dispatch_bubble_slot": 16,
+    "fixed_events": 2,
+    "kpc_counter_count": {
+      "fixed": 2,
+      "configurable": 8,
+      "combined": 10
+    },
+    "kpc_unprivileged_configuration": "EPERM",
+    "kpc_unprivileged_counter_read": "EPERM",
+    "full_xcode_installed": false,
+    "xctrace_installed": false,
+    "compiled_programmable_name_selector_pairs_matched": 58,
+    "compiled_allowlist_check": "kpc_set_config in kernel.release.t8103 at VM 0xfffffe00074b9a18 compares selected event low 16 bits against entries at VM 0xfffffe00071f4e80; unmatched nonzero selector prints not-allowed event and fails. All 58 installed programmable name/selector pairs occur in the referenced table.",
+    "compiled_allowlist_limit": "The kernel gate was inspected offline; authorized/root KPC collection and Instruments remain untested.",
+    "kpc_access_gate": "XNU kern_kpc.c calls ktrace_read_check (root or blessed PID) before configuration/reads; public counter-count queries bypass the access check.",
+    "sme_supported": false,
+    "event_description_limit": "MAP_LDST_UOP description mentions SME, but hw.optional.arm.FEAT_SME is 0 on this M1; names/selectors need runtime calibration.",
+    "page_size_bytes": 16384,
+    "developer_mode_enabled": true
+  },
+  "kpep_offline_plan": {
+    "cpu_family": "0x1b588bb3",
+    "counter_classes": 3,
+    "configurable_registers": [
+      "0x52",
+      "0x2",
+      "0xd6",
+      "0xcb",
+      "0x70",
+      "0x1",
+      "0xa3",
+      "0xdb"
+    ],
+    "event_to_counter": {
+      "FIXED_CYCLES": 0,
+      "FIXED_INSTRUCTIONS": 1,
+      "RETIRE_UOP": 7,
+      "BRANCH_MISPRED_NONSPEC": 5,
+      "SCHEDULE_UOP": 2,
+      "CORE_ACTIVE_CYCLE": 3,
+      "MAP_DISPATCH_BUBBLE": 4,
+      "MAP_STALL_DISPATCH": 6,
+      "L1D_CACHE_MISS_LD": 8,
+      "L1I_CACHE_MISS_DEMAND": 9
+    },
+    "hardware_access_verified": false,
+    "group": "controls"
+  },
+  "kpep_map_state_plan": {
+    "cpu_family": "0x1b588bb3",
+    "group": "map-state",
+    "counter_classes": 3,
+    "configurable_registers": [
+      "0xd6",
+      "0x76",
+      "0x75",
+      "0x70",
+      "0x7c",
+      "0x1",
+      "0x7d",
+      "0x7e"
+    ],
+    "event_to_counter": {
+      "FIXED_CYCLES": 0,
+      "FIXED_INSTRUCTIONS": 1,
+      "RETIRE_UOP": 7,
+      "MAP_DISPATCH_BUBBLE": 2,
+      "MAP_STALL": 3,
+      "MAP_REWIND": 4,
+      "MAP_STALL_DISPATCH": 5,
+      "MAP_INT_UOP": 6,
+      "MAP_LDST_UOP": 8,
+      "MAP_SIMD_UOP": 9
+    },
+    "hardware_access_verified": false
+  },
+  "kpep_fetch_plan": {
+    "cpu_family": "0x1b588bb3",
+    "group": "fetch",
+    "counter_classes": 3,
+    "configurable_registers": [
+      "0x2",
+      "0xd6",
+      "0x51",
+      "0xdb",
+      "0xd4",
+      "0x1",
+      "0xa",
+      "0xde"
+    ],
+    "event_to_counter": {
+      "FIXED_CYCLES": 0,
+      "FIXED_INSTRUCTIONS": 1,
+      "RETIRE_UOP": 7,
+      "CORE_ACTIVE_CYCLE": 2,
+      "MAP_DISPATCH_BUBBLE": 3,
+      "SCHEDULE_EMPTY": 4,
+      "L1I_CACHE_MISS_DEMAND": 5,
+      "L1I_TLB_MISS_DEMAND": 6,
+      "L2_TLB_MISS_INSTRUCTION": 8,
+      "FETCH_RESTART": 9
+    },
+    "hardware_access_verified": false
+  },
+  "m1_fetch_package_sha256": "9efd2b8228d1bd3c3b86b01cf8e31c0449fcdbe3c3f4419dc61e76b036523934",
+  "m1_fetch_probe": {
+    "status": "tool_unavailable",
+    "exit_code": 4,
+    "reason": "xctrace or m1-fetch counter tooling unavailable",
+    "tma_available": false
+  },
+  "kpep_conflict": {
+    "events": [
+      "RETIRE_UOP",
+      "INST_ALL"
+    ],
+    "result": "second add rejected: code 12, event_error 4; both require configurable counter 7"
+  },
+  "control_source_sha256": "4258df5c18adeccd13f2353e5b750800469c8e499f97e7a05e8aa4dc7e7950bd",
+  "control_executable_sha256": "cac1c2ceadf2f285c93bdd20b0164f356e4ac1652f750b0ebc807f76c7d256d6",
+  "measurement": "topdown apple stat, RUSAGE_INFO_V6, full process lifetime, three runs per case; instructions/cycles include startup and setup; background control launched through taskpolicy -b in the same measured PID",
+  "controls": {
+    "alu_wide": {
+      "iterations": 4000000000,
+      "ipc_median": 6.645,
+      "ipc_range": [
+        6.645,
+        6.649
+      ],
+      "performance_cycle_fraction_min": 0.999759,
+      "runs": [
+        {
+          "instructions": 40013980061,
+          "cycles": 6021895459,
+          "performance_instructions": 40012571706,
+          "performance_cycles": 6021403812,
+          "user_time_ns": 1879592458,
+          "other_user_time_ns": 277000,
+          "checksum": "144000000036",
+          "completed": true
+        },
+        {
+          "instructions": 40013657278,
+          "cycles": 6018342170,
+          "performance_instructions": 40012729015,
+          "performance_cycles": 6018003617,
+          "user_time_ns": 1879506708,
+          "other_user_time_ns": 174042,
+          "checksum": "144000000036",
+          "completed": true
+        },
+        {
+          "instructions": 40014175108,
+          "cycles": 6021261515,
+          "performance_instructions": 40009715560,
+          "performance_cycles": 6019812715,
+          "user_time_ns": 1879450000,
+          "other_user_time_ns": 680834,
+          "checksum": "144000000036",
+          "completed": true
+        }
+      ]
+    },
+    "serial": {
+      "iterations": 2000000000,
+      "ipc_median": 0.999,
+      "ipc_range": [
+        0.998,
+        0.999
+      ],
+      "performance_cycle_fraction_min": 0.999911,
+      "runs": [
+        {
+          "instructions": 6014202276,
+          "cycles": 6022743740,
+          "performance_instructions": 6013699770,
+          "performance_cycles": 6022210644,
+          "user_time_ns": 1879211791,
+          "other_user_time_ns": 279500,
+          "checksum": "2420019157618242561",
+          "completed": true
+        },
+        {
+          "instructions": 6013839300,
+          "cycles": 6022084053,
+          "performance_instructions": 6013410823,
+          "performance_cycles": 6021630749,
+          "user_time_ns": 1878558916,
+          "other_user_time_ns": 267291,
+          "checksum": "2420019157618242561",
+          "completed": true
+        },
+        {
+          "instructions": 6014601199,
+          "cycles": 6024448038,
+          "performance_instructions": 6014215548,
+          "performance_cycles": 6024017369,
+          "user_time_ns": 1880052041,
+          "other_user_time_ns": 196916,
+          "checksum": "2420019157618242561",
+          "completed": true
+        }
+      ]
+    },
+    "parallel": {
+      "iterations": 800000000,
+      "ipc_median": 1.248,
+      "ipc_range": [
+        1.246,
+        1.249
+      ],
+      "performance_cycle_fraction_min": 0.999904,
+      "runs": [
+        {
+          "instructions": 8014071110,
+          "cycles": 6423038382,
+          "performance_instructions": 8013681141,
+          "performance_cycles": 6422695921,
+          "user_time_ns": 2004013583,
+          "other_user_time_ns": 195417,
+          "checksum": "3425399953752588296",
+          "completed": true
+        },
+        {
+          "instructions": 8013494082,
+          "cycles": 6417382537,
+          "performance_instructions": 8012783934,
+          "performance_cycles": 6416766701,
+          "user_time_ns": 2004357750,
+          "other_user_time_ns": 291709,
+          "checksum": "3425399953752588296",
+          "completed": true
+        },
+        {
+          "instructions": 8014935034,
+          "cycles": 6434973151,
+          "performance_instructions": 8014443593,
+          "performance_cycles": 6434532228,
+          "user_time_ns": 2003995666,
+          "other_user_time_ns": 207125,
+          "checksum": "3425399953752588296",
+          "completed": true
+        }
+      ]
+    },
+    "branch_predictable": {
+      "iterations": 500000000,
+      "ipc_median": 1.29,
+      "ipc_range": [
+        1.29,
+        1.29
+      ],
+      "performance_cycle_fraction_min": 0.999941,
+      "runs": [
+        {
+          "instructions": 4012404226,
+          "cycles": 3109744488,
+          "performance_instructions": 4012273145,
+          "performance_cycles": 3109622107,
+          "user_time_ns": 969228708,
+          "other_user_time_ns": 70750,
+          "checksum": "6923268305960419564",
+          "completed": true
+        },
+        {
+          "instructions": 4012563761,
+          "cycles": 3109680963,
+          "performance_instructions": 4012430496,
+          "performance_cycles": 3109560588,
+          "user_time_ns": 969422875,
+          "other_user_time_ns": 66584,
+          "checksum": "6923268305960419564",
+          "completed": true
+        },
+        {
+          "instructions": 4012859927,
+          "cycles": 3111146269,
+          "performance_instructions": 4012643833,
+          "performance_cycles": 3110961335,
+          "user_time_ns": 970326666,
+          "other_user_time_ns": 89375,
+          "checksum": "6923268305960419564",
+          "completed": true
+        }
+      ]
+    },
+    "branch_random": {
+      "iterations": 500000000,
+      "ipc_median": 0.612,
+      "ipc_range": [
+        0.612,
+        0.612
+      ],
+      "performance_cycle_fraction_min": 0.999921,
+      "runs": [
+        {
+          "instructions": 4264471721,
+          "cycles": 6967665781,
+          "performance_instructions": 4264129196,
+          "performance_cycles": 6967113772,
+          "user_time_ns": 2173939583,
+          "other_user_time_ns": 290458,
+          "checksum": "6923268303682308596",
+          "completed": true
+        },
+        {
+          "instructions": 4264379094,
+          "cycles": 6968021317,
+          "performance_instructions": 4264058759,
+          "performance_cycles": 6967478302,
+          "user_time_ns": 2173926666,
+          "other_user_time_ns": 261875,
+          "checksum": "6923268303682308596",
+          "completed": true
+        },
+        {
+          "instructions": 4264314383,
+          "cycles": 6966273510,
+          "performance_instructions": 4264069839,
+          "performance_cycles": 6965873205,
+          "user_time_ns": 2173470041,
+          "other_user_time_ns": 206375,
+          "checksum": "6923268303682308596",
+          "completed": true
+        }
+      ]
+    },
+    "memory": {
+      "iterations": 40000000,
+      "ipc_median": 0.045,
+      "ipc_range": [
+        0.045,
+        0.045
+      ],
+      "performance_cycle_fraction_min": 0.999957,
+      "runs": [
+        {
+          "instructions": 355666643,
+          "cycles": 7939548116,
+          "performance_instructions": 355609200,
+          "performance_cycles": 7939224452,
+          "user_time_ns": 2473083416,
+          "other_user_time_ns": 181416,
+          "checksum": "6947856",
+          "completed": true
+        },
+        {
+          "instructions": 355341105,
+          "cycles": 7920940995,
+          "performance_instructions": 355263844,
+          "performance_cycles": 7920601843,
+          "user_time_ns": 2467482958,
+          "other_user_time_ns": 178333,
+          "checksum": "6947856",
+          "completed": true
+        },
+        {
+          "instructions": 355814707,
+          "cycles": 7983511608,
+          "performance_instructions": 355747941,
+          "performance_cycles": 7983205221,
+          "user_time_ns": 2486564333,
+          "other_user_time_ns": 153125,
+          "checksum": "6947856",
+          "completed": true
+        }
+      ]
+    },
+    "alu_wide_background": {
+      "command_prefix": [
+        "/usr/sbin/taskpolicy",
+        "-b"
+      ],
+      "iterations": 4000000000,
+      "ipc_median": 3.312,
+      "ipc_range": [
+        3.304,
+        3.312
+      ],
+      "other_cycle_fraction_min": 0.999572,
+      "runs": [
+        {
+          "instructions": 40064632936,
+          "cycles": 12096638249,
+          "performance_instructions": 9143706,
+          "performance_cycles": 5181204,
+          "other_instructions": 40055489230,
+          "other_cycles": 12091457045,
+          "user_time_ns": 8529769666,
+          "other_user_time_ns": 8529103333,
+          "checksum": "144000000036",
+          "completed": true
+        },
+        {
+          "instructions": 40063395131,
+          "cycles": 12096783962,
+          "performance_instructions": 9167026,
+          "performance_cycles": 5010596,
+          "other_instructions": 40054228105,
+          "other_cycles": 12091773366,
+          "user_time_ns": 8350656375,
+          "other_user_time_ns": 8349986792,
+          "checksum": "144000000036",
+          "completed": true
+        },
+        {
+          "instructions": 40125048423,
+          "cycles": 12144635995,
+          "performance_instructions": 9126687,
+          "performance_cycles": 5003663,
+          "other_instructions": 40115921736,
+          "other_cycles": 12139632332,
+          "user_time_ns": 7972155208,
+          "other_user_time_ns": 7971502583,
+          "checksum": "144000000036",
+          "completed": true
+        }
+      ]
+    }
+  },
+  "m1_probe_status": "tool_unavailable",
+  "m1_map_probe_status": "tool_unavailable",
+  "m1_programmable_values_observed": false,
+  "tma_available": false,
+  "verification": {
+    "pytest": "585 passed on each of Python 3.10, 3.11, 3.12, and 3.13; 3 dependency deprecation warnings per run",
+    "ruff": "all checks passed",
+    "coverage_percent": 70.502,
+    "git_diff_check": "passed",
+    "native_m1_programmable_capture": "not run; xctrace and instrumentbuilder unavailable",
+    "wheel_build": "pip wheel succeeded; apple_fixed.instrpkg, apple_m1.instrpkg and apple_m1_map.instrpkg present"
+  },
+  "icache_control": {
+    "purpose": "Calibration control for L1I_CACHE_MISS_DEMAND; no programmable values observed yet",
+    "source_sha256": "d51eb3d2e612a184500bfd9c7a6d1b917bfbc014cca7e036b056293065bca885",
+    "executable_sha256": "dc250f71cf6a8098d3bc30de0e3885c6724c3c2142cf2822423e4f4aa318b8dd",
+    "compiled_nop_instructions_per_iteration": 65536,
+    "compiled_text_section_bytes": 262396,
+    "host_l1i_bytes": {
+      "performance": 196608,
+      "efficiency": 131072
+    },
+    "repetitions": 200000,
+    "nominal_nop_instructions": 13107200000,
+    "performance_ipc_median": 2.151,
+    "performance_cycle_fraction_min": 0.999923,
+    "runs": [
+      {
+        "instructions": 13121581783,
+        "cycles": 6148422305,
+        "performance_instructions": 13121198917,
+        "performance_cycles": 6147949351,
+        "other_instructions": 382866,
+        "other_cycles": 472954,
+        "user_time_ns": 1917891916,
+        "checksum": "2073005",
+        "completed": true
+      },
+      {
+        "instructions": 13121293646,
+        "cycles": 6099308699,
+        "performance_instructions": 13120995224,
+        "performance_cycles": 6098869827,
+        "other_instructions": 298422,
+        "other_cycles": 438872,
+        "user_time_ns": 1902635500,
+        "checksum": "2073005",
+        "completed": true
+      },
+      {
+        "instructions": 13121576925,
+        "cycles": 6100886369,
+        "performance_instructions": 13121372076,
+        "performance_cycles": 6100541946,
+        "other_instructions": 204849,
+        "other_cycles": 344423,
+        "user_time_ns": 1902174625,
+        "checksum": "2073005",
+        "completed": true
+      }
+    ],
+    "other_core_execution": "topdown apple stat launched /usr/sbin/taskpolicy -b /tmp/topdown-m1-icache 200000",
+    "other_core_ipc_median": 2.074,
+    "other_cycle_fraction_min": 0.999206,
+    "other_core_runs": [
+      {
+        "instructions": 13152135837,
+        "cycles": 6341833892,
+        "performance_instructions": 9199423,
+        "performance_cycles": 4645558,
+        "other_instructions": 13142936414,
+        "other_cycles": 6337188334,
+        "user_time_ns": 4480143666,
+        "checksum": "2073005",
+        "completed": true
+      },
+      {
+        "instructions": 13152543612,
+        "cycles": 6344490568,
+        "performance_instructions": 9080823,
+        "performance_cycles": 4968569,
+        "other_instructions": 13143462789,
+        "other_cycles": 6339521999,
+        "user_time_ns": 4339625500,
+        "checksum": "2073005",
+        "completed": true
+      },
+      {
+        "instructions": 13152195608,
+        "cycles": 6341618323,
+        "performance_instructions": 9112234,
+        "performance_cycles": 5035629,
+        "other_instructions": 13143083374,
+        "other_cycles": 6336582694,
+        "user_time_ns": 4351667541,
+        "checksum": "2073005",
+        "completed": true
+      }
+    ]
+  },
+  "matched_icache_control": {
+    "purpose": "Matched compact/large NOP footprint; fixed-counter throughput direction only, no PMU L1I misses or TMA",
+    "source_sha256": "5b5380f7d70b744b0fc94b03f338c076218857a1e57016d9125ad431322e1dd7",
+    "compile_commands": [
+      "clang -O3 -g examples/apple-m1-icache.c -o <large>",
+      "clang -O3 -g -DTOPDOWN_SMALL_ICACHE examples/apple-m1-icache.c -o <small>"
+    ],
+    "text_bytes": {
+      "small": 1292,
+      "large": 262396
+    },
+    "nop_instructions_per_repetition": 65536,
+    "repetitions": 200000,
+    "nominal_nop_instructions": 13107200000,
+    "runs": {
+      "p_small": {
+        "executable_sha256": "96e7bbd28b8a87c47ab21ba393df1d91b86f82a49441dba32d369cfc0de3c243",
+        "ipc_median": 7.94,
+        "core_kind_cycle_fraction_min": 0.999905,
+        "measurements": [
+          {
+            "instructions": 13222458373,
+            "cycles": 1666542298,
+            "performance_instructions": 13221904184,
+            "performance_cycles": 1666384102,
+            "other_instructions": 554189,
+            "other_cycles": 158196,
+            "checksum": "2073005"
+          },
+          {
+            "instructions": 13222262138,
+            "cycles": 1665274459,
+            "performance_instructions": 13222262138,
+            "performance_cycles": 1665274459,
+            "other_instructions": 0,
+            "other_cycles": 0,
+            "checksum": "2073005"
+          },
+          {
+            "instructions": 13222272971,
+            "cycles": 1664846756,
+            "performance_instructions": 13221735412,
+            "performance_cycles": 1664692380,
+            "other_instructions": 537559,
+            "other_cycles": 154376,
+            "checksum": "2073005"
+          }
+        ]
+      },
+      "p_large": {
+        "executable_sha256": "76044fd7a5a5ccb02ca7df59f0b766f191e58bcd68cde8025c85cdd948d89a32",
+        "ipc_median": 2.155,
+        "core_kind_cycle_fraction_min": 0.999889,
+        "measurements": [
+          {
+            "instructions": 13121831497,
+            "cycles": 6081962791,
+            "performance_instructions": 13121236655,
+            "performance_cycles": 6081295534,
+            "other_instructions": 594842,
+            "other_cycles": 667257,
+            "checksum": "2073005"
+          },
+          {
+            "instructions": 13121973570,
+            "cycles": 6088519625,
+            "performance_instructions": 13121821307,
+            "performance_cycles": 6088170362,
+            "other_instructions": 152263,
+            "other_cycles": 349263,
+            "checksum": "2073005"
+          },
+          {
+            "instructions": 13121542451,
+            "cycles": 6089702261,
+            "performance_instructions": 13120863198,
+            "performance_cycles": 6089025610,
+            "other_instructions": 679253,
+            "other_cycles": 676651,
+            "checksum": "2073005"
+          }
+        ]
+      },
+      "e_small": {
+        "executable_sha256": "96e7bbd28b8a87c47ab21ba393df1d91b86f82a49441dba32d369cfc0de3c243",
+        "ipc_median": 3.963,
+        "core_kind_cycle_fraction_min": 0.998479,
+        "measurements": [
+          {
+            "instructions": 13244392081,
+            "cycles": 3346967478,
+            "performance_instructions": 9141877,
+            "performance_cycles": 5011114,
+            "other_instructions": 13235250204,
+            "other_cycles": 3341956364,
+            "checksum": "2073005"
+          },
+          {
+            "instructions": 13243417211,
+            "cycles": 3344485539,
+            "performance_instructions": 9102795,
+            "performance_cycles": 5057635,
+            "other_instructions": 13234314416,
+            "other_cycles": 3339427904,
+            "checksum": "2073005"
+          },
+          {
+            "instructions": 13242475649,
+            "cycles": 3344719472,
+            "performance_instructions": 9091660,
+            "performance_cycles": 5086490,
+            "other_instructions": 13233383989,
+            "other_cycles": 3339632982,
+            "checksum": "2073005"
+          }
+        ]
+      },
+      "e_large": {
+        "executable_sha256": "76044fd7a5a5ccb02ca7df59f0b766f191e58bcd68cde8025c85cdd948d89a32",
+        "ipc_median": 1.944,
+        "core_kind_cycle_fraction_min": 0.999244,
+        "measurements": [
+          {
+            "instructions": 13154434667,
+            "cycles": 6752383828,
+            "performance_instructions": 9110289,
+            "performance_cycles": 5102514,
+            "other_instructions": 13145324378,
+            "other_cycles": 6747281314,
+            "checksum": "2073005"
+          },
+          {
+            "instructions": 13170168426,
+            "cycles": 6775657744,
+            "performance_instructions": 9161768,
+            "performance_cycles": 5069461,
+            "other_instructions": 13161006658,
+            "other_cycles": 6770588283,
+            "checksum": "2073005"
+          },
+          {
+            "instructions": 13179079047,
+            "cycles": 6798609933,
+            "performance_instructions": 9163092,
+            "performance_cycles": 4757944,
+            "other_instructions": 13169915955,
+            "other_cycles": 6793851989,
+            "checksum": "2073005"
+          }
+        ]
+      }
+    },
+    "p_small_to_large_ipc_ratio": 3.684,
+    "e_small_to_large_ipc_ratio": 2.039,
+    "limit": "Small variant executes extra inner-loop branch/integer instructions; stat includes startup and kernel work. Clock, thermal state and scheduling vary. These fixed counts establish footprint-sensitive throughput, not a counted L1I miss or slot attribution.",
+    "independent_time_check": {
+      "command": "/usr/bin/time -l /tmp/m1-icache-small-new 200000",
+      "instructions_retired": 13221758110,
+      "cycles_elapsed": 1663605125,
+      "checksum": "2073005",
+      "interpretation": "Matches the scale of stat V6 small-code P-core process counts; separate run, not synchronized."
+    }
+  },
+  "icache_footprint_sweep": {
+    "purpose": "Instruction-footprint sweep with approximately equal nominal NOP work; fixed process counters only",
+    "source_sha256": "657288f9ece601831cd8af6e8ba2f5878c3deaf8e9cc996e47451ad1ea44fec7",
+    "compiler": "clang -O3 -g with -DTOPDOWN_NOP_BLOCK=<block>; -DTOPDOWN_NOP_GROUPS=1 for blocks that do not divide 65536",
+    "host_l1i_bytes": {
+      "performance": 196608,
+      "efficiency": 131072
+    },
+    "target_nominal_nops": 13107200000,
+    "points": [
+      {
+        "nop_block": 256,
+        "groups_per_repetition": 256,
+        "repetitions": 200000,
+        "nominal_nops": 13107200000,
+        "text_bytes": 1300,
+        "executable_sha256": "918a9d538b62b29c83b4b900f81ba91638fc0a0d6e8fa098f9629830a4b22595",
+        "p": {
+          "ipc_median": 7.945,
+          "ipc_range": [
+            7.937,
+            7.947
+          ],
+          "min_kind_cycle_fraction": 0.999884
+        },
+        "e": {
+          "ipc_median": 3.963,
+          "ipc_range": [
+            3.959,
+            3.963
+          ],
+          "min_kind_cycle_fraction": 0.998381
+        }
+      },
+      {
+        "nop_block": 8192,
+        "groups_per_repetition": 8,
+        "repetitions": 200000,
+        "nominal_nops": 13107200000,
+        "text_bytes": 33044,
+        "executable_sha256": "c0a90d796ef0366c8be2ff7f79332d3c01caa350b26d84a25237c5dd292e3217",
+        "p": {
+          "ipc_median": 7.959,
+          "ipc_range": [
+            7.955,
+            7.961
+          ],
+          "min_kind_cycle_fraction": 0.999904
+        },
+        "e": {
+          "ipc_median": 3.963,
+          "ipc_range": [
+            3.932,
+            3.965
+          ],
+          "min_kind_cycle_fraction": 0.998445
+        }
+      },
+      {
+        "nop_block": 16384,
+        "groups_per_repetition": 4,
+        "repetitions": 200000,
+        "nominal_nops": 13107200000,
+        "text_bytes": 65812,
+        "executable_sha256": "2e36326037e51503e0c3984455e75badc55fc5631317cb7ff4d1dcfa534e8354",
+        "p": {
+          "ipc_median": 7.97,
+          "ipc_range": [
+            7.968,
+            7.973
+          ],
+          "min_kind_cycle_fraction": 0.999595
+        },
+        "e": {
+          "ipc_median": 3.955,
+          "ipc_range": [
+            3.954,
+            3.957
+          ],
+          "min_kind_cycle_fraction": 0.998337
+        }
+      },
+      {
+        "nop_block": 32768,
+        "groups_per_repetition": 2,
+        "repetitions": 200000,
+        "nominal_nops": 13107200000,
+        "text_bytes": 131348,
+        "executable_sha256": "c3c0163853381a33d30b097c910d7f04e632a213b0683a537694ce85049c2155",
+        "p": {
+          "ipc_median": 7.955,
+          "ipc_range": [
+            7.948,
+            7.967
+          ],
+          "min_kind_cycle_fraction": 0.999907
+        },
+        "e": {
+          "ipc_median": 3.883,
+          "ipc_range": [
+            3.867,
+            3.889
+          ],
+          "min_kind_cycle_fraction": 0.99841
+        }
+      },
+      {
+        "nop_block": 33024,
+        "groups_per_repetition": 1,
+        "repetitions": 396899,
+        "nominal_nops": 13107192576,
+        "text_bytes": 132372,
+        "executable_sha256": "03e142a96dd8c7f74eb7dbbfec2d0ad893fa5100e6024550636d1b136710d101",
+        "p": {
+          "ipc_median": 7.955,
+          "ipc_range": [
+            7.953,
+            7.957
+          ],
+          "min_kind_cycle_fraction": 0.996607
+        },
+        "e": {
+          "ipc_median": 3.665,
+          "ipc_range": [
+            3.662,
+            3.665
+          ],
+          "min_kind_cycle_fraction": 0.998586
+        }
+      },
+      {
+        "nop_block": 33792,
+        "groups_per_repetition": 1,
+        "repetitions": 387879,
+        "nominal_nops": 13107207168,
+        "text_bytes": 135444,
+        "executable_sha256": "6ecd385ca5a90921f86dd96bad91026bfd34e6e41d8a05148e791759f67052ff",
+        "p": {
+          "ipc_median": 7.949,
+          "ipc_range": [
+            7.942,
+            7.956
+          ],
+          "min_kind_cycle_fraction": 0.999777
+        },
+        "e": {
+          "ipc_median": 3.117,
+          "ipc_range": [
+            3.098,
+            3.125
+          ],
+          "min_kind_cycle_fraction": 0.998844
+        }
+      },
+      {
+        "nop_block": 34816,
+        "groups_per_repetition": 1,
+        "repetitions": 376471,
+        "nominal_nops": 13107214336,
+        "text_bytes": 139540,
+        "executable_sha256": "d93f2e0afd96edcabf48b3be9486109ab3e2d12e2eb54682ee1712462e844358",
+        "p": {
+          "ipc_median": 7.952,
+          "ipc_range": [
+            7.946,
+            7.953
+          ],
+          "min_kind_cycle_fraction": 0.999902
+        },
+        "e": {
+          "ipc_median": 2.645,
+          "ipc_range": [
+            2.645,
+            2.648
+          ],
+          "min_kind_cycle_fraction": 0.998984
+        }
+      },
+      {
+        "nop_block": 36864,
+        "groups_per_repetition": 1,
+        "repetitions": 355556,
+        "nominal_nops": 13107216384,
+        "text_bytes": 147732,
+        "executable_sha256": "0f1ae9e0c0f95e4740ee08b76f73e3f472b81b1089bed57fe2f8bf03a5fd5a61",
+        "p": {
+          "ipc_median": 7.956,
+          "ipc_range": [
+            7.95,
+            7.959
+          ],
+          "min_kind_cycle_fraction": 0.999864
+        },
+        "e": {
+          "ipc_median": 2.071,
+          "ipc_range": [
+            2.07,
+            2.073
+          ],
+          "min_kind_cycle_fraction": 0.999206
+        }
+      },
+      {
+        "nop_block": 38912,
+        "groups_per_repetition": 1,
+        "repetitions": 336842,
+        "nominal_nops": 13107195904,
+        "text_bytes": 155924,
+        "executable_sha256": "3f0392c0023a41a4c9c4c6c46819fe2048e68e7aabdce30a9c3370dc73eb07cf",
+        "p": {
+          "ipc_median": 7.945,
+          "ipc_range": [
+            7.945,
+            7.95
+          ],
+          "min_kind_cycle_fraction": 0.99989
+        },
+        "e": {
+          "ipc_median": 2.074,
+          "ipc_range": [
+            2.073,
+            2.074
+          ],
+          "min_kind_cycle_fraction": 0.999213
+        }
+      },
+      {
+        "nop_block": 40960,
+        "groups_per_repetition": 1,
+        "repetitions": 320000,
+        "nominal_nops": 13107200000,
+        "text_bytes": 164116,
+        "executable_sha256": "ac66619343c291c0a1c36fb2ccdb308498acb437e979b7af521df656d8ef172a",
+        "p": {
+          "ipc_median": 7.957,
+          "ipc_range": [
+            7.94,
+            7.968
+          ],
+          "min_kind_cycle_fraction": 0.994893
+        },
+        "e": {
+          "ipc_median": 2.073,
+          "ipc_range": [
+            2.072,
+            2.075
+          ],
+          "min_kind_cycle_fraction": 0.999163
+        }
+      },
+      {
+        "nop_block": 49152,
+        "groups_per_repetition": 1,
+        "repetitions": 266667,
+        "nominal_nops": 13107216384,
+        "text_bytes": 196884,
+        "executable_sha256": "6e299e5fdaa903277f11cd954029c309d71d9af3fc0cb5356ab76550dfdeb6ea",
+        "p": {
+          "ipc_median": 7.881,
+          "ipc_range": [
+            7.879,
+            7.885
+          ],
+          "min_kind_cycle_fraction": 0.999907
+        },
+        "e": {
+          "ipc_median": 2.073,
+          "ipc_range": [
+            2.073,
+            2.075
+          ],
+          "min_kind_cycle_fraction": 0.999141
+        }
+      },
+      {
+        "nop_block": 49408,
+        "groups_per_repetition": 1,
+        "repetitions": 265285,
+        "nominal_nops": 13107201280,
+        "text_bytes": 197908,
+        "executable_sha256": "3b661dc968aacd1f58b712f2ea70c202ea0da41314f6f2c7afd976b85a6553a8",
+        "p": {
+          "ipc_median": 7.218,
+          "ipc_range": [
+            7.217,
+            7.23
+          ],
+          "min_kind_cycle_fraction": 0.997322
+        },
+        "e": {
+          "ipc_median": 2.073,
+          "ipc_range": [
+            2.072,
+            2.073
+          ],
+          "min_kind_cycle_fraction": 0.999216
+        }
+      },
+      {
+        "nop_block": 50176,
+        "groups_per_repetition": 1,
+        "repetitions": 261224,
+        "nominal_nops": 13107175424,
+        "text_bytes": 200980,
+        "executable_sha256": "f08ab1fc62d53736d80c82df2405b75145fe889f71c3f88e62eb20d9de81aea7",
+        "p": {
+          "ipc_median": 5.69,
+          "ipc_range": [
+            5.673,
+            5.693
+          ],
+          "min_kind_cycle_fraction": 0.999859
+        },
+        "e": {
+          "ipc_median": 2.073,
+          "ipc_range": [
+            2.073,
+            2.075
+          ],
+          "min_kind_cycle_fraction": 0.999169
+        }
+      },
+      {
+        "nop_block": 51200,
+        "groups_per_repetition": 1,
+        "repetitions": 256000,
+        "nominal_nops": 13107200000,
+        "text_bytes": 205076,
+        "executable_sha256": "dba050831f2581f2591f594734748e6e71433fd1068d9a98a007321d22a88dfa",
+        "p": {
+          "ipc_median": 4.478,
+          "ipc_range": [
+            4.468,
+            4.48
+          ],
+          "min_kind_cycle_fraction": 0.999844
+        },
+        "e": {
+          "ipc_median": 2.074,
+          "ipc_range": [
+            2.073,
+            2.075
+          ],
+          "min_kind_cycle_fraction": 0.999204
+        }
+      },
+      {
+        "nop_block": 53248,
+        "groups_per_repetition": 1,
+        "repetitions": 246154,
+        "nominal_nops": 13107208192,
+        "text_bytes": 213268,
+        "executable_sha256": "0a80bf20334d55217b31f6a0340fd8482165cd3e5af12ffb27ddf624bd167f88",
+        "p": {
+          "ipc_median": 3.19,
+          "ipc_range": [
+            3.19,
+            3.196
+          ],
+          "min_kind_cycle_fraction": 0.999857
+        },
+        "e": {
+          "ipc_median": 2.074,
+          "ipc_range": [
+            2.073,
+            2.074
+          ],
+          "min_kind_cycle_fraction": 0.999211
+        }
+      },
+      {
+        "nop_block": 57344,
+        "groups_per_repetition": 1,
+        "repetitions": 228571,
+        "nominal_nops": 13107175424,
+        "text_bytes": 229652,
+        "executable_sha256": "9ae1595950af19854fd5a2e627c92eeffc45d3552e69885bb2dd580673b61bd5",
+        "p": {
+          "ipc_median": 2.14,
+          "ipc_range": [
+            2.134,
+            2.149
+          ],
+          "min_kind_cycle_fraction": 0.999927
+        },
+        "e": {
+          "ipc_median": 2.073,
+          "ipc_range": [
+            2.073,
+            2.075
+          ],
+          "min_kind_cycle_fraction": 0.999227
+        }
+      },
+      {
+        "nop_block": 61440,
+        "groups_per_repetition": 1,
+        "repetitions": 213333,
+        "nominal_nops": 13107179520,
+        "text_bytes": 246036,
+        "executable_sha256": "5470d4dd8a59a7c7aa40a3f490944f914f4f9a0b3b2c0c3011e9d77c67e864e9",
+        "p": {
+          "ipc_median": 2.164,
+          "ipc_range": [
+            2.14,
+            2.177
+          ],
+          "min_kind_cycle_fraction": 0.999898
+        },
+        "e": {
+          "ipc_median": 2.073,
+          "ipc_range": [
+            2.071,
+            2.073
+          ],
+          "min_kind_cycle_fraction": 0.999158
+        }
+      },
+      {
+        "nop_block": 65536,
+        "groups_per_repetition": 1,
+        "repetitions": 200000,
+        "nominal_nops": 13107200000,
+        "text_bytes": 262420,
+        "executable_sha256": "7f1c583420b5535da049fd7c5a42800935240f99b150f2576cc8540392180464",
+        "p": {
+          "ipc_median": 2.159,
+          "ipc_range": [
+            2.143,
+            2.163
+          ],
+          "min_kind_cycle_fraction": 0.999893
+        },
+        "e": {
+          "ipc_median": 2.074,
+          "ipc_range": [
+            2.074,
+            2.074
+          ],
+          "min_kind_cycle_fraction": 0.999205
+        }
+      }
+    ],
+    "limit": "Each process includes startup and loop overhead; affinity is inferred from V6 core-kind cycle share. Throughput cliffs are consistent with L1I capacity but no L1I miss event was counted.",
+    "raw_runs_csv": "apple-m1-icache-sweep.csv",
+    "raw_runs_csv_sha256": "90b863c05c05a1b7dfb516122e9ecc5eb929c918dd1e03b39901e884bd13b60e",
+    "matched_128k_one_group_control": {
+      "nop_block": 32768,
+      "groups_per_repetition": 1,
+      "repetitions": 400000,
+      "nominal_nops": 13107200000,
+      "text_bytes": 131348,
+      "executable_sha256": "debdcc8c1e6bb27fc818fbba83225d0195430b53a3a0227babbc9059aefc7964",
+      "runs": {
+        "p": [
+          {
+            "instructions": 13122175924,
+            "cycles": 1654034336,
+            "kind_instructions": 13118295636,
+            "kind_cycles": 1649991709,
+            "checksum": 1750637
+          },
+          {
+            "instructions": 13121679051,
+            "cycles": 1649889249,
+            "kind_instructions": 13121344540,
+            "kind_cycles": 1649712792,
+            "checksum": 1750637
+          },
+          {
+            "instructions": 13121349858,
+            "cycles": 1649579288,
+            "kind_instructions": 13120982351,
+            "kind_cycles": 1649415687,
+            "checksum": 1750637
+          }
+        ],
+        "e": [
+          {
+            "instructions": 13141607157,
+            "cycles": 3383117540,
+            "kind_instructions": 13132454689,
+            "kind_cycles": 3377796601,
+            "checksum": 1750637
+          },
+          {
+            "instructions": 13141705744,
+            "cycles": 3382949592,
+            "kind_instructions": 13132627386,
+            "kind_cycles": 3377862942,
+            "checksum": 1750637
+          },
+          {
+            "instructions": 13141837558,
+            "cycles": 3382956305,
+            "kind_instructions": 13132774244,
+            "kind_cycles": 3378048917,
+            "checksum": 1750637
+          }
+        ]
+      },
+      "p": {
+        "ipc_median": 7.954,
+        "ipc_range": [
+          7.951,
+          7.955
+        ],
+        "min_kind_cycle_fraction": 0.997556
+      },
+      "e": {
+        "ipc_median": 3.888,
+        "ipc_range": [
+          3.888,
+          3.888
+        ],
+        "min_kind_cycle_fraction": 0.998427
+      }
+    },
+    "reverse_order_boundary_control": {
+      "purpose": "Repeat both L1I boundary pairs in oversized-first order using the same binaries and work counts",
+      "run_order": [
+        "p_over",
+        "p_at",
+        "e_over",
+        "e_at",
+        "p_over",
+        "p_at",
+        "e_over",
+        "e_at",
+        "p_over",
+        "p_at",
+        "e_over",
+        "e_at"
+      ],
+      "cases": {
+        "e_over": {
+          "core_kind": "e",
+          "nop_block": 33024,
+          "repetitions": 396899,
+          "executable_sha256": "03e142a96dd8c7f74eb7dbbfec2d0ad893fa5100e6024550636d1b136710d101",
+          "runs": [
+            {
+              "instructions": 13142121069,
+              "cycles": 3584842147,
+              "kind_instructions": 13132956485,
+              "kind_cycles": 3579871944,
+              "checksum": 1745550
+            },
+            {
+              "instructions": 13143776517,
+              "cycles": 3589214812,
+              "kind_instructions": 13134712379,
+              "kind_cycles": 3584332344,
+              "checksum": 1745550
+            },
+            {
+              "instructions": 13145443409,
+              "cycles": 3592844833,
+              "kind_instructions": 13136348560,
+              "kind_cycles": 3588001419,
+              "checksum": 1745550
+            }
+          ],
+          "ipc_median": 3.664,
+          "ipc_range": [
+            3.661,
+            3.669
+          ],
+          "min_kind_cycle_fraction": 0.998614
+        },
+        "e_at": {
+          "core_kind": "e",
+          "nop_block": 32768,
+          "repetitions": 400000,
+          "executable_sha256": "debdcc8c1e6bb27fc818fbba83225d0195430b53a3a0227babbc9059aefc7964",
+          "runs": [
+            {
+              "instructions": 13140099779,
+              "cycles": 3381218810,
+              "kind_instructions": 13131055015,
+              "kind_cycles": 3376318635,
+              "checksum": 1750637
+            },
+            {
+              "instructions": 13144045330,
+              "cycles": 3388385120,
+              "kind_instructions": 13134909396,
+              "kind_cycles": 3383473702,
+              "checksum": 1750637
+            },
+            {
+              "instructions": 13153430608,
+              "cycles": 3392985129,
+              "kind_instructions": 13144355020,
+              "kind_cycles": 3387980747,
+              "checksum": 1750637
+            }
+          ],
+          "ipc_median": 3.882,
+          "ipc_range": [
+            3.88,
+            3.889
+          ],
+          "min_kind_cycle_fraction": 0.998525
+        },
+        "p_over": {
+          "core_kind": "p",
+          "nop_block": 49408,
+          "repetitions": 265285,
+          "executable_sha256": "3b661dc968aacd1f58b712f2ea70c202ea0da41314f6f2c7afd976b85a6553a8",
+          "runs": [
+            {
+              "instructions": 13120914061,
+              "cycles": 1818522860,
+              "kind_instructions": 13120892943,
+              "kind_cycles": 1818490193,
+              "checksum": 1613992
+            },
+            {
+              "instructions": 13120816059,
+              "cycles": 1817550708,
+              "kind_instructions": 13120803738,
+              "kind_cycles": 1817524610,
+              "checksum": 1613992
+            },
+            {
+              "instructions": 13120850286,
+              "cycles": 1817881922,
+              "kind_instructions": 13120850286,
+              "kind_cycles": 1817881922,
+              "checksum": 1613992
+            }
+          ],
+          "ipc_median": 7.218,
+          "ipc_range": [
+            7.215,
+            7.219
+          ],
+          "min_kind_cycle_fraction": 0.999982
+        },
+        "p_at": {
+          "core_kind": "p",
+          "nop_block": 49152,
+          "repetitions": 266667,
+          "executable_sha256": "6e299e5fdaa903277f11cd954029c309d71d9af3fc0cb5356ab76550dfdeb6ea",
+          "runs": [
+            {
+              "instructions": 13120800951,
+              "cycles": 1663648956,
+              "kind_instructions": 13120617002,
+              "kind_cycles": 1663486197,
+              "checksum": 1621318
+            },
+            {
+              "instructions": 13120775225,
+              "cycles": 1663063091,
+              "kind_instructions": 13120659504,
+              "kind_cycles": 1662930212,
+              "checksum": 1621318
+            },
+            {
+              "instructions": 13120543922,
+              "cycles": 1661117164,
+              "kind_instructions": 13120543922,
+              "kind_cycles": 1661117164,
+              "checksum": 1621318
+            }
+          ],
+          "ipc_median": 7.89,
+          "ipc_range": [
+            7.887,
+            7.899
+          ],
+          "min_kind_cycle_fraction": 0.999902
+        }
+      }
+    },
+    "source_revision": "ab01e9ad8fd388bd195cbaed909c74044eb89e57",
+    "cold_text_hot_loop_control": {
+      "purpose": "Large unexecuted text with compact executed NOP loop",
+      "hot_nop_block": 256,
+      "hot_groups_per_repetition": 256,
+      "cold_nop_block": 65536,
+      "repetitions": 200000,
+      "nominal_hot_nops": 13107200000,
+      "text_bytes": 263448,
+      "executable_sha256": "e63d4eb81acbc7597762675987fc1da0ca9c0b5157bcf8a01781e78af2cb66db",
+      "runs": {
+        "p": [
+          {
+            "instructions": 13222689063,
+            "cycles": 1671344776,
+            "kind_instructions": 13213652816,
+            "kind_cycles": 1661329428,
+            "checksum": 2073005
+          },
+          {
+            "instructions": 13222425779,
+            "cycles": 1665738733,
+            "kind_instructions": 13222414773,
+            "kind_cycles": 1665723638,
+            "checksum": 2073005
+          },
+          {
+            "instructions": 13221964104,
+            "cycles": 1663383612,
+            "kind_instructions": 13220859026,
+            "kind_cycles": 1663077826,
+            "checksum": 2073005
+          }
+        ],
+        "e": [
+          {
+            "instructions": 13241189563,
+            "cycles": 3342097916,
+            "kind_instructions": 13232123142,
+            "kind_cycles": 3337199977,
+            "checksum": 2073005
+          },
+          {
+            "instructions": 13242963813,
+            "cycles": 3343623580,
+            "kind_instructions": 13233901944,
+            "kind_cycles": 3338742308,
+            "checksum": 2073005
+          },
+          {
+            "instructions": 13241975894,
+            "cycles": 3346351364,
+            "kind_instructions": 13232816224,
+            "kind_cycles": 3341366198,
+            "checksum": 2073005
+          }
+        ]
+      },
+      "source_sha256": "1e9cc39044a02e38ba92d662916df169ecf75cff004afcdba5b86fe2590c5e74",
+      "p": {
+        "ipc_median": 7.95,
+        "ipc_range": [
+          7.938,
+          7.954
+        ],
+        "min_kind_cycle_fraction": 0.994008
+      },
+      "e": {
+        "ipc_median": 3.964,
+        "ipc_range": [
+          3.96,
+          3.965
+        ],
+        "min_kind_cycle_fraction": 0.99851
+      }
+    }
+  }
+}

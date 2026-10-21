@@ -30,6 +30,17 @@ class _RusageInfoV4(ctypes.Structure):
     ]
 
 
+class _RusageInfoV6(ctypes.Structure):
+    _fields_ = _RusageInfoV4._fields_ + [
+        (name, ctypes.c_uint64) for name in """
+        ri_flags ri_user_ptime ri_system_ptime ri_pinstructions ri_pcycles ri_energy_nj
+        ri_penergy_nj ri_secure_time_in_system ri_secure_ptime_in_system ri_neural_footprint
+        ri_lifetime_max_neural_footprint ri_interval_max_neural_footprint ri_conclave_footprint
+        ri_page_wait_time_mach ri_page_cache_hits
+        """.split()
+    ] + [("ri_reserved", ctypes.c_uint64 * 6)]
+
+
 class _Timebase(ctypes.Structure):
     _fields_ = [("numer", ctypes.c_uint32), ("denom", ctypes.c_uint32)]
 
@@ -52,15 +63,22 @@ class _UsageReader:
         self.timebase = _Timebase()
         if libsystem.mach_timebase_info(ctypes.byref(self.timebase)) or not self.timebase.denom:
             raise AppleProfileError("Cannot determine Mach timebase")
+        self.flavor_id = 6
 
     def read(self, pid):
-        info = _RusageInfoV4()
+        info = _RusageInfoV6() if self.flavor_id == 6 else _RusageInfoV4()
         ctypes.set_errno(0)
-        if self.libproc.proc_pid_rusage(pid, 4, ctypes.byref(info)):
+        status = self.libproc.proc_pid_rusage(pid, self.flavor_id, ctypes.byref(info))
+        if status and self.flavor_id == 6 and ctypes.get_errno() in (errno.EINVAL, errno.ENOTSUP):
+            self.flavor_id = 4
+            info = _RusageInfoV4()
+            ctypes.set_errno(0)
+            status = self.libproc.proc_pid_rusage(pid, 4, ctypes.byref(info))
+        if status:
             error = ctypes.get_errno()
             raise AppleProfileError(f"proc_pid_rusage({pid}) failed: {os.strerror(error)}")
         numer, denom = self.timebase.numer, self.timebase.denom
-        return {
+        result = {
             "instructions": info.ri_instructions,
             "cycles": info.ri_cycles,
             "user_time_ns": info.ri_user_time * numer // denom,
@@ -68,6 +86,18 @@ class _UsageReader:
             "process_start_mach": info.ri_proc_start_abstime,
             "process_exit_mach": info.ri_proc_exit_abstime,
         }
+        if self.flavor_id == 6:
+            if (info.ri_pinstructions > info.ri_instructions or info.ri_pcycles > info.ri_cycles
+                    or info.ri_user_ptime > info.ri_user_time or info.ri_system_ptime > info.ri_system_time):
+                raise AppleProfileError("Performance-core usage exceeds aggregate usage")
+            result.update(performance_instructions=info.ri_pinstructions, performance_cycles=info.ri_pcycles,
+                          other_instructions=info.ri_instructions - info.ri_pinstructions,
+                          other_cycles=info.ri_cycles - info.ri_pcycles,
+                          performance_user_time_ns=info.ri_user_ptime * numer // denom,
+                          performance_system_time_ns=info.ri_system_ptime * numer // denom,
+                          other_user_time_ns=result["user_time_ns"] - info.ri_user_ptime * numer // denom,
+                          other_system_time_ns=result["system_time_ns"] - info.ri_system_ptime * numer // denom)
+        return result
 
 
 def _peek_exit(pid):
@@ -121,18 +151,20 @@ def _terminate(process):
 
 
 def _report(reader):
+    flavor_id = reader.flavor_id if isinstance(getattr(reader, "flavor_id", None), int) else 4
     return {
         "schema_version": 1, "measurement_kind": "process-accounted-fixed-counters",
         "started_at": datetime.now(timezone.utc).isoformat(),
         "collector_sha256": _sha256(Path(__file__)),
         "environment": {"system": platform.system(), "arch": platform.machine(), "os_version": platform.mac_ver()[0]},
-        "source": {"api": "proc_pid_rusage", "flavor": "RUSAGE_INFO_V4", "flavor_id": 4,
+        "source": {"api": "proc_pid_rusage", "flavor": f"RUSAGE_INFO_V{flavor_id}", "flavor_id": flavor_id,
                    "mach_timebase": {"numer": reader.timebase.numer, "denom": reader.timebase.denom}},
         "status": "failed", "exit_code": 1, "counters": None,
         "tma_available": False, "tma": dict.fromkeys(TMA_ROOTS),
         "limitations": [
             "All threads and user/kernel execution of one PID, excluding descendants.",
-            "Counters aggregate heterogeneous cores; frequency, residency and measurement bias remain unvalidated.",
+            "V6 separates performance-core usage from the remainder; per-core slots and measurement bias remain unvalidated.",
+            "When V6 is available, 'other' core counts are aggregate totals minus performance-core-only totals.",
             "Fixed cycles/instructions do not provide programmable events, stacks or a TMA decomposition.",
         ],
     }
@@ -170,7 +202,13 @@ def stat_pid(output: Path, pid: int, duration: float = 5) -> dict:
         result["snapshot_after"] = after
         if not before["process_start_mach"] or before["process_start_mach"] != after["process_start_mach"]:
             raise AppleProfileError("Process identity changed or could not be established; no interval counters reported")
+        if set(before) != set(after):
+            raise AppleProfileError("Counter flavor changed during observation; no interval counters reported")
         fields = ("instructions", "cycles", "user_time_ns", "system_time_ns")
+        if "performance_instructions" in before:
+            fields += ("performance_instructions", "performance_cycles", "other_instructions", "other_cycles",
+                       "performance_user_time_ns", "performance_system_time_ns",
+                       "other_user_time_ns", "other_system_time_ns")
         if any(after[field] < before[field] for field in fields):
             raise AppleProfileError("Process counters decreased; no interval counters reported")
         result["counters"] = {field: after[field] - before[field] for field in fields}
@@ -184,6 +222,8 @@ def stat_pid(output: Path, pid: int, duration: float = 5) -> dict:
     except (OSError, AppleProfileError) as exc:
         result["error"] = str(exc)
     finally:
+        if isinstance(getattr(reader, "flavor_id", None), int):
+            result["source"].update(flavor=f"RUSAGE_INFO_V{reader.flavor_id}", flavor_id=reader.flavor_id)
         result["ended_at"] = datetime.now(timezone.utc).isoformat()
         _write_json(output / "stat.json", result)
     return result
@@ -248,6 +288,8 @@ def stat_process(output: Path, command: list[str], timeout: float = 30) -> dict:
                 result["target_exit_code"] = process.wait(timeout=2)
             except (OSError, AppleProfileError, subprocess.TimeoutExpired) as exc:
                 result["cleanup_error"] = str(exc)
+        if isinstance(getattr(reader, "flavor_id", None), int):
+            result["source"].update(flavor=f"RUSAGE_INFO_V{reader.flavor_id}", flavor_id=reader.flavor_id)
         result["ended_at"] = datetime.now(timezone.utc).isoformat()
         _write_json(output / "stat.json", result)
     return result
