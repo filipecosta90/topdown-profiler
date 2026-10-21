@@ -1,16 +1,24 @@
-"""Check one M1 PMU event group with Apple's local KPEP database, without enabling counters."""
+"""Check M1 PMU event groups with Apple's local KPEP database, without enabling counters."""
 
+import argparse
 import ctypes
 import json
 import platform
 import subprocess
 
 
-EVENTS = (
-    "FIXED_CYCLES", "FIXED_INSTRUCTIONS", "RETIRE_UOP", "BRANCH_MISPRED_NONSPEC",
-    "SCHEDULE_UOP", "SCHEDULE_EMPTY", "MAP_DISPATCH_BUBBLE", "MAP_STALL_DISPATCH",
-    "L1D_CACHE_MISS_LD", "L1I_CACHE_MISS_DEMAND",
-)
+EVENT_GROUPS = {
+    "controls": (
+        "FIXED_CYCLES", "FIXED_INSTRUCTIONS", "RETIRE_UOP", "BRANCH_MISPRED_NONSPEC",
+        "SCHEDULE_UOP", "SCHEDULE_EMPTY", "MAP_DISPATCH_BUBBLE", "MAP_STALL_DISPATCH",
+        "L1D_CACHE_MISS_LD", "L1I_CACHE_MISS_DEMAND",
+    ),
+    "map-state": (
+        "FIXED_CYCLES", "FIXED_INSTRUCTIONS", "RETIRE_UOP", "MAP_DISPATCH_BUBBLE",
+        "MAP_STALL", "MAP_REWIND", "MAP_STALL_DISPATCH", "MAP_INT_UOP",
+        "MAP_LDST_UOP", "MAP_SIMD_UOP",
+    ),
+}
 M1_CPU_FAMILY = 0x1B588BB3
 
 
@@ -21,7 +29,8 @@ def _api(library, name, result_type, argument_types):
     return function
 
 
-def plan():
+def plan(group="controls"):
+    events = EVENT_GROUPS[group]
     if platform.system() != "Darwin" or platform.machine() != "arm64":
         raise RuntimeError("Apple silicon host required")
     family = int(subprocess.check_output(["sysctl", "-n", "hw.cpufamily"], text=True).strip())
@@ -54,7 +63,7 @@ def plan():
             raise RuntimeError("KPEP could not open the local CPU event database")
         if create_config(database, ctypes.byref(config)) or force(config):
             raise RuntimeError("KPEP could not create a forced-counter configuration")
-        for name in EVENTS:
+        for name in events:
             event = pointer()
             if find_event(database, name.encode(), ctypes.byref(event)):
                 raise RuntimeError(f"KPEP event unavailable: {name}")
@@ -70,12 +79,12 @@ def plan():
                 or get_map(config, mapping, ctypes.sizeof(mapping))
                 or get_config(config, registers, ctypes.sizeof(registers))):
             raise RuntimeError("KPEP could not produce the KPC counter mapping")
-        if classes.value != 3 or count.value != 8 or len(set(mapping[:len(EVENTS)])) != len(EVENTS):
+        if classes.value != 3 or count.value != 8 or len(set(mapping[:len(events)])) != len(events):
             raise RuntimeError("Unexpected M1 counter classes, count, or overlapping event assignments")
         return {
-            "cpu_family": f"{family:#x}", "counter_classes": classes.value,
+            "cpu_family": f"{family:#x}", "group": group, "counter_classes": classes.value,
             "configurable_registers": [f"{value:#x}" for value in registers[:count.value]],
-            "event_to_counter": dict(zip(EVENTS, mapping[:len(EVENTS)])),
+            "event_to_counter": dict(zip(events, mapping[:len(events)])),
             "hardware_access_verified": False,
         }
     finally:
@@ -86,4 +95,7 @@ def plan():
 
 
 if __name__ == "__main__":
-    print(json.dumps(plan(), indent=2))
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--group", choices=EVENT_GROUPS, default="controls")
+    args = parser.parse_args()
+    print(json.dumps(plan(args.group), indent=2))

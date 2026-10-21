@@ -52,6 +52,35 @@
       "L1D_CACHE_MISS_LD": 8,
       "L1I_CACHE_MISS_DEMAND": 9
     },
+    "hardware_access_verified": false,
+    "group": "controls"
+  },
+  "kpep_map_state_plan": {
+    "cpu_family": "0x1b588bb3",
+    "group": "map-state",
+    "counter_classes": 3,
+    "configurable_registers": [
+      "0xd6",
+      "0x76",
+      "0x75",
+      "0x70",
+      "0x7c",
+      "0x1",
+      "0x7d",
+      "0x7e"
+    ],
+    "event_to_counter": {
+      "FIXED_CYCLES": 0,
+      "FIXED_INSTRUCTIONS": 1,
+      "RETIRE_UOP": 7,
+      "MAP_DISPATCH_BUBBLE": 2,
+      "MAP_STALL": 3,
+      "MAP_REWIND": 4,
+      "MAP_STALL_DISPATCH": 5,
+      "MAP_INT_UOP": 6,
+      "MAP_LDST_UOP": 8,
+      "MAP_SIMD_UOP": 9
+    },
     "hardware_access_verified": false
   },
   "kpep_conflict": {
@@ -367,7 +396,7 @@
   "m1_programmable_values_observed": false,
   "tma_available": false,
   "verification": {
-    "pytest": "573 passed, 3 dependency deprecation warnings (rebased on M6 trace branch)",
+    "pytest": "574 passed on each of Python 3.10, 3.11, 3.12, and 3.13; 3 dependency deprecation warnings per run",
     "ruff": "all checks passed",
     "coverage_percent": 70.4436,
     "git_diff_check": "passed",

@@ -1,9 +1,10 @@
 """Deterministic workload controls for future M1 counter calibration."""
 
+import json
 import platform
 import shutil
 import subprocess
-import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -42,15 +43,25 @@ def test_invalid_control_arguments_exit_without_running(controls, args):
     assert result.returncode == 2
 
 
-def test_m1_kpep_plan_uses_distinct_hardware_counters():
+@pytest.mark.parametrize("group,expected_events", [
+    ("controls", {"RETIRE_UOP", "BRANCH_MISPRED_NONSPEC", "SCHEDULE_UOP",
+                  "SCHEDULE_EMPTY", "MAP_DISPATCH_BUBBLE", "MAP_STALL_DISPATCH",
+                  "L1D_CACHE_MISS_LD", "L1I_CACHE_MISS_DEMAND"}),
+    ("map-state", {"RETIRE_UOP", "MAP_DISPATCH_BUBBLE", "MAP_STALL", "MAP_REWIND",
+                   "MAP_STALL_DISPATCH", "MAP_INT_UOP", "MAP_LDST_UOP", "MAP_SIMD_UOP"}),
+])
+def test_m1_kpep_plan_uses_distinct_hardware_counters(group, expected_events):
     if platform.system() != "Darwin" or platform.machine() != "arm64":
         pytest.skip("KPEP requires Apple silicon")
     family = subprocess.check_output(["sysctl", "-n", "hw.cpufamily"], text=True).strip()
     if int(family) != 0x1B588BB3:
         pytest.skip("This event plan is for M1")
-    result = subprocess.run(["python3", str(PLANNER)], capture_output=True, text=True, timeout=10, check=True)
+    result = subprocess.run([sys.executable, str(PLANNER), "--group", group],
+                            capture_output=True, text=True, timeout=10, check=True)
     data = json.loads(result.stdout)
     mapping = data["event_to_counter"]
+    assert data["group"] == group
     assert mapping["RETIRE_UOP"] == 7
+    assert set(mapping) == {"FIXED_CYCLES", "FIXED_INSTRUCTIONS", *expected_events}
     assert set(mapping.values()) == set(range(10))
     assert data["hardware_access_verified"] is False

@@ -114,6 +114,18 @@ independently documents the counter restrictions. KPEP acceptance only proves a
 configuration can be constructed; it does not prove that Instruments or the
 kernel will count these events on this host.
 
+A second KPEP plan replaces branch, cache and scheduler diagnostics with map
+pipeline events. Run `python3 examples/apple-m1-kpep-plan.py --group map-state` to
+inspect its assignments. It places `MAP_DISPATCH_BUBBLE`, `MAP_STALL`,
+`MAP_REWIND`, `MAP_STALL_DISPATCH`, `MAP_INT_UOP`, `MAP_LDST_UOP`,
+`MAP_SIMD_UOP`, and `RETIRE_UOP` on all eight configurable counters, alongside
+the two fixed events. `MAP_REWIND` counts cycles blocked during a flush/restart;
+it does not label the cause of the flush. `MAP_STALL` is for any map stall, so
+`MAP_STALL_DISPATCH` may be a subset. The three mapped-uop classes have no
+published guarantee that they exhaust map throughput or correspond one-to-one
+with retired uops. This is an offline configuration for a later calibration
+recording; the local `m1` Instruments package requests only the first group.
+
 An experimental `m1` mode requests this exact order through a local Instruments
 package and exports the raw counter vector with the stack and core label:
 
@@ -160,6 +172,13 @@ fixed-cycle event matches the relevant active pipeline cycles.
 | Bad Speculation | `BRANCH_MISPRED_NONSPEC`, `MAP_REWIND`, flush/restart events | Wasted speculative uops and recovery slots per event |
 | Backend Bound | `MAP_STALL_DISPATCH`, cache/TLB misses | Non-overlapping backend slot count, or a validated residual after the first three |
 
+The map-state group provides a direct experiment for overlap: compare
+`MAP_STALL` with `MAP_STALL_DISPATCH` and `MAP_REWIND`, and compare the sum of
+mapped-uop classes with retired uops on the same P-core controls. Any apparent
+cycle partition must also account for cycles in which map is processing uops,
+counter sampling scope and core migration. An event plan accepted by KPEP is
+not evidence that these identities hold on hardware.
+
 Before enabling `tma_available`, collect actual programmable values on M1 and
 check vector order, scope, sampling semantics, simultaneous availability, loss
 and counter multiplexing. Calibrate each event against the control workloads,
@@ -172,6 +191,10 @@ partition maximum sustainable CPU bandwidth into Useful, Instruction Delivery,
 Instruction Processing and Discarded; their correspondence to Intel slot TMA
 must be tested rather than assumed. Until then, native event names and units
 remain separate from the Linux TMA database and funnel.
+Apple's [CPU Optimization Guide](https://developer.apple.com/documentation/apple-silicon/cpu-optimization-guide)
+advertises event and metric lists but requires a registered developer account
+and a separate agreement for the full guide. Public Xcode documentation does
+not provide a validated M1 formula for this four-way partition.
 
 ## Fixed-counter samples and stacks
 
