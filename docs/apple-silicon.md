@@ -264,6 +264,7 @@ An experimental `m1` mode requests this exact order through a local Instruments
 package and exports the raw counter vector with the stack and core label:
 
 ```sh
+export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 xcrun clang -O3 -g examples/apple-m1-controls.c -o /tmp/apple-m1-controls
 poetry run topdown apple probe --mode m1 --output /tmp/m1-event-probe-001
 poetry run topdown apple record --mode m1 --duration 5 \
@@ -494,6 +495,9 @@ the Intel `tma` fields unset.
 Build the package and record a control with:
 
 ```sh
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
+  xcrun clang -O3 -g examples/apple-m1-controls.c \
+  -o /tmp/apple-m1-controls-xcode271
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
   xcrun instrumentbuilder -i examples/apple-m1-tma-calibration.instrpkg \
   -o /tmp/m1-calibration.instrdst -l 'CPU Counters'
@@ -1056,11 +1060,13 @@ are the primary methodology references.
 
 The `cpu-pmc-value` and cycle importers are tested against schema-shaped synthetic
 rows, based on the installed Xcode declarations. The fixed `counters-profile`
-importer also has a measured M6 fixture and successful native captures.
-Programmable-event export remains **unvalidated**. Before enabling derived
-bottleneck shares, identify the actual formulas and denominators, and
-run scoped idle/N/2N controls with known checksums and matched conditions. Verify
-sampling, loss and heterogeneous-core semantics rather than renaming native metrics.
+importer also has a measured M6 fixture and successful native captures. M1
+programmable-event groups have native captures, but their exported vector
+positions still lack verified event labels. Xcode's guided M1 bottleneck shares
+are available separately; derived shares from raw programmable events remain
+experimental. Before using raw events for a broader TMA claim, verify their
+labels, formulas, denominators, sampling, loss, and heterogeneous-core semantics
+with scoped controls and matched conditions.
 
 ## Development evidence
 
