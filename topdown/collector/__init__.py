@@ -1,4 +1,4 @@
-"""Collector layer — auto-selects toplev (Intel), perf stat (ARM), or uprof_pcm (AMD)."""
+"""Collector dispatch, with native Apple profiles separate from Linux slot TMA."""
 
 import logging
 import platform as _platform
@@ -9,11 +9,12 @@ logger = logging.getLogger(__name__)
 def resolve_collector(config) -> str:
     """Determine which collector to use based on config and platform.
 
-    Returns ``"toplev"``, ``"perf_stat"``, ``"uprof_pcm"``, or
-    ``"perf_stat_amd"``.
+    Returns ``"toplev"``, ``"perf_stat"``, ``"uprof_pcm"``,
+    ``"perf_stat_amd"`` or ``"apple"`` (native CLI; no slot-TMA runner).
 
     Dispatch order:
       * explicit ``config.collector`` wins
+      * Darwin arm64 -> native ``topdown apple`` commands
       * aarch64 -> ``perf_stat``
       * x86_64 + AuthenticAMD + AMDuProfPcm installed -> ``uprof_pcm``
       * x86_64 + AuthenticAMD + no AMDuProfPcm -> ``perf_stat_amd``
@@ -24,6 +25,8 @@ def resolve_collector(config) -> str:
         return config.collector
 
     arch = _platform.machine()
+    if _platform.system() == "Darwin" and arch == "arm64":
+        return "apple"
     if arch == "aarch64":
         return "perf_stat"
 
@@ -59,9 +62,15 @@ def make_runner(
     On Intel x86_64 (default): ``ToplevRunner`` wrapping pmu-tools/toplev.
     On aarch64 (default): ``PerfStatRunner`` wrapping ``perf stat --topdown``.
     On AMD x86_64 (default): ``UprofPcmRunner`` wrapping AMDuProfPcm.
+    On Apple silicon: direct callers to the separate native Instruments CLI.
     Override with ``TOPDOWN_COLLECTOR`` env var or ``config.collector``.
     """
     collector = resolve_collector(config)
+
+    if collector == "apple":
+        from topdown.collector.apple import APPLE_COLLECTION_MESSAGE
+
+        raise RuntimeError(APPLE_COLLECTION_MESSAGE)
 
     if collector == "perf_stat":
         from topdown.collector.perf_stat import PerfStatRunner, PerfStatOptions

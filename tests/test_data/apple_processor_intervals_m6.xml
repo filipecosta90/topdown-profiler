@@ -1,0 +1,173 @@
+<?xml version='1.0' encoding='utf-8'?>
+<trace-query-result>
+  <node>
+    <schema name="processor-trace-intervals">
+      <col>
+        <mnemonic>start</mnemonic>
+        <name>Start</name>
+        <engineering-type>start-time</engineering-type>
+      </col>
+      <col>
+        <mnemonic>duration</mnemonic>
+        <name>Total duration</name>
+        <engineering-type>duration</engineering-type>
+      </col>
+      <col>
+        <mnemonic>process</mnemonic>
+        <name>Process</name>
+        <engineering-type>process</engineering-type>
+      </col>
+      <col>
+        <mnemonic>thread</mnemonic>
+        <name>Thread</name>
+        <engineering-type>thread</engineering-type>
+      </col>
+      <col>
+        <mnemonic>depth</mnemonic>
+        <name>Depth</name>
+        <engineering-type>layout-id</engineering-type>
+      </col>
+      <col>
+        <mnemonic>name</mnemonic>
+        <name>Name</name>
+        <engineering-type>text-location</engineering-type>
+      </col>
+      <col>
+        <mnemonic>color</mnemonic>
+        <name>Color</name>
+        <engineering-type>event-concept</engineering-type>
+      </col>
+      <col>
+        <mnemonic>self-instructions</mnemonic>
+        <name>Instructions</name>
+        <engineering-type>uint64</engineering-type>
+      </col>
+      <col>
+        <mnemonic>self-cycles</mnemonic>
+        <name>Cycles</name>
+        <engineering-type>uint64</engineering-type>
+      </col>
+      <col>
+        <mnemonic>self-duration</mnemonic>
+        <name>Duration</name>
+        <engineering-type>duration</engineering-type>
+      </col>
+      <col>
+        <mnemonic>backtrace</mnemonic>
+        <name>Backtrace</name>
+        <engineering-type>text-backtrace</engineering-type>
+      </col>
+    </schema>
+    <row>
+      <start-time fmt="00:00.742.587">742587750</start-time>
+      <duration fmt="236.12 µs">236125</duration>
+      <process fmt="fixture">
+        <pid fmt="42">42</pid>
+        <device-session fmt="fixture">fixture</device-session>
+      </process>
+      <thread fmt="fixture">
+        <tid fmt="420">420</tid>
+        <process fmt="fixture">
+          <pid fmt="42">42</pid>
+          <device-session fmt="fixture">fixture</device-session>
+        </process>
+      </thread>
+      <layout-id fmt="1">1</layout-id>
+      <text-location fmt="main  microbench">
+        <uuid fmt="72AB5721-4783-3C12-8774-8839A26A8C00">
+          <eight-byte-array fmt="0x72ab572147833c12">8262793741786627090</eight-byte-array>
+          <eight-byte-array fmt="0x87748839a26a8c00">9760576073538112512</eight-byte-array>
+        </uuid>
+        <mach-o-vm-offset fmt="0x4e0">1248</mach-o-vm-offset>
+      </text-location>
+      <event-concept fmt="Blue">Blue</event-concept>
+      <uint64 fmt="28">28</uint64>
+      <uint64 fmt="488">488</uint64>
+      <duration fmt="236.12 µs">236125</duration>
+      <text-backtrace>
+        <frame name="main" addr="0x1041204e0">
+          <binary name="microbench" UUID="72AB5721-4783-3C12-8774-8839A26A8C00" arch="arm64" load-addr="0x104120000" />
+          <source line="28">
+            <path>/Users/oly/redislabs/topdown-profiler/.local-runs/m6-topdown-20261021T053316Z/microbench.c</path>
+          </source>
+        </frame>
+      </text-backtrace>
+    </row>
+    <row>
+      <start-time fmt="00:00.742.590">742590916</start-time>
+      <duration fmt="1 ns">1</duration>
+      <process fmt="fixture">
+        <pid fmt="42">42</pid>
+        <device-session fmt="fixture">fixture</device-session>
+      </process>
+      <thread fmt="fixture">
+        <tid fmt="420">420</tid>
+        <process fmt="fixture">
+          <pid fmt="42">42</pid>
+          <device-session fmt="fixture">fixture</device-session>
+        </process>
+      </thread>
+      <layout-id fmt="2">2</layout-id>
+      <text-location fmt="0x104120460  microbench">
+        <uuid fmt="72AB5721-4783-3C12-8774-8839A26A8C00">
+          <eight-byte-array fmt="0x72ab572147833c12">8262793741786627090</eight-byte-array>
+          <eight-byte-array fmt="0x87748839a26a8c00">9760576073538112512</eight-byte-array>
+        </uuid>
+        <mach-o-vm-offset fmt="0x460">1120</mach-o-vm-offset>
+      </text-location>
+      <event-concept fmt="Blue">Blue</event-concept>
+      <uint64 fmt="8">8</uint64>
+      <uint64 fmt="7">7</uint64>
+      <sentinel />
+      <text-backtrace>
+        <frame name="0x104120460" addr="0x104120460">
+          <binary name="microbench" UUID="72AB5721-4783-3C12-8774-8839A26A8C00" arch="arm64" load-addr="0x104120000" />
+        </frame>
+        <frame name="main" addr="0x104120640">
+          <binary name="microbench" UUID="72AB5721-4783-3C12-8774-8839A26A8C00" arch="arm64" load-addr="0x104120000" />
+          <source line="28">
+            <path>/Users/oly/redislabs/topdown-profiler/.local-runs/m6-topdown-20261021T053316Z/microbench.c</path>
+          </source>
+        </frame>
+      </text-backtrace>
+    </row>
+    <row>
+      <start-time fmt="00:00.742.590">742590916</start-time>
+      <duration fmt="231.54 µs">231542</duration>
+      <process fmt="fixture">
+        <pid fmt="42">42</pid>
+        <device-session fmt="fixture">fixture</device-session>
+      </process>
+      <thread fmt="fixture">
+        <tid fmt="420">420</tid>
+        <process fmt="fixture">
+          <pid fmt="42">42</pid>
+          <device-session fmt="fixture">fixture</device-session>
+        </process>
+      </thread>
+      <layout-id fmt="2">2</layout-id>
+      <text-location fmt="0x10412046c  microbench">
+        <uuid fmt="72AB5721-4783-3C12-8774-8839A26A8C00">
+          <eight-byte-array fmt="0x72ab572147833c12">8262793741786627090</eight-byte-array>
+          <eight-byte-array fmt="0x87748839a26a8c00">9760576073538112512</eight-byte-array>
+        </uuid>
+        <mach-o-vm-offset fmt="0x46c">1132</mach-o-vm-offset>
+      </text-location>
+      <event-concept fmt="Blue">Blue</event-concept>
+      <uint64 fmt="499 996">499996</uint64>
+      <uint64 fmt="600 006">600006</uint64>
+      <duration fmt="231.54 µs">231542</duration>
+      <text-backtrace>
+        <frame name="0x10412046c" addr="0x10412046c">
+          <binary name="microbench" UUID="72AB5721-4783-3C12-8774-8839A26A8C00" arch="arm64" load-addr="0x104120000" />
+        </frame>
+        <frame name="main" addr="0x104120640">
+          <binary name="microbench" UUID="72AB5721-4783-3C12-8774-8839A26A8C00" arch="arm64" load-addr="0x104120000" />
+          <source line="28">
+            <path>/Users/oly/redislabs/topdown-profiler/.local-runs/m6-topdown-20261021T053316Z/microbench.c</path>
+          </source>
+        </frame>
+      </text-backtrace>
+    </row>
+  </node>
+</trace-query-result>

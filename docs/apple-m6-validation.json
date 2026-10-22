@@ -1,0 +1,103 @@
+{
+  "recorded_at_utc": "2026-10-20T12:07:57.012637+00:00",
+  "upstream_commit": "71dea5e",
+  "branch": "feat/apple-silicon-profiling",
+  "participant": "One Codex controller; sequential implementation/review; exact serving model/token/currency costs unknown",
+  "machine": {
+    "cpu": "Apple M6",
+    "system": "macOS 27.0",
+    "architecture": "arm64",
+    "xctrace": "27.0 (27A266a)",
+    "python": "3.13.15"
+  },
+  "dependencies": {
+    "pytest": "8.4.2",
+    "pytest-cov": "6.3.0",
+    "ruff": "0.15.22",
+    "mcp": "1.30.0",
+    "typer": "0.27.3"
+  },
+  "scope": "Native Instruments capture/export only; no performance comparison, TMA qualification, optimization acceptance or upstream publication",
+  "commands": [
+    "xcrun clang -O3 -g examples/apple-probe.c -o <local-output>/apple-probe",
+    "topdown apple doctor",
+    "topdown apple record --mode time --duration 4 --output <new-directory> -- <owned-probe>",
+    "topdown apple record --mode counters --duration 4 --output <new-directory> -- <owned-probe>",
+    "topdown apple export <existing-trace> --mode time --output <new-directory>",
+    "pytest -q --cov=topdown",
+    "ruff check topdown/ tests/"
+  ],
+  "native_time_profile": {
+    "rows": 372,
+    "alu_leaf_samples": 368,
+    "target_exit_status": "0",
+    "checksum_output": "checksum=9087321014236724183 expected=9087321014236724183",
+    "tma": {
+      "Frontend_Bound": null,
+      "Bad_Speculation": null,
+      "Backend_Bound": null,
+      "Retiring": null
+    },
+    "raw_audit": {
+      "kind": "Separate sequential raw-XML reconstruction, not an independent participant",
+      "sample_rows": 372,
+      "alu_leaf_rows": 368,
+      "result": "PASS"
+    },
+    "capture_collector_sha256": "6ee7643b8bfb7221bb895088560a3f5b235689c750f9ac87013917b0a824c27b",
+    "offline_export_note": "Existing final trace reexported after adding native column/event provenance; no new workload. Earlier artifacts retained.",
+    "artifact_sha256": {
+      "profile.json": "9d31c461f67dfba6e332e09a9e77464e12c915a1c499f6ad541472dbe971c42b",
+      "toc.xml": "d87d9b96f2c69ba71ed7e12e76610bf66c196edde6e07437b3af4a10ea4b1b30",
+      "samples.xml": "726db84ef4c7e87b659f7a3082d72c208dc8cc50152b72440002a3f4a2c5b28b",
+      "RAW-AUDIT.json": "23e052388b457acf8224e03b196193eb45dbd576f7f9990deb16743788b62a8e"
+    }
+  },
+  "hardware_counters": {
+    "cpu_counters": "Recorder exits 0, no cpu-pmc-value/counters-profile table. PMU export correctly fails instead of accepting timer samples.",
+    "cpu_profiler": "Recorder exit 2: configureHardwareCounters: Failed set kpc configuration: Operation not permitted.",
+    "positive_pmu_validation": false,
+    "positive_cycle_profile_validation": false,
+    "synthetic_tests": "PMC and cycle parser positive tests are schema-shaped synthetic rows, not measured hardware results.",
+    "upstream_issue": "https://developer.apple.com/forums/thread/849179",
+    "host_settings": "Developer Tools Security disabled; cause/remedy unproven; no privilege or host/agent permission setting changed."
+  },
+  "tests": {
+    "baseline": "353 passed, 2 failed: host-dependent Intel command expectations. Original checks retained locally.",
+    "after": "398 passed; 3 existing MCP-authentication deprecation warnings",
+    "lint": "PASS with declared ruff 0.15.x",
+    "whitespace": "PASS",
+    "baseline_line_coverage_percent": 62.410071942446045,
+    "after_line_coverage_percent": 65.99868593955323,
+    "apple_collector_line_coverage_percent": 93.98148148148148,
+    "apple_cli_line_coverage_percent": 97.05882352941177
+  },
+  "cpu_perf_consultation": {
+    "transport": "local MCP stdio; offline uvx",
+    "version": "0.1.1",
+    "library_revision": "deb5a0bac467",
+    "calls": [
+      "initialize",
+      "tools/list",
+      "library_status",
+      "ask"
+    ],
+    "coverage": "0/287 sources indexed; no supporting passages; unread suggestions are not evidence",
+    "raw_calls_sha256": {
+      "discover-calls.jsonl": "624ff6a122992c80d0b82f50d62d0a535e40d8fb8675ee8909bb7b4fddb361dd",
+      "consult-calls.jsonl": "f93116a3859aaee536411c2ef0411b63507971f56ff1b1b57fe3b3859033b463"
+    }
+  },
+  "source_sha256": {
+    "topdown/collector/apple.py": "78d5f53375db412ea902750991c967ff7fc6ccb64a123c2a42edc612d47fdf02",
+    "topdown/apple_cli.py": "f5c8243199ca106d3597ff725a955a8319c4a74e5cf57ca8c4e65a0892801b46",
+    "topdown/collector/__init__.py": "8c2978b0331734d25d8d31ee65e87692222ce34177f8adfcf60012fb2f68580c",
+    "topdown/cli.py": "853bf1cc3003b76feebb137bc01eecc474c505866c870d40d190b994fab6bdc2",
+    "topdown/mcp_server.py": "e1a748b89fcf414f2f443a63e84d20c6194d5cd5546360d6267ce5015a08f9af",
+    "examples/apple-probe.c": "0fbff0a40c6c4e1eddcb582f194df6665e6be32908a6043e7317d5a3cb6dc448",
+    "tests/test_apple.py": "a8c0823d9b3c153a67d2c79c9d7e4ce31983537852acb5bfad0813123517bc8b",
+    "tests/test_data/apple_time_profile_m6.xml": "d35e9c4909ca41b6579a87e7371122e95f7274a90a77a695e1172c680c303a71"
+  },
+  "raw_artifacts": "Local .local-runs only; no raw trace/device metadata committed",
+  "remaining_requirement": "Successful native M6 PMU capture plus event/formula/denominator and scoped-control validation before reporting TMA shares."
+}

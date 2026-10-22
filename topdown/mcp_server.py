@@ -95,6 +95,11 @@ def collect_topdown(
     config = get_config()
     collector = resolve_collector(config)
 
+    if collector == "apple":
+        from topdown.collector.apple import APPLE_COLLECTION_MESSAGE
+
+        return APPLE_COLLECTION_MESSAGE
+
     ok, msg = check_perf_permissions()
     if not ok:
         return f"Error: {msg}"

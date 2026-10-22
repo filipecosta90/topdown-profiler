@@ -1,0 +1,1467 @@
+{
+  "schema_version": 1,
+  "date_utc": "2026-10-21",
+  "session_started_utc": "2026-10-21T06:09:27.799422+00:00",
+  "artifact_root": ".local-runs/m6-deep-20261021T060927Z",
+  "scope": "CLI only; one sequential investigation; no GUI, sub-agents, kernel installation, reboot or host permission/security changes",
+  "base_commit": "645dba6c8ea34a6ef362cf05c3f2d43abfb076b8",
+  "environment": {
+    "cpu": "Apple M6",
+    "macos": "27.0.1",
+    "build": "26A434",
+    "xctrace": "27.0 (27A266a)",
+    "SIP": "enabled",
+    "authenticated_root": "enabled",
+    "kern.cpc.secure": 1
+  },
+  "sources": {
+    "xnu_commit": "f6217f891ac0bb64f3d375211650a4c1ff8ca1ea",
+    "recount": "https://github.com/apple-oss-distributions/xnu/blob/f6217f891ac0bb64f3d375211650a4c1ff8ca1ea/doc/observability/recount.md",
+    "cpu_counters": "https://github.com/apple-oss-distributions/xnu/blob/f6217f891ac0bb64f3d375211650a4c1ff8ca1ea/doc/observability/cpu_counters.md"
+  },
+  "working_new_paths": {
+    "soc": {
+      "command": "topdown apple soc --duration 1 --output NEW_DIRECTORY",
+      "root_required": false,
+      "xcode_required": false,
+      "private_API": "IOReport/CoreFoundation, stdlib ctypes",
+      "scope": "system/cluster, all processes, no PID attribution",
+      "native_channels_observed": 27,
+      "stall_channels": 6,
+      "bandwidth_histograms": 9,
+      "core_performance_states": 12,
+      "stall_bandwidth_native_unit": "events",
+      "core_state_native_unit": "24Mticks",
+      "native_values": "Exact uint64 before/after differences; zero observations produce null shares",
+      "exact_bandwidth_or_stall_percentage_derived": false,
+      "installed_wheel_native_capture": "completed",
+      "native_interrupt_validation": {
+        "parent_returncode": 130,
+        "native_child_PIDs_observed": [
+          7142
+        ],
+        "still_running_children_after_parent_exit": [],
+        "status": "interrupted",
+        "channels": null,
+        "stderr": ""
+      }
+    },
+    "scheduling": {
+      "scope": "time intersections for each decoded execution interval and TID",
+      "single_core_rule": "Entire positive-duration interval covered by native Running on one known core",
+      "never_prorates_instruction_cycle_values": true,
+      "native_XML_time_audit": [
+        {
+          "profile": "trace-scheduled-export/profile.json",
+          "intervals_checked": 22005,
+          "single_core_intervals": 21994,
+          "intervals_intersecting_Blocked": 2,
+          "independent_brute_force_time_intersection_matches": true,
+          "no_instruction_or_cycle_proration": true
+        },
+        {
+          "profile": "microbench-scheduled-profile.json",
+          "intervals_checked": 24139,
+          "single_core_intervals": 24125,
+          "intervals_intersecting_Blocked": 5,
+          "independent_brute_force_time_intersection_matches": true,
+          "no_instruction_or_cycle_proration": true
+        },
+        {
+          "profile": "wheel-trace/profile.json",
+          "intervals_checked": 22088,
+          "single_core_intervals": 22047,
+          "intervals_intersecting_Blocked": 2,
+          "independent_brute_force_time_intersection_matches": true,
+          "no_instruction_or_cycle_proration": true
+        },
+        {
+          "profile": "schedule-sleep-trace/profile.json",
+          "intervals_checked": 21489,
+          "single_core_intervals": 21470,
+          "intervals_intersecting_Blocked": 6,
+          "independent_brute_force_time_intersection_matches": true,
+          "no_instruction_or_cycle_proration": true
+        }
+      ],
+      "fresh_trace_scalar_audit": [
+        {
+          "recording": "wheel-trace",
+          "intervals": 22088,
+          "all_nine_scalar_fields_match_native_XML": true,
+          "counters_unchanged_after_scheduling_annotation": true,
+          "tma_available": false,
+          "coverage_complete": false
+        },
+        {
+          "recording": "schedule-sleep-trace",
+          "intervals": 21489,
+          "all_nine_scalar_fields_match_native_XML": true,
+          "counters_unchanged_after_scheduling_annotation": true,
+          "tma_available": false,
+          "coverage_complete": false
+        }
+      ],
+      "sleep_control": {
+        "target": {
+          "checksum": "2700328192655336907",
+          "first_sleep_ns": 110038834,
+          "work_ns": 267875,
+          "second_sleep_ns": 103387750
+        },
+        "blocked_spans": [
+          {
+            "start_ns": 0,
+            "duration_ns": 608793375,
+            "synthetic_start_boundary": true
+          },
+          {
+            "start_ns": 611381333,
+            "duration_ns": 110002500,
+            "synthetic_start_boundary": false
+          },
+          {
+            "start_ns": 721690166,
+            "duration_ns": 103351250,
+            "synthetic_start_boundary": false
+          },
+          {
+            "start_ns": 825210041,
+            "duration_ns": 8103000,
+            "synthetic_start_boundary": false
+          },
+          {
+            "start_ns": 834276000,
+            "duration_ns": 4166,
+            "synthetic_start_boundary": false
+          }
+        ],
+        "blocked_excluding_time_zero_ns": 221460916,
+        "note": "Blocked excludes runnable wakeup latency; time-zero model boundary excluded; no process-wide waiting percentage."
+      }
+    },
+    "installed_wheel": {
+      "outside_checkout": true,
+      "intervals": 22088,
+      "gap_markers": 4665,
+      "single_core_intervals": 22047,
+      "target_checksum": "2700328192655336907",
+      "trace_coverage_complete": false,
+      "wheel_sha256": "6976e03d5a89ccb9636b349df4478231c693e7093599a51d2b3608cf4b91d0a8"
+    }
+  },
+  "firmware_controls": {
+    "randomized_within_each_set": true,
+    "sequential_captures": true,
+    "trials": 234,
+    "QoS_is_not_core_pinning": true,
+    "wall_seconds_per_workload": 1.6,
+    "firmware_observer_requested_seconds": 1.0,
+    "label_weighted_mean_is_not_a_calibrated_stall_percentage": true,
+    "experiments": [
+      {
+        "name": "firmware-controls",
+        "trials": 54,
+        "checksums_verified": true,
+        "summary_sha256": "856f2c4f37cbbf954eabe48112fff8e9ec903e86e5fa45febed63ae81afc890c",
+        "conditions": [
+          {
+            "mode": "branch-easy",
+            "qos": "background",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.154467894027841,
+              "M$ Stall": 4.000898069151325,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "branch-easy",
+            "qos": "interactive",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.172584269662921,
+              "M$ Stall": 4.000898069151325,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "branch-random",
+            "qos": "background",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.138838475499092,
+              "M$ Stall": 4.0018124150430445,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "branch-random",
+            "qos": "interactive",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.151011235955056,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "branchless",
+            "qos": "background",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.1795332136445245,
+              "M$ Stall": 4.000903546419697,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "branchless",
+            "qos": "interactive",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.14917995955965,
+              "M$ Stall": 4.000898472596586,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "chase-large",
+            "qos": "background",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 89.7023381294964,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "chase-large",
+            "qos": "interactive",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 89.61114857271296,
+              "M$ Stall": 4.000899078444594,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "chase-small",
+            "qos": "background",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.16427289048474,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "chase-small",
+            "qos": "interactive",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.180309486431935,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "idle",
+            "qos": "background",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 11.619047619047619,
+              "M$ Stall": 4.076923076923077,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "idle",
+            "qos": "interactive",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 9.777777777777779,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "ilp",
+            "qos": "background",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.151841868823001,
+              "M$ Stall": 4.000898472596586,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "ilp",
+            "qos": "interactive",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.181695525073083,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "serial",
+            "qos": "background",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.160862727476972,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "serial",
+            "qos": "interactive",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.1823489782169325,
+              "M$ Stall": 4.000898472596586,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "stream",
+            "qos": "background",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 21.748987854251013,
+              "M$ Stall": 4.00629354911216,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "stream",
+            "qos": "interactive",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 18.893540400630204,
+              "M$ Stall": 4.002694207453974,
+              "Core Block Slot": 4.0
+            }
+          }
+        ]
+      },
+      {
+        "name": "firmware-size-controls",
+        "trials": 42,
+        "checksums_verified": true,
+        "summary_sha256": "bab769f0f6b4cb90c0ab4ee7dc81059d096faa8fc35f156fb32b70354f4d2dcb",
+        "conditions": [
+          {
+            "mode": "chase-large",
+            "qos": "background",
+            "workers": 1,
+            "nodes": 1048576,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 86.73504273504274,
+              "M$ Stall": 6.58273381294964,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "chase-large",
+            "qos": "background",
+            "workers": 1,
+            "nodes": 128,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.148414661569597,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "chase-large",
+            "qos": "background",
+            "workers": 1,
+            "nodes": 16384,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.147515178772206,
+              "M$ Stall": 4.000899685110212,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "chase-large",
+            "qos": "background",
+            "workers": 1,
+            "nodes": 262144,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.954351248032381,
+              "M$ Stall": 12.982106455266138,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "chase-large",
+            "qos": "background",
+            "workers": 1,
+            "nodes": 4096,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.112435349673937,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "chase-large",
+            "qos": "background",
+            "workers": 1,
+            "nodes": 4194304,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 89.61797752808988,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "chase-large",
+            "qos": "background",
+            "workers": 1,
+            "nodes": 65536,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.223172103487064,
+              "M$ Stall": 4.005400540054006,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "chase-large",
+            "qos": "interactive",
+            "workers": 1,
+            "nodes": 1048576,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 86.81668545659527,
+              "M$ Stall": 6.609164420485175,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "chase-large",
+            "qos": "interactive",
+            "workers": 1,
+            "nodes": 128,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.174696082845565,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "chase-large",
+            "qos": "interactive",
+            "workers": 1,
+            "nodes": 16384,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.158060170633139,
+              "M$ Stall": 4.001800585190187,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "chase-large",
+            "qos": "interactive",
+            "workers": 1,
+            "nodes": 262144,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.930337078651686,
+              "M$ Stall": 6.169140800719748,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "chase-large",
+            "qos": "interactive",
+            "workers": 1,
+            "nodes": 4096,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.130366374466172,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "chase-large",
+            "qos": "interactive",
+            "workers": 1,
+            "nodes": 4194304,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 89.60898876404494,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "chase-large",
+            "qos": "interactive",
+            "workers": 1,
+            "nodes": 65536,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.2204724409448815,
+              "M$ Stall": 4.0036044154088755,
+              "Core Block Slot": 4.0
+            }
+          }
+        ]
+      },
+      {
+        "name": "firmware-concurrency-controls",
+        "trials": 54,
+        "checksums_verified": true,
+        "summary_sha256": "b094f19f58c76e3af579f531c1039876605272c7658db8aaafcd45f14735ac34",
+        "conditions": [
+          {
+            "mode": "chase-large",
+            "qos": "background",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 89.50644650531554,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "chase-large",
+            "qos": "background",
+            "workers": 2,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 89.3069840556928,
+              "M$ Stall": 4.000900090009001,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "chase-large",
+            "qos": "background",
+            "workers": 6,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 89.55605583070688,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "chase-large",
+            "qos": "interactive",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 89.66307277628033,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "chase-large",
+            "qos": "interactive",
+            "workers": 2,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 47.37991462592676,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "chase-large",
+            "qos": "interactive",
+            "workers": 6,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 16.299887766554434,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "serial",
+            "qos": "background",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.091809180918092,
+              "M$ Stall": 4.0072007200720074,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "serial",
+            "qos": "background",
+            "workers": 2,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.126684636118599,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "serial",
+            "qos": "background",
+            "workers": 6,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.1689887640449435,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "serial",
+            "qos": "interactive",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.123063103525713,
+              "M$ Stall": 4.000899078444594,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "serial",
+            "qos": "interactive",
+            "workers": 2,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.126542517388378,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "serial",
+            "qos": "interactive",
+            "workers": 6,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.073493166031817,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "stream",
+            "qos": "background",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 21.144014401440145,
+              "M$ Stall": 4.027902790279028,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "stream",
+            "qos": "background",
+            "workers": 2,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 30.990238365493756,
+              "M$ Stall": 4.0027014858172,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "stream",
+            "qos": "background",
+            "workers": 6,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 35.06316026073275,
+              "M$ Stall": 4.001806684733514,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "stream",
+            "qos": "interactive",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 22.59627050101101,
+              "M$ Stall": 4.008988764044944,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "stream",
+            "qos": "interactive",
+            "workers": 2,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 17.558102944481906,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "stream",
+            "qos": "interactive",
+            "workers": 6,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.509090909090909,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.347044279613396
+            }
+          }
+        ]
+      },
+      {
+        "name": "firmware-disjoint-controls",
+        "trials": 54,
+        "checksums_verified": true,
+        "summary_sha256": "bc5593bea39ff741bfb492e3da239c16edd462ebd3c99164c47fe1a43d945078",
+        "conditions": [
+          {
+            "mode": "chase-large",
+            "qos": "background",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 91.78687050359713,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "chase-large",
+            "qos": "background",
+            "workers": 2,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 91.82995951417004,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "chase-large",
+            "qos": "background",
+            "workers": 6,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 79.31255645889792,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "chase-large",
+            "qos": "interactive",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 91.81642294713161,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "chase-large",
+            "qos": "interactive",
+            "workers": 2,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 91.842555105713,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "chase-large",
+            "qos": "interactive",
+            "workers": 6,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 91.77507872244715,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "serial",
+            "qos": "background",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.009898762654668,
+              "M$ Stall": 4.000899482797392,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "serial",
+            "qos": "background",
+            "workers": 2,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.017070979335131,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "serial",
+            "qos": "background",
+            "workers": 6,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.017961383026493,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "serial",
+            "qos": "interactive",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.014378791282858,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "serial",
+            "qos": "interactive",
+            "workers": 2,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.01798965594783,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "serial",
+            "qos": "interactive",
+            "workers": 6,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.0125814423725,
+              "M$ Stall": 4.000893655049151,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "stream",
+            "qos": "background",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 12.00089968511021,
+              "M$ Stall": 4.000899685110212,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "stream",
+            "qos": "background",
+            "workers": 2,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 23.721160332808633,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "stream",
+            "qos": "background",
+            "workers": 6,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 38.370869858395146,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "stream",
+            "qos": "interactive",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 12.369604316546763,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "stream",
+            "qos": "interactive",
+            "workers": 2,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 29.769784172661872,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "stream",
+            "qos": "interactive",
+            "workers": 6,
+            "nodes": null,
+            "instruction_blocks": null,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 9.798965594783,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          }
+        ]
+      },
+      {
+        "name": "firmware-frontend-controls",
+        "trials": 30,
+        "checksums_verified": true,
+        "summary_sha256": "505743bd885487648788e6fa4054c94ad07b7eeae896d60727712efecd90c04b",
+        "conditions": [
+          {
+            "mode": "frontend",
+            "qos": "background",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": 1024,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.214590347923681,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "frontend",
+            "qos": "background",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": 16384,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.156810035842294,
+              "M$ Stall": 4.000897867564534,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "frontend",
+            "qos": "background",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": 4,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.177777777777778,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "frontend",
+            "qos": "background",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": 64,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.121293800539084,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "frontend",
+            "qos": "background",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": 65536,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.131739228513422,
+              "M$ Stall": 4.001797348910357,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "frontend",
+            "qos": "interactive",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": 1024,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.181081081081081,
+              "M$ Stall": 4.000898472596586,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "frontend",
+            "qos": "interactive",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": 16384,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.18675645342312,
+              "M$ Stall": 4.0,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "frontend",
+            "qos": "interactive",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": 4,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.161688749157871,
+              "M$ Stall": 4.00179654165731,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "frontend",
+            "qos": "interactive",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": 64,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.183164983164983,
+              "M$ Stall": 4.00179654165731,
+              "Core Block Slot": 4.0
+            }
+          },
+          {
+            "mode": "frontend",
+            "qos": "interactive",
+            "workers": 1,
+            "nodes": null,
+            "instruction_blocks": 65536,
+            "repetitions": 3,
+            "PACC0_native_label_weighted_mean_medians": {
+              "DRAM Stall": 4.172739541160594,
+              "M$ Stall": 4.002699662542182,
+              "Core Block Slot": 4.0
+            }
+          }
+        ]
+      }
+    ],
+    "raw_scalar_audit": {
+      "trials": 234,
+      "channels_checked": 6318,
+      "state_rows_checked": 143208,
+      "snapshots_checked": 702,
+      "failures": [],
+      "sets": {
+        "firmware-controls": 54,
+        "firmware-size-controls": 42,
+        "firmware-concurrency-controls": 54,
+        "firmware-disjoint-controls": 54,
+        "firmware-frontend-controls": 30
+      },
+      "native_JSON_matches_independent_RawElements_decoding": true,
+      "native_delta_equals_manual_after_minus_before": true
+    },
+    "raw_manifest_sha256": "64767ce7fbb3a4b3641f6cfe8e1ecf0c748e71d7771394a761a81ad5a2f555a3",
+    "raw_manifest_files": 1872,
+    "python_FFI_raw_audit": {
+      "snapshots": 2,
+      "channels_per_snapshot": 27,
+      "state_fields_checked": 1224,
+      "all_native_fields_match_independent_bytes": true,
+      "delta_channels": 27
+    },
+    "frontend_throughput": [
+      {
+        "blocks": 4,
+        "code_footprint_bytes": 256,
+        "median_blocks_per_second": 4744056404.969827
+      },
+      {
+        "blocks": 64,
+        "code_footprint_bytes": 4096,
+        "median_blocks_per_second": 4361815653.986703
+      },
+      {
+        "blocks": 1024,
+        "code_footprint_bytes": 65536,
+        "median_blocks_per_second": 965059987.523936
+      },
+      {
+        "blocks": 16384,
+        "code_footprint_bytes": 1048576,
+        "median_blocks_per_second": 247436406.53304607
+      },
+      {
+        "blocks": 65536,
+        "code_footprint_bytes": 4194304,
+        "median_blocks_per_second": 127681921.47968699
+      }
+    ],
+    "conclusions": [
+      "Large dependent pointer chains consistently move the native DRAM Stall histogram to high buckets under these controls.",
+      "Shared pointer chains permit cooperative cache warming; disjoint per-worker controls resolve this confound.",
+      "Core Block Slot stayed in the first bucket even as static branch-ring throughput fell about 37x; no frontend classification is established.",
+      "Background activity, cluster scheduling, unknown bucket boundaries and unknown active-time denominator prevent per-process or wall-time attribution."
+    ]
+  },
+  "OS_counter_experiments": {
+    "uncore": {
+      "device": "/dev/monotonic/uncore",
+      "monitors": 2,
+      "counters": 24,
+      "selectors_tested": 65536,
+      "accepted_disabled_selectors": [
+        0
+      ],
+      "nonzero_EPERM_rejections": 65535,
+      "unexpected_results": 0,
+      "ever_enabled": false,
+      "ownership_closed": true,
+      "log_sha256": "16e4662e8077b152c88293df30d5729d33f160dc485be3fd27fc5ff2724373b0"
+    },
+    "AMC": {
+      "single_channel_subscription_attempts": 207,
+      "successful_without_root": 0,
+      "root_comparison": "not completed; interactive CLI authentication unavailable",
+      "summary_sha256": "d71593ee72013cf09cc5fb570cb7d0ad08eee793090b93cff607080dfe877ed9"
+    },
+    "PMP_DSID_simple": {
+      "channels": 60,
+      "heavy_load_controls": [
+        "serial 6 workers",
+        "128 MiB per worker random chain, 6 workers",
+        "64 MiB per worker streaming, 6 workers"
+      ],
+      "nonzero_deltas": 0,
+      "meaning": "Readable but no responsive traffic counter established",
+      "artifact_sha256": "c642161a4fe565051fe58673855f6fd7f9eb3e39b971a0040c458b9d21767e3a"
+    },
+    "kernel_patch": "Offline inspection/source proposal only; no bootable patch built/tested or host kernel altered"
+  },
+  "recount_exec_control": {
+    "trials": 5,
+    "phases": 10,
+    "same_program_checksum_both_phases": true,
+    "all_10_thread_vs_process_instruction_deltas_match_exactly": true,
+    "cumulative_offsets_change_across_exec": true,
+    "interpretation": "Supports phase-local agreement only. Exact cause of exec-dependent cumulative offset remains unresolved; no cross-source lifetime equivalence or IPC derived.",
+    "summary": [
+      {
+        "trial": 0,
+        "phase_instruction_deltas": [
+          {
+            "thread": 25073719,
+            "process": 25073719,
+            "difference": 0
+          },
+          {
+            "thread": 25052429,
+            "process": 25052429,
+            "difference": 0
+          }
+        ],
+        "offsets": [
+          2616447,
+          2616447,
+          5621782,
+          5621782
+        ]
+      },
+      {
+        "trial": 1,
+        "phase_instruction_deltas": [
+          {
+            "thread": 25052549,
+            "process": 25052549,
+            "difference": 0
+          },
+          {
+            "thread": 25084103,
+            "process": 25084103,
+            "difference": 0
+          }
+        ],
+        "offsets": [
+          2628027,
+          2628027,
+          5622210,
+          5622210
+        ]
+      },
+      {
+        "trial": 2,
+        "phase_instruction_deltas": [
+          {
+            "thread": 25066703,
+            "process": 25066703,
+            "difference": 0
+          },
+          {
+            "thread": 25056796,
+            "process": 25056796,
+            "difference": 0
+          }
+        ],
+        "offsets": [
+          2630759,
+          2630759,
+          5630446,
+          5630446
+        ]
+      },
+      {
+        "trial": 3,
+        "phase_instruction_deltas": [
+          {
+            "thread": 25052485,
+            "process": 25052485,
+            "difference": 0
+          },
+          {
+            "thread": 25056778,
+            "process": 25056778,
+            "difference": 0
+          }
+        ],
+        "offsets": [
+          2625257,
+          2625257,
+          5620825,
+          5620825
+        ]
+      },
+      {
+        "trial": 4,
+        "phase_instruction_deltas": [
+          {
+            "thread": 25165707,
+            "process": 25165707,
+            "difference": 0
+          },
+          {
+            "thread": 25053573,
+            "process": 25053573,
+            "difference": 0
+          }
+        ],
+        "offsets": [
+          571319,
+          571319,
+          3568338,
+          3568338
+        ]
+      }
+    ],
+    "source_sha256": "61683f3dc8bc537a05c37431cb0ef526e1ed96a0a39640266b653413d50db409",
+    "checksum_verified_by_independent_GF2_jump_ahead": true,
+    "expected_checksum": "3774063795443774191"
+  },
+  "support_recheck": {
+    "checked_utc": "2026-10-21",
+    "forum": "https://developer.apple.com/forums/thread/849179",
+    "Apple_engineer_response": "Requests Feedback Assistant report and sysdiagnose; no fix or workaround supplied in retrieved response",
+    "user_report": "A separate forum participant reports persistence on macOS 27.2 Beta build 26B5101f; not independently tested here",
+    "Xcode_27_1_release": "https://developer.apple.com/news/releases/?id=10152026a",
+    "release_note_sources": [
+      "https://developer.apple.com/documentation/xcode-release-notes/xcode-27_1-release-notes",
+      "https://developer.apple.com/documentation/xcode-release-notes/xcode-27_2-release-notes"
+    ],
+    "release_note_result": "Retrieved Markdown mentions no M6 or KPC fix. Absence of a release note is not proof of behavior. New Xcode versions were not installed/tested."
+  },
+  "validation": {
+    "pytest": {
+      "3.10.21": 653,
+      "3.11.16": 653,
+      "3.12.14": 653,
+      "3.13.15": 653
+    },
+    "existing_warnings": 3,
+    "ruff": "passed",
+    "coverage_percent": 72.63379910361192,
+    "coverage_soc_percent": 99.55156950672645,
+    "coverage_schedule_percent": 100.0
+  },
+  "collector_sha256": {
+    "topdown/collector/apple_soc.py": "a4a3ec5438f3ed6e0816c96f89538e77b067480bb8289d23247fbff737efb9e1",
+    "topdown/collector/apple_schedule.py": "c6d3145c2fa25efb6d5a7e2b1abfd9f67b93be5f3e3d980fc838cd62a6e2bc67",
+    "topdown/collector/apple.py": "383c317c115b9222eb6ae62db2f3eb0a4ffbdefafcbe147c64670b3b42fecdc1",
+    "topdown/apple_cli.py": "09d6f4b1b2a387ad08faca22eb7ad617573debcfccd12572a1854d66394e44dd"
+  },
+  "tma_available": false,
+  "remaining_limits": [
+    "Programmable core and uncore selectors remain blocked on this kernel.",
+    "No complete four-category slot decomposition or automatic bottleneck classification.",
+    "Firmware distributions are system/cluster context with unvalidated denominator and bucket conventions.",
+    "Trace gap counts do not quantify completeness, and decoded instruction counts have previously measured drift.",
+    "No GUI/root-authentication workaround or boot/security modification was performed."
+  ]
+}

@@ -89,7 +89,7 @@ jobs:
       - name: Install dependencies at the mcp lower bound
         run: |
           poetry install --no-interaction
-          poetry run pip install "mcp[cli]==1.10.0"
+          poetry run pip install "mcp[cli]==1.24.0"
           poetry run pip check
 
       - name: Run tests

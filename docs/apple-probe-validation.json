@@ -1,0 +1,82 @@
+{
+  "recorded_at_utc": "2026-10-20T12:33:22.885826+00:00",
+  "parent_commit": "f744b37",
+  "participant": "One Codex controller; sequential implementation/review; exact serving model/token/currency costs unknown",
+  "machine": {
+    "cpu": "Apple M6",
+    "arch": "arm64",
+    "os": "macOS 27.0",
+    "xctrace": "27.0 (27A266a)"
+  },
+  "purpose": "Automated CLI capability check with schema-versioned JSON and stable status/exit codes",
+  "command": "topdown apple probe --mode <counters|cpu|time> --output <new-directory>",
+  "actual_live_results": {
+    "counters": {
+      "status": "counter_data_missing",
+      "exit_code": 3,
+      "target_completed": true,
+      "sample_count": 0,
+      "tma_available": false,
+      "probe_report_sha256": "fe58450131861413b524b8dc5063a1cb77370ebe2f9e0579f84c321180d3a53a"
+    },
+    "cpu": {
+      "status": "permission_denied",
+      "exit_code": 2,
+      "target_completed": false,
+      "sample_count": 0,
+      "tma_available": false,
+      "probe_report_sha256": "3688a22b9c1044f1ca7acedeb2e3517b30b38b00a5b7fc0c283262092fee7d94"
+    },
+    "time": {
+      "status": "profile_present",
+      "exit_code": 0,
+      "target_completed": true,
+      "sample_count": 368,
+      "tma_available": false,
+      "probe_report_sha256": "f27d0e836f3307046a0e90b523285792322021485598ae3cf8c9cc07b5218bbb"
+    }
+  },
+  "probe": {
+    "steps": 268435456,
+    "expected_checksum": "9087321014236724183",
+    "independent_target_alarm_seconds": 8,
+    "record_limit_seconds": 4,
+    "probe_source_sha256": "ee19d0fe28efd3c9792d242597c2421060c45fc9b9fd9445988630662a3748be"
+  },
+  "validation": {
+    "tests": "419 passed; 3 preexisting MCP-authentication deprecation warnings",
+    "ruff": "PASS",
+    "whitespace": "PASS",
+    "previous_line_coverage_percent": 65.99868593955323,
+    "current_line_coverage_percent": 66.78422571336966,
+    "probe_module_line_coverage_percent": 98.4375
+  },
+  "source_sha256": {
+    "topdown/collector/apple.py": "6dca5639cdb9154e3c5f0aa43ea4d69d203aab66dd2cb0629808bbc708e5ce8f",
+    "topdown/collector/apple_probe.py": "d137165fc274250832627a62dd7c520bb955ffb87a144681132f94bb83eece04",
+    "topdown/apple_cli.py": "52805ce5b8358018619d33986de568ae2d405642d5f7d46134d925870e921e55",
+    "tests/test_apple_probe.py": "55fa65b573f3b87092bb25ba755ee99d337cca688cdc219e8e22793a82aa0933"
+  },
+  "cpu_perf": {
+    "transport": "local stdio; server0.1.1; bundled library deb5a0bac467",
+    "calls": [
+      "initialize",
+      "tools/list",
+      "library_status",
+      "ask"
+    ],
+    "coverage": "0/287 sources indexed; no supporting passages; no unread lead treated as evidence",
+    "calls_sha256": {
+      "discover-calls.jsonl": "61f4c8d3b837b89577f9f8bc8cefe55f31cf0dd73ecb044136efbfe38b97df0e",
+      "consult-calls.jsonl": "189680a64b8fa947aa74e913d6dacb8caafc96151d4fff2329395b99daea1ac3"
+    }
+  },
+  "limits": [
+    "Positive counters/cycle cases are synthetic tests, not M6 hardware measurements.",
+    "Nonzero PMU observations would not establish calibrated semantics or a valid slot TMA decomposition.",
+    "False target_completed means checksum and exit were not both verified; it does not establish that the target remains running.",
+    "No automatic retry, GUI interaction, privilege or agent/host permission change.",
+    "No optimization population, timing comparison, independent reviewer, upstream publication or TMA acceptance."
+  ],
+  "artifacts": "Raw traces, commands, XML, logs and JSON retained in ignored local .local-runs; only sanitized summary and hashes committed."
+}

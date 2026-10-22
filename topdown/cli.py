@@ -12,6 +12,7 @@ from rich.text import Text
 from typing_extensions import Annotated
 
 from topdown import __version__
+from topdown.apple_cli import app as apple_app
 from topdown.config import get_config
 from topdown.storage import get_backend
 from topdown.storage.models import Run, Sample
@@ -19,10 +20,12 @@ from topdown.collector.labels import collect_auto_labels, merge_labels, parse_la
 
 app = typer.Typer(
     name="topdown",
-    help="Top-Down Microarchitecture Analysis collector and query tool (Intel & ARM Neoverse).",
+    help="Top-Down Microarchitecture Analysis and native Apple Instruments profiles.",
     no_args_is_help=True,
 )
 console = Console()
+
+app.add_typer(apple_app, name="apple")
 
 
 # Below this width a table with a full run ID column has no room for the rest.
@@ -79,6 +82,12 @@ def collect(
 
     # Determine collector (auto-detect from arch or use config override)
     collector = resolve_collector(config)
+
+    if collector == "apple":
+        from topdown.collector.apple import APPLE_COLLECTION_MESSAGE
+
+        console.print(APPLE_COLLECTION_MESSAGE, markup=False)
+        raise typer.Exit(1)
 
     # Pre-flight checks
     ok, msg = check_perf_permissions()
