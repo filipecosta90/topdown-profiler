@@ -1,13 +1,13 @@
 # topdown-profiler
 
-CPU Top-Down Microarchitecture Analysis (TMA) collector for Intel, AMD Zen, and ARM Neoverse, with MCP server, label-based querying, and pluggable SQL backends.
+CPU profiling and Top-Down Microarchitecture Analysis (TMA) for Intel, AMD Zen, ARM Neoverse, and Apple silicon (M1/M6). Linux TMA collection includes an MCP server, label-based querying, and pluggable SQL backends; experimental Apple profiling uses native macOS CLI commands.
 
-Wraps [pmu-tools/toplev](https://github.com/andikleen/pmu-tools) on Intel, [AMD uProf](https://www.amd.com/en/developer/uprof.html) (`AMDuProfPcm`) on AMD Zen, or `perf stat --topdown` on ARM to collect, store, and query CPU performance data — like [Polar Signals](https://www.polarsignals.com/) but for hardware performance counters.
+On Linux, wraps [pmu-tools/toplev](https://github.com/andikleen/pmu-tools) on Intel, [AMD uProf](https://www.amd.com/en/developer/uprof.html) (`AMDuProfPcm`) on AMD Zen, or `perf stat --topdown` on ARM Neoverse to collect, store, and query CPU performance data — like [Polar Signals](https://www.polarsignals.com/) but for hardware performance counters.
 
-**Apple silicon:** experimental [native CLI profiling](docs/apple-silicon.md)
-via `topdown apple`. M6 supports process instruction/cycle totals (`stat`),
+**Apple silicon (M1/M6):** experimental [native CLI profiling](docs/apple-silicon.md)
+via `topdown apple`. Both M1 and M6 support process instruction/cycle totals (`stat`),
 fixed-counter samples with stacks (`record --mode fixed`), and timer profiles.
-`record --mode trace` also exports hardware-traced execution intervals with native
+On the tested M6, `record --mode trace` also exports hardware-traced execution intervals with native
 instruction/cycle counts, reported trace gaps, and observed thread states/cores.
 `apple soc` reads native cluster stall and bandwidth histograms, with system-wide
 scope and explicit native units.
@@ -16,7 +16,9 @@ On M1, `stat` also reports the performance-core and other-core split, and
 programmable-event captures verified with Xcode 27.1. The standard CPU Counters
 template provides Apple's four-category guided bottleneck shares through
 `record --mode counters`. Their equivalence to Intel slot-TMA percentages is
-unvalidated.
+unvalidated. M6 programmable events remain blocked on the tested OS. Apple
+profiles are exported as JSON and raw artifacts, separately from the Linux TMA
+database, MCP queries, and funnel.
 For an unattended JSON result and stable exit code, run
 `topdown apple probe --mode fixed --output /tmp/m6-probe-001`.
 For the development-kernel experiment, see the [resume handoff](docs/apple-m6-resume.md).
@@ -113,6 +115,15 @@ AMDuProfPcm --help  # sanity check
 - No pmu-tools required — uses `perf stat --topdown` directly
 - L1 topdown metrics only (Frontend_Bound, Backend_Bound, Bad_Speculation, Retiring)
 
+### Apple M1/M6 Prerequisites
+
+- macOS on Apple silicon; validated on M1 and M6
+- `apple stat` needs neither root nor Xcode
+- Instruments recording/export requires Xcode tools; `fixed` and experimental M1 event modes also require `instrumentbuilder` from full Xcode
+- M1 guided bottleneck shares and programmable-event captures were verified with Xcode 27.1
+- `apple soc` was validated on M6 and needs neither root nor Xcode; observations cover the whole system or cluster
+- Intel slot-TMA equivalence remains unvalidated; see the [Apple support and limitations](docs/apple-silicon.md)
+
 ### Collector auto-detection
 
 | CPU vendor / arch | Default collector | Override env var |
@@ -152,7 +163,7 @@ fall through) — or install AMDuProfPcm which has its own event knowledge.
 
 ## Quick Start
 
-### Collect
+### Collect (Linux)
 
 Profile a process by name (not PID) with benchmark labels:
 
@@ -165,6 +176,30 @@ topdown collect --process redis-server --level 3 --duration 30s \
   --label client_tool=memtier \
   --label build_variant=release
 ```
+
+### Profile Apple M1/M6
+
+Use a new output directory for each run:
+
+```bash
+# Process instruction/cycle totals on M1 or M6; no root or Xcode required
+topdown apple stat --output /tmp/apple-stat-001 -- /path/to/program args
+
+# Fixed-counter samples with stacks; requires full Xcode
+topdown apple record --mode fixed --duration 5 \
+  --output /tmp/apple-fixed-001 -- /path/to/program args
+
+# M1: Apple's guided four-category bottleneck shares with the tested Xcode 27.1
+topdown apple record --mode counters --duration 5 \
+  --output /tmp/m1-bottlenecks-001 -- /path/to/program args
+
+# M6: system/cluster firmware stall and bandwidth histograms
+topdown apple soc --duration 5 --output /tmp/m6-soc-001
+```
+
+These commands retain native Apple measurements in local artifacts. The database
+queries below apply to Linux TMA collection. See the [Apple CLI guide](docs/apple-silicon.md)
+for PID intervals, execution traces, tool selection, and measurement limits.
 
 ### Query
 
