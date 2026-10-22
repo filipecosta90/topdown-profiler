@@ -4,31 +4,16 @@ CPU profiling and Top-Down Microarchitecture Analysis (TMA) for Intel, AMD Zen, 
 
 On Linux, wraps [pmu-tools/toplev](https://github.com/andikleen/pmu-tools) on Intel, [AMD uProf](https://www.amd.com/en/developer/uprof.html) (`AMDuProfPcm`) on AMD Zen, or `perf stat --topdown` on ARM Neoverse to collect, store, and query CPU performance data — like [Polar Signals](https://www.polarsignals.com/) but for hardware performance counters.
 
-**Apple silicon (M1/M6):** experimental [native CLI profiling](docs/apple-silicon.md)
-via `topdown apple`. Both M1 and M6 support process instruction/cycle totals (`stat`),
-fixed-counter samples with stacks (`record --mode fixed`), and timer profiles.
-On the tested M6, `record --mode trace` also exports hardware-traced execution intervals with native
-instruction/cycle counts, reported trace gaps, and observed thread states/cores.
-`apple soc` reads native cluster stall and bandwidth histograms, with system-wide
-scope and explicit native units.
-On M1, `stat` also reports the performance-core and other-core split, and
-`record --mode m1`, `m1-map`, and `m1-fetch` provide experimental
-programmable-event captures verified with Xcode 27.1. The standard CPU Counters
-template provides Apple's four-category guided bottleneck shares through
-`record --mode counters`. Their equivalence to Intel slot-TMA percentages is
-unvalidated. M6 programmable events remain blocked on the tested OS. Apple
-profiles are exported as JSON and raw artifacts, separately from the Linux TMA
-database, MCP queries, and funnel.
-For an unattended JSON result and stable exit code, run
-`topdown apple probe --mode fixed --output /tmp/m6-probe-001`.
-For the development-kernel experiment, see the [resume handoff](docs/apple-m6-resume.md).
+**Apple silicon:** [M1 and M6 examples](#apple-silicon-m1m6) cover native
+macOS profiling. M1 provides Apple's four-category CPU bottleneck view; M6
+provides process counters, sampled stacks, execution traces, and system memory context.
 
 [![CI](https://github.com/redis-performance/topdown-profiler/actions/workflows/ci.yml/badge.svg)](https://github.com/redis-performance/topdown-profiler/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/topdown-profiler)](https://pypi.org/project/topdown-profiler/)
 
 ## What is Top-Down Microarchitecture Analysis?
 
-TMA classifies every CPU pipeline slot into four categories that sum to 100%:
+The Linux slot-TMA view classifies CPU pipeline slots into four categories that sum to 100%:
 
 ```
 Pipeline Slots (100%)
@@ -43,7 +28,9 @@ Pipeline Slots (100%)
 └── Retiring          30.1%  ███████████     Useful work (higher = better)
 ```
 
-This tool collects that data, stores it with labels (branch, test name, topology, etc.), and lets you query it from the CLI or via AI assistants through MCP.
+The Linux collectors store that data with labels (branch, test name, topology,
+etc.) for CLI and MCP queries. Apple M1 uses native Delivery, Discarded,
+Processing, and Useful categories; see the [M1 and M6 examples](#apple-silicon-m1m6).
 
 ## Install
 
@@ -58,8 +45,8 @@ poetry install
 
 ### Prerequisites
 
-The following prerequisites apply to Linux TMA. For macOS, see the
-[Apple silicon CLI instructions](docs/apple-silicon.md).
+The following prerequisites apply to Linux TMA. For macOS, see
+[Apple silicon (M1/M6)](#apple-silicon-m1m6).
 
 - Linux with `perf` tools installed
 - Intel CPU (Sandy Bridge or newer), AMD Zen (EPYC 7xx1 / 7xx2 / 7xx3 / 9xx4), **or** ARM Neoverse (Graviton3/4)
@@ -115,15 +102,6 @@ AMDuProfPcm --help  # sanity check
 - No pmu-tools required — uses `perf stat --topdown` directly
 - L1 topdown metrics only (Frontend_Bound, Backend_Bound, Bad_Speculation, Retiring)
 
-### Apple M1/M6 Prerequisites
-
-- macOS on Apple silicon; validated on M1 and M6
-- `apple stat` needs neither root nor Xcode
-- Instruments recording/export requires Xcode tools; `fixed` and experimental M1 event modes also require `instrumentbuilder` from full Xcode
-- M1 guided bottleneck shares and programmable-event captures were verified with Xcode 27.1
-- `apple soc` was validated on M6 and needs neither root nor Xcode; observations cover the whole system or cluster
-- Intel slot-TMA equivalence remains unvalidated; see the [Apple support and limitations](docs/apple-silicon.md)
-
 ### Collector auto-detection
 
 | CPU vendor / arch | Default collector | Override env var |
@@ -131,7 +109,7 @@ AMDuProfPcm --help  # sanity check
 | `x86_64` + `GenuineIntel` | `toplev` | `TOPDOWN_COLLECTOR=toplev` |
 | `x86_64` + `AuthenticAMD` (uProf installed) | `uprof_pcm` | `TOPDOWN_COLLECTOR=uprof_pcm` |
 | `x86_64` + `AuthenticAMD` (no uProf) | `perf_stat_amd` | `TOPDOWN_COLLECTOR=perf_stat_amd` |
-| `aarch64` | `perf_stat` | `TOPDOWN_COLLECTOR=perf_stat` |
+| Linux `aarch64` | `perf_stat` | `TOPDOWN_COLLECTOR=perf_stat` |
 | macOS `arm64` | Native `topdown apple` commands; M1 Apple guided four-way bottlenecks; Intel slot TMA unvalidated | — |
 
 `/proc/cpuinfo` `vendor_id` drives the Intel vs AMD split on x86_64.
@@ -161,9 +139,9 @@ force the right collector: `TOPDOWN_COLLECTOR=perf_stat_amd`.
 kernel or use `TOPDOWN_COLLECTOR=perf_stat_amd` anyway (raw event numbers
 fall through) — or install AMDuProfPcm which has its own event knowledge.
 
-## Quick Start
+## Quick Start (Linux)
 
-### Collect (Linux)
+### Collect
 
 Profile a process by name (not PID) with benchmark labels:
 
@@ -176,30 +154,6 @@ topdown collect --process redis-server --level 3 --duration 30s \
   --label client_tool=memtier \
   --label build_variant=release
 ```
-
-### Profile Apple M1/M6
-
-Use a new output directory for each run:
-
-```bash
-# Process instruction/cycle totals on M1 or M6; no root or Xcode required
-topdown apple stat --output /tmp/apple-stat-001 -- /path/to/program args
-
-# Fixed-counter samples with stacks; requires full Xcode
-topdown apple record --mode fixed --duration 5 \
-  --output /tmp/apple-fixed-001 -- /path/to/program args
-
-# M1: Apple's guided four-category bottleneck shares with the tested Xcode 27.1
-topdown apple record --mode counters --duration 5 \
-  --output /tmp/m1-bottlenecks-001 -- /path/to/program args
-
-# M6: system/cluster firmware stall and bandwidth histograms
-topdown apple soc --duration 5 --output /tmp/m6-soc-001
-```
-
-These commands retain native Apple measurements in local artifacts. The database
-queries below apply to Linux TMA collection. See the [Apple CLI guide](docs/apple-silicon.md)
-for PID intervals, execution traces, tool selection, and measurement limits.
 
 ### Query
 
@@ -260,7 +214,114 @@ topdown explain DRAM_Bound
 ╰─────────────────────────────────────────────╯
 ```
 
-## Microarchitecture Analysis Example
+## Apple silicon (M1/M6)
+
+Use `topdown apple` on macOS. Choose the diagnostic available on your chip:
+
+| Chip | Bottleneck view | Other measurements |
+|---|---|---|
+| M1 | Delivery / Discarded / Processing / Useful, verified with Xcode 27.1 | Process counters, fixed-counter samples with stacks, experimental event groups |
+| M6 | Four-category breakdown unavailable on the tested OS | Process counters, fixed-counter samples with stacks, execution traces, system/cluster stall and bandwidth histograms |
+
+`stat` and M6 `soc` need neither root nor Xcode. Instruments captures need Xcode
+tools; fixed-counter and custom M1 modes also need full Xcode's `instrumentbuilder`.
+Apple results are JSON and raw artifacts; Linux database queries and `--funnel`
+do not read them. See the [Apple CLI guide](docs/apple-silicon.md) for advanced modes.
+
+Both examples below use the included pointer-chasing workload. From a source
+checkout, build it with Xcode's compiler tools:
+
+```bash
+xcrun clang -O2 -g examples/apple-m1-controls.c -o /tmp/apple-controls
+```
+
+Use a new output directory for every capture. Measurements vary with the chip,
+toolchain, scheduling, and other system activity.
+
+### M1 example: four-category CPU bottlenecks
+
+Record the workload with Xcode 27.1's CPU Counters template:
+
+```bash
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
+  topdown apple record --mode counters --duration 5 \
+  --output /tmp/m1-memory-001 -- /tmp/apple-controls memory 40000000 8388608
+```
+
+The CLI saves `profile.json`. To display its native shares as percentages:
+
+```bash
+python3 - <<'PY'
+import json
+with open("/tmp/m1-memory-001/profile.json") as f:
+    shares = json.load(f)["apple_bottlenecks"]["shares"]
+for name, share in shares.items():
+    print(f"{name.title():<12} {share:6.2%}")
+PY
+```
+
+A [recorded M1 run](docs/apple-m1-xcode27-validation.json) of this workload gave
+the following breakdown, formatted as a tree for comparison with the Linux example:
+
+```text
+Apple M1 CPU bottlenecks (~100%, rounded)
+├── Delivery       0.07%                     Instruction supply limits
+├── Discarded      0.01%                     Discarded speculative work
+├── Processing    99.44%  ████████████████████ Execution / data dependency stalls
+└── Useful         0.48%                     Work that makes progress
+```
+
+**Interpretation:** Processing dominates this dependent-load workload. Investigate
+data locality, cache behavior, and pointer dependencies. This view alone does not
+separate cache misses from DRAM stalls. In the same validation set, a random-branch
+workload instead showed **57.48% Delivery** and **34.85% Discarded**.
+
+These are [Apple's native categories](https://developer.apple.com/documentation/xcode/addressing-cpu-bottlenecks),
+weighted by sampled core cycles. Intel slot-TMA equivalence remains unvalidated;
+the JSON stores these shares under `apple_bottlenecks` and keeps `tma` null.
+
+### M6 example: process counters and memory-stall context
+
+Run a longer pointer chase, measuring process totals while sampling system/cluster
+firmware observations for one second:
+
+```bash
+topdown apple stat --output /tmp/m6-memory-stat-001 \
+  -- /tmp/apple-controls memory 200000000 8388608 > /tmp/m6-memory-stat-001.json &
+stat_pid=$!
+topdown apple soc --duration 1 --output /tmp/m6-memory-soc-001 \
+  > /tmp/m6-memory-soc-001.json
+wait "$stat_pid"
+```
+
+Inspect `counters` in `/tmp/m6-memory-stat-001/stat.json` and `channels` in
+`/tmp/m6-memory-soc-001/soc.json`. A [recorded M6 run](docs/apple-m6-readme-example.json)
+on macOS 27.0.1 gave this summary:
+
+```text
+Apple M6 — pointer-chasing workload
+├── Process instructions       849,633,335
+├── Process cycles          18,603,265,709
+├── PACC0 DRAM Stall             4,230 native observations
+│   ├── Bucket "32%"             1,122 observations (26.52% of channel total)
+│   ├── Bucket "36%"               720 observations (17.02% of channel total)
+│   └── Bucket "28%"               403 observations ( 9.53% of channel total)
+│       Other buckets omitted
+└── Four-category TMA         unavailable on the tested OS
+```
+
+**Interpretation:** the process totals describe one PID's work, including startup
+and shutdown. The DRAM histogram supplies memory context for the whole cluster,
+including other processes, over a separate interval. Bucket names such as `"32%"`
+are native firmware labels; **they do not mean this process spent 32% of its time
+stalled on DRAM**. The percentages beside the counts describe only the distribution
+of reported observations.
+
+The tested M6 OS blocks programmable events, so these measurements cannot yield
+Delivery / Discarded / Processing / Useful or the Linux TMA funnel. For function
+locations, use [fixed-counter stack samples or execution traces](docs/apple-silicon.md).
+
+## Microarchitecture Analysis Example (Linux)
 
 Here is a real-world example analyzing redis-server under a memtier benchmark:
 
