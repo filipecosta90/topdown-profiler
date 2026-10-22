@@ -46,11 +46,14 @@ def test_summary_checks_probe_counter_overlap():
     </node></trace-query-result>"""
     result = MODULE.summarize(counters, gpu)["probe_coverage"]
     assert result == {
+        "status": "sampled",
+        "workloads_observed": ["burn"],
         "passes_observed": 2,
         "passes_with_counter_samples": 1,
         "gpu_work_time_ns": 40,
         "sampled_gpu_work_time_ns": 10,
         "counter_sample_intervals_overlapping": 1,
+        "other_active_gpu_time_overlapping_ns": None,
         "last_counter_end_minus_last_probe_end_ns": -65,
     }
 
@@ -67,5 +70,57 @@ def test_summary_reports_counter_rows_without_probe_coverage():
     </node></trace-query-result>"""
     result = MODULE.summarize(counters, gpu)["probe_coverage"]
     assert result["passes_observed"] == 1
+    assert result["workloads_observed"] == ["burn"]
     assert result["passes_with_counter_samples"] == 0
+    assert result["status"] == "no_counter_overlap"
     assert result["sampled_gpu_work_time_ns"] == 0
+
+
+def test_summary_counts_other_active_gpu_overlap():
+    counters = b'<trace-query-result><schema name="metal-gpu-counter-intervals"/></trace-query-result>'
+    gpu = b"""<trace-query-result><node><schema name="metal-gpu-intervals">
+    <col><mnemonic>start</mnemonic></col><col><mnemonic>duration</mnemonic></col>
+    <col><mnemonic>event-label</mnemonic></col><col><mnemonic>state</mnemonic></col></schema>
+    <row><start-time>100</start-time><duration>20</duration>
+    <formatted-label fmt="topdown GPU probe pass 0:stream compute pass 0"/>
+    <gpu-state fmt="Active"/></row>
+    <row><start-time>110</start-time><duration>20</duration>
+    <formatted-label fmt="other GPU activity"/><gpu-state fmt="Active"/></row>
+    <row><start-time>110</start-time><duration>20</duration>
+    <formatted-label fmt="inactive"/><gpu-state fmt="Inactive"/></row>
+    </node></trace-query-result>"""
+    result = MODULE.summarize(counters, gpu)["probe_coverage"]
+    assert result["workloads_observed"] == ["stream"]
+    assert result["other_active_gpu_time_overlapping_ns"] == 10
+
+
+def test_summary_weights_sampled_values_and_keeps_units():
+    counters = b"""<trace-query-result><node><schema name="metal-gpu-counter-intervals">
+    <col><mnemonic>start</mnemonic></col><col><mnemonic>duration</mnemonic></col>
+    <col><mnemonic>counter-id</mnemonic></col><col><mnemonic>name</mnemonic></col>
+    <col><mnemonic>label</mnemonic></col><col><mnemonic>value</mnemonic></col>
+    <col><mnemonic>is-percentage</mnemonic></col></schema>
+    <row><start-time>100</start-time><duration>10</duration><uint32>0</uint32>
+    <gpu-counter-name fmt="ALU Limiter">1.ALU Limiter</gpu-counter-name>
+    <formatted-label fmt="10%"/><fixed-decimal>10</fixed-decimal><boolean>1</boolean></row>
+    <row><start-time>110</start-time><duration>20</duration><uint32>0</uint32>
+    <gpu-counter-name fmt="ALU Limiter">1.ALU Limiter</gpu-counter-name>
+    <formatted-label fmt="30%"/><fixed-decimal>30</fixed-decimal><boolean>1</boolean></row>
+    <row><start-time>100</start-time><duration>10</duration><uint32>1</uint32>
+    <gpu-counter-name fmt="GPU Read Bandwidth">2.GPU Read Bandwidth</gpu-counter-name>
+    <formatted-label fmt="2 GB/s"/><fixed-decimal>2</fixed-decimal><boolean>0</boolean></row>
+    </node></trace-query-result>"""
+    gpu = b"""<trace-query-result><node><schema name="metal-gpu-intervals">
+    <col><mnemonic>start</mnemonic></col><col><mnemonic>duration</mnemonic></col>
+    <col><mnemonic>event-label</mnemonic></col></schema>
+    <row><start-time>100</start-time><duration>30</duration>
+    <formatted-label fmt="topdown GPU probe pass 0:burn compute pass 0"/></row>
+    </node></trace-query-result>"""
+    means = MODULE.summarize(counters, gpu)["sampled_counter_means"]
+    assert means["ALU Limiter"] == {
+        "value": 23.333333,
+        "unit": "%",
+        "sampled_time_ns": 30,
+        "counter_intervals": 2,
+    }
+    assert means["GPU Read Bandwidth"]["unit"] == "GB/s"

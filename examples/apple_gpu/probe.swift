@@ -3,6 +3,8 @@ import Metal
 
 let passes = CommandLine.arguments.count > 1 ? (Int(CommandLine.arguments[1]) ?? 4) : 4
 precondition((1...500).contains(passes))
+let workload = CommandLine.arguments.count > 2 ? CommandLine.arguments[2] : "alu"
+precondition(workload == "alu" || workload == "stream")
 
 guard let device = MTLCreateSystemDefaultDevice(),
       let queue = device.makeCommandQueue() else {
@@ -32,19 +34,29 @@ kernel void burn(device float *values [[buffer(0)]], uint id [[thread_position_i
     }
     values[id] = x;
 }
+kernel void stream(device const float *input [[buffer(0)]],
+                   device float *output [[buffer(1)]],
+                   uint id [[thread_position_in_grid]]) {
+    output[id] = input[id] + 1.0f;
+}
 """
 let library = try device.makeLibrary(source: source, options: nil)
-guard let function = library.makeFunction(name: "burn") else {
+guard let function = library.makeFunction(name: workload == "alu" ? "burn" : "stream") else {
     fatalError("Metal kernel missing")
 }
 let pipeline = try device.makeComputePipelineState(function: function)
-let count = 16_384
+let count = workload == "alu" ? 16_384 : 16_777_216
 guard let buffer = device.makeBuffer(length: count * MemoryLayout<Float>.stride,
                                      options: .storageModeShared) else {
     fatalError("Could not allocate GPU buffer")
 }
+let output = workload == "stream" ? device.makeBuffer(length: count * MemoryLayout<Float>.stride,
+                                                       options: .storageModeShared) : nil
+if workload == "stream" && output == nil {
+    fatalError("Could not allocate GPU output buffer")
+}
 let values = buffer.contents().bindMemory(to: Float.self, capacity: count)
-for i in 0..<count { values[i] = Float(i % 97) / 97.0 }
+for i in 0..<count { values[i] = workload == "alu" ? Float(i % 97) / 97.0 : Float(i % 97) }
 
 var totalGPUTime = 0.0
 for pass in 0..<passes {
@@ -53,9 +65,12 @@ for pass in 0..<passes {
         fatalError("Could not encode GPU work")
     }
     command.label = "topdown GPU probe pass \(pass)"
-    encoder.label = "burn compute pass \(pass)"
+    encoder.label = "\(workload == "alu" ? "burn" : "stream") compute pass \(pass)"
     encoder.setComputePipelineState(pipeline)
     encoder.setBuffer(buffer, offset: 0, index: 0)
+    if let output {
+        encoder.setBuffer(output, offset: 0, index: 1)
+    }
     encoder.dispatchThreads(MTLSize(width: count, height: 1, depth: 1),
                             threadsPerThreadgroup: MTLSize(width: 256, height: 1, depth: 1))
     encoder.endEncoding()
@@ -67,5 +82,12 @@ for pass in 0..<passes {
     totalGPUTime += command.gpuEndTime - command.gpuStartTime
 }
 
-let checksum = (0..<count).reduce(0.0) { $0 + Double(values[$1]) }
-print("passes=\(passes) items=\(count) gpu_seconds=\(totalGPUTime) checksum=\(checksum)")
+let result = (output ?? buffer).contents().bindMemory(to: Float.self, capacity: count)
+let checksum = (0..<count).reduce(0.0) { $0 + Double(result[$1]) }
+if workload == "stream" {
+    let cycles = count / 97
+    let remainder = count % 97
+    let expected = Double(cycles * 4656 + remainder * (remainder - 1) / 2 + count)
+    precondition(checksum == expected, "Stream checksum mismatch")
+}
+print("workload=\(workload) passes=\(passes) items=\(count) gpu_seconds=\(totalGPUTime) checksum=\(checksum)")
