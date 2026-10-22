@@ -5,10 +5,123 @@ instruction/cycle totals and fixed-counter samples with stacks work on the teste
 M6 and M1. Native system/cluster firmware histograms and trace scheduling context
 are also available on M6. The M1 accepts three experimental programmable-event groups.
 Xcode 27.1's CPU Counters template exposes four native bottleneck categories on
-this M1. These paths remain separate from the Linux slot-TMA database and funnel.
+this M1. Apple results share SQL storage and MCP access with Linux runs, while
+retaining native units and staying separate from the Linux slot-TMA funnel.
 They add no runtime dependencies and do not invoke `sudo` or change host settings.
 The tested M6 rejects programmable events. Intel slot-TMA equivalence has not
 been established for the Apple categories.
+
+## Check support and view function hotspots
+
+```sh
+topdown apple doctor
+```
+
+`doctor` reads tool and kernel metadata without recording a workload. Its
+`programmable_counters` field reports `known_kernel_blocker` for the measured M6
+release kernel UUID `77F5F1F1-C717-3A42-A5FA-487ACF280495`. That kernel rejected
+programmable event selectors in the earlier root sweep and in the Xcode 27.0/27.1
+Instruments probes. The diagnostic identifies affected `counters`/`cpu` modes
+and suggests process accounting or fixed-counter stacks. Other kernels remain
+`unverified`; CPU names, installed templates, and Developer Mode alone do not
+establish hardware access. Use `apple probe` to check an unfamiliar kernel.
+Doctor's exit status continues to indicate whether the host and tools are
+available; inspect `programmable_counters.status` for this specific limitation.
+
+For a readable hotspot view on M6 or M1, capture fixed-counter stacks, then
+report the exported profile:
+
+```sh
+topdown apple record --mode fixed --duration 5 \
+  --output /tmp/apple-hotspots-001 -- /path/to/program args
+topdown apple report /tmp/apple-hotspots-001
+topdown apple report /tmp/apple-hotspots-001/profile.json --limit 10 --json
+```
+
+The report groups functions by symbol and binary, combining instruction addresses
+within the same named function. `Leaf samples` counts observations at the top of
+the stack; `In stack` counts each function once per sampled stack, including
+callers and deduplicating recursion. `Leaf share` divides by all measured rows,
+including rows without stack frames; unmeasured and missing-stack counts remain
+visible. `--limit` truncates the ranking without changing its denominator. The
+terminal view shortens long symbols to fit; `--json` retains their full names.
+Time Profiler, CPU Profiler, and experimental M1 event stack exports can also be
+read offline, including on non-Apple hosts.
+
+These are sample-frequency hotspots. The report does not sum counter values or
+native weights, infer CPU-time percentages, or produce TMA percentages. `stat`,
+`soc`, guided bottleneck tables, and execution intervals require their own native
+interpretation and cannot be read as sampled-stack profiles.
+
+The Xcode 27.1 recheck and native hotspot smoke test are recorded in
+[M6 diagnostics validation](apple-m6-diagnostics-validation.json).
+
+## Database storage and MCP
+
+`apple stat`, `apple record`, and `apple soc` accept `--store`. Storage uses the
+existing database configuration: SQLite by default (`--db PATH` or
+`TOPDOWN_DB_PATH`), or PostgreSQL with `TOPDOWN_BACKEND=postgresql` and
+`TOPDOWN_DSN`. Install PostgreSQL support with
+`pip install 'topdown-profiler[postgresql]'`. Raw trace bundles and logs remain
+in the output directory; the database stores the complete exported native JSON
+and, for `profile.json`, its sibling `capture.json` metadata when present.
+
+```sh
+topdown apple record --mode fixed --duration 5 --store \
+  --label test_name=apple-fixed --label git_branch=main \
+  --output /tmp/apple-stored-001 -- /path/to/program args
+
+# Or import an existing profile.json, stat.json, soc.json, or capture directory.
+topdown apple store /tmp/apple-hotspots-001 --process redis-server \
+  --label test_name=apple-import
+
+topdown apple query RUN_ID
+topdown apple query RUN_ID --section samples --offset 0 --limit 100
+topdown apple report --run-id RUN_ID --limit 10
+topdown list --label test_name=apple-fixed
+```
+
+Each import creates a new run. Apple runs appear in the common run list and
+support the same label filters, with `collector=apple` and `measurement_kind`
+labels. SQLite stores the native document as JSON text; PostgreSQL uses JSONB.
+Unsigned counters, including values above 2^53, remain integers through storage
+and Python/MCP serialization. Clients must also handle large JSON integers
+without converting them to floating point.
+
+The importer retains source scope, native M1 bottleneck shares, unmeasured rows,
+trace gaps, and null Intel TMA fields. It does not create floating-point Linux
+metric rows. Capture timestamps are used when available; otherwise the run is
+explicitly labeled `time_basis=import_time`, with unknown capture duration.
+The source SHA-256 and import timestamp are retained. A failed automatic capture
+is not stored; database errors leave capture artifacts available for retry with
+`apple store`.
+
+Start the existing server with `topdown mcp-serve` (stdio), or use its existing
+HTTP transport and authentication configuration. Both transports expose:
+
+| Tool | Purpose |
+|---|---|
+| `apple_doctor()` | Inspect tools and kernel capabilities on the server host |
+| `collect_apple_profile(mode, command, pid, duration_seconds, process_name, labels)` | Capture and store native results, returning a run ID and artifact path |
+| `import_apple_result(path, process_name, labels)` | Import a server-local JSON file or capture directory |
+| `query_apple_result(run_id, section, offset, limit)` | Read native summaries or observations, with pages of 1–1000 rows |
+| `get_apple_hotspots(run_id, limit)` | Rank sample-frequency function hotspots from a stored stack profile |
+
+For example, call `collect_apple_profile` with
+`{"mode":"stat","pid":1234,"duration_seconds":5,"labels":{"test_name":"redis-m6"}}`,
+then pass its `run_id` to `query_apple_result`. For stacks, use
+`{"mode":"fixed","command":["/path/to/program","arg"],"duration_seconds":5}`
+and pass the run ID to `get_apple_hotspots`. `stat` accepts either an existing
+PID or a command; Instruments modes launch a command and require whole seconds.
+`soc` has system/cluster scope and accepts neither PID nor command. MCP capture
+duration is capped at 300 seconds; launched `stat` commands use it as a timeout.
+
+The MCP server must run on macOS to collect, and resolves executable/file paths
+on that host. Imports, database queries, and reports can run on other supported
+OSes. The summary omits bulk arrays; use `section=samples`, `intervals`, `gaps`,
+`channels`, or `leaf_sample_counts` to page through the relevant native data.
+`list_profiling_runs` discovers both Linux and Apple runs. Linux metric
+comparisons and funnels continue to operate on Linux TMA rows.
 
 ## Process instruction and cycle totals
 
@@ -838,8 +951,9 @@ changed.
 IOReport enumerates 207 AMC memory-controller channels, but subscriptions to each
 individual channel failed without root. Enumeration alone does not establish
 readable counters. A root comparison still requires interactive CLI authentication
-and has not been completed. No developer-kernel or bootable OS patch was built or
-tested. The existing kernel gate explains a blocker; it does not establish that
+and has not been completed. A development-kernel collection was subsequently built
+and inspected as described below; boot and runtime event access remain untested.
+The existing kernel gate explains a blocker; it does not establish that
 patching one branch would provide valid event mappings, safe counter programming,
 or a complete top-down model.
 
@@ -848,9 +962,14 @@ A support recheck on October 21 found no remedy in the retrieved
 A separate participant reports the failure on macOS 27.2 Beta; this is a user
 report, not a local test or Apple confirmation. Apple has released
 [Xcode 27.1](https://developer.apple.com/news/releases/?id=10152026a), but the
-retrieved 27.1/27.2 release notes supplied no M6/KPC fix. Newer Xcode/OS builds were
-not installed or tested here. Absence of a release-note entry does not establish
-whether a newer build changes behavior.
+retrieved 27.1/27.2 release notes supplied no M6/KPC fix. A local recheck on
+October 22 with Xcode 27.1 (27A9275), on the unchanged macOS 27.0.1 kernel,
+still produced no CPU Counters bottleneck table. CPU Profiler failed with KPC
+`EPERM`; its recording window contains a kernel log rejecting event `0x0011`,
+the installed database's `CORE_ACTIVE_CYCLE`. Fixed-counter profiling completed
+successfully. The UUID-matched release kernel rejects all nonzero programmable
+selectors, while the M1 kernel shipped with the same OS has an event lookup
+table. Newer macOS builds have not been tested locally.
 
 ## Matching M6 development kernel
 

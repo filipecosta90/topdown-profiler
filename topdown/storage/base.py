@@ -46,6 +46,15 @@ class StorageBackend(ABC):
         ...
 
     @abstractmethod
+    def insert_apple_result(self, run: Run, document: dict) -> str:
+        """Atomically store a run and its native Apple document, retaining integer precision."""
+        ...
+
+    @abstractmethod
+    def get_apple_result(self, run_id: str) -> dict | None:
+        ...
+
+    @abstractmethod
     def get_run(self, run_id: str) -> Run | None:
         ...
 
