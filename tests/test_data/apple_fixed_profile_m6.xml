@@ -1,0 +1,144 @@
+<!-- Measured M6 fixed-counter excerpt, 2026-10-20. XML refs expanded; local paths omitted. -->
+<trace-query-result>
+  <node>
+    <schema name="counters-profile" documentation="Represents counters profiling.">
+      <col>
+        <mnemonic>time</mnemonic>
+        <name>Sample Time</name>
+        <engineering-type>sample-time</engineering-type>
+      </col>
+      <col>
+        <mnemonic>thread</mnemonic>
+        <name>Thread</name>
+        <engineering-type>thread</engineering-type>
+      </col>
+      <col>
+        <mnemonic>process</mnemonic>
+        <name>Process</name>
+        <engineering-type>process</engineering-type>
+      </col>
+      <col>
+        <mnemonic>core</mnemonic>
+        <name>Core</name>
+        <engineering-type>core</engineering-type>
+      </col>
+      <col>
+        <mnemonic>thread-state</mnemonic>
+        <name>State</name>
+        <engineering-type>thread-state</engineering-type>
+      </col>
+      <col>
+        <mnemonic>stack</mnemonic>
+        <name>Backtrace</name>
+        <engineering-type>tagged-backtrace</engineering-type>
+      </col>
+      <col>
+        <mnemonic>weight</mnemonic>
+        <name>Weight</name>
+        <engineering-type>any</engineering-type>
+      </col>
+      <col>
+        <mnemonic>counters-array</mnemonic>
+        <name>Counter Value Array</name>
+        <engineering-type>pmc-events</engineering-type>
+      </col>
+    </schema>
+    <row>
+      <sample-time fmt="00:00.336.792">336792875</sample-time>
+      <thread>
+        <tid>50830</tid>
+        <process>
+          <pid>3362</pid>
+        </process>
+      </thread>
+      <process>
+        <pid>3362</pid>
+      </process>
+      <sentinel />
+      <thread-state fmt="Blocked">Blocked</thread-state>
+      <tagged-backtrace />
+      <weight fmt="1.00 ms">1000000</weight>
+      <sentinel />
+    </row>
+    <row>
+      <sample-time fmt="00:00.652.889">652889208</sample-time>
+      <thread>
+        <tid>545</tid>
+        <process>
+          <pid>0</pid>
+        </process>
+      </thread>
+      <process>
+        <pid>0</pid>
+      </process>
+      <core fmt="CPU 7 (S Core)">7</core>
+      <thread-state fmt="Running">Running</thread-state>
+      <sentinel />
+      <weight fmt="1.00 ms">1000000</weight>
+      <pmc-events fmt="(0), (0)">0 0</pmc-events>
+    </row>
+    <row>
+      <sample-time fmt="00:00.914.819">914819375</sample-time>
+      <thread>
+        <tid>50830</tid>
+        <process>
+          <pid>3362</pid>
+        </process>
+      </thread>
+      <process>
+        <pid>3362</pid>
+      </process>
+      <core fmt="CPU 0 (E Core)">0</core>
+      <thread-state fmt="Running">Running</thread-state>
+      <tagged-backtrace>
+        <frame name="alu_work" addr="0x102b1446d">
+          <binary name="probe-target" />
+        </frame>
+      </tagged-backtrace>
+      <weight fmt="1.00 ms">1000000</weight>
+      <pmc-events fmt="(556 168), (914 334)">556168 914334</pmc-events>
+    </row>
+    <row>
+      <sample-time fmt="00:00.915.815">915815916</sample-time>
+      <thread>
+        <tid>50830</tid>
+        <process>
+          <pid>3362</pid>
+        </process>
+      </thread>
+      <process>
+        <pid>3362</pid>
+      </process>
+      <core fmt="CPU 0 (E Core)">0</core>
+      <thread-state fmt="Running">Running</thread-state>
+      <tagged-backtrace>
+        <frame name="alu_work" addr="0x102b1446d">
+          <binary name="probe-target" />
+        </frame>
+      </tagged-backtrace>
+      <weight fmt="1.00 ms">1000000</weight>
+      <pmc-events fmt="(968 672), (1 616 865)">968672 1616865</pmc-events>
+    </row>
+    <row>
+      <sample-time fmt="00:00.916.815">916815875</sample-time>
+      <thread>
+        <tid>50830</tid>
+        <process>
+          <pid>3362</pid>
+        </process>
+      </thread>
+      <process>
+        <pid>3362</pid>
+      </process>
+      <core fmt="CPU 0 (E Core)">0</core>
+      <thread-state fmt="Running">Running</thread-state>
+      <tagged-backtrace>
+        <frame name="alu_work" addr="0x102b1446d">
+          <binary name="probe-target" />
+        </frame>
+      </tagged-backtrace>
+      <weight fmt="1.00 ms">1000000</weight>
+      <pmc-events fmt="(971 974), (1 623 750)">971974 1623750</pmc-events>
+    </row>
+  </node>
+</trace-query-result>

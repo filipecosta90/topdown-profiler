@@ -1,0 +1,105 @@
+{
+  "captured_at_utc": "2026-10-22T11:21:09.588271+00:00",
+  "cpu": "Apple M6",
+  "environment": {
+    "system": "Darwin",
+    "arch": "arm64",
+    "os_version": "27.0.1"
+  },
+  "source": "examples/apple-m1-controls.c",
+  "compile_flags": [
+    "-O2",
+    "-g"
+  ],
+  "workload": [
+    "memory",
+    "200000000",
+    "8388608"
+  ],
+  "stat": {
+    "status": "completed",
+    "target_completed": true,
+    "target_exit_code": 0,
+    "source": {
+      "api": "proc_pid_rusage",
+      "flavor": "RUSAGE_INFO_V6",
+      "flavor_id": 6,
+      "mach_timebase": {
+        "numer": 125,
+        "denom": 3
+      }
+    },
+    "scope": {
+      "threads": "all",
+      "descendants": false,
+      "window": "process-lifetime",
+      "execution_levels": "user-and-kernel"
+    },
+    "counters": {
+      "instructions": 849633335,
+      "cycles": 18603265709,
+      "user_time_ns": 3889316541,
+      "system_time_ns": 10962791,
+      "performance_instructions": 843992901,
+      "performance_cycles": 18529951456,
+      "other_instructions": 5640434,
+      "other_cycles": 73314253,
+      "performance_user_time_ns": 3873394250,
+      "performance_system_time_ns": 10234250,
+      "other_user_time_ns": 15922291,
+      "other_system_time_ns": 728541
+    },
+    "tma_available": false,
+    "tma": {
+      "Frontend_Bound": null,
+      "Bad_Speculation": null,
+      "Backend_Bound": null,
+      "Retiring": null
+    }
+  },
+  "target_stdout": "7883220",
+  "soc": {
+    "status": "completed",
+    "duration_seconds": 1.0,
+    "channel_count": 27,
+    "scope": "system-and-cluster; all processes, no PID attribution",
+    "workload_still_running_after_observation": true,
+    "selected_channel": {
+      "group": "PMP",
+      "subgroup": "PACC0",
+      "name": "DRAM Stall",
+      "unit_label": "events",
+      "native_value_total": 4230
+    },
+    "top_three_states": [
+      {
+        "label": "  32%",
+        "value": 1122,
+        "share_of_reported_values": 0.2652482269503546
+      },
+      {
+        "label": "  36%",
+        "value": 720,
+        "share_of_reported_values": 0.1702127659574468
+      },
+      {
+        "label": "  28%",
+        "value": 403,
+        "share_of_reported_values": 0.09527186761229314
+      }
+    ]
+  },
+  "artifact_sha256": {
+    "stat/stat.json": "9e9d966f8accffb0e8a96b7af55874f4f2a4e31c468e7ae63c9a462f72ad860b",
+    "soc/soc.json": "5526bfd24e5bcc8da447a5e0fd3cbcc295ceb76f7c8c969dda81ab9d016f7949",
+    "stat/target.stdout": "f9cb4144f844b28c1809f3671343ad49bbddaaf0ea9681743ce228a0d810f5cc"
+  },
+  "limitations": [
+    "Process counts include startup/shutdown and all threads in one PID; descendants excluded.",
+    "SoC observations cover all processes on the cluster; their interval differs from the process lifetime.",
+    "State labels are native histogram bucket names, not calibrated per-process stall percentages.",
+    "No four-category TMA decomposition is available on the tested M6 OS."
+  ],
+  "source_sha256": "4258df5c18adeccd13f2353e5b750800469c8e499f97e7a05e8aa4dc7e7950bd",
+  "executable_sha256": "29842141d86796c44235aa0ccbd3c4921f1ab582eeac35679333a12b8742d89c"
+}

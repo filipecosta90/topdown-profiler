@@ -8,7 +8,7 @@ import pytest
 from typer.testing import CliRunner
 
 from topdown.cli import app
-from topdown.collector.apple import AppleProfileError, _run
+from topdown.collector.apple import AppleProfileError, M1_EVENTS, M1_FETCH_EVENTS, M1_MAP_EVENTS, _run
 from topdown.collector.apple_probe import EXPECTED_CHECKSUM, probe
 
 ENVIRONMENT = {"system": "Darwin", "arch": "arm64", "xctrace": "27.0", "templates": ["CPU Counters", "CPU Profiler", "Time Profiler"]}
@@ -19,10 +19,13 @@ def fake_capture(output, command, duration, mode):
     (output / "target.stdout").write_text(f"checksum={EXPECTED_CHECKSUM}\n")
     (output / "toc.xml").write_text('<trace-toc><run number="1"><info><target><process pid="42" '
                                     'return-exit-status="0"/></target></info></run></trace-toc>')
-    return {"sample_count": 1, "measurement_kind": "native-test", "samples": [{"value": 123, "frames": [{"name": "alu_work"}]}]}
+    return {"sample_count": 1, "measurement_kind": "native-test", "samples": [
+        {"value": 123, "event_values": {"FIXED_CYCLES": 100, "FIXED_INSTRUCTIONS": 150},
+         "frames": [{"name": "alu_work"}]}]}
 
 
-@pytest.mark.parametrize("mode,status", [("counters", "counters_present"), ("time", "profile_present"), ("cpu", "profile_present")])
+@pytest.mark.parametrize("mode,status", [("counters", "counters_present"), ("fixed", "counters_present"),
+                                      ("time", "profile_present"), ("cpu", "profile_present")])
 def test_validated_probe_success(tmp_path, mode, status):
     with patch("topdown.collector.apple_probe.doctor", return_value=ENVIRONMENT), \
          patch("topdown.collector.apple_probe._run") as compile_mock, \
@@ -74,7 +77,7 @@ def test_zero_pmu_values_remain_unqualified(tmp_path):
          patch("topdown.collector.apple_probe.record_profile", side_effect=zero):
         result = probe(tmp_path / "new")
     assert result["status"] == "probe_failed"
-    assert "no positive values" in result["reason"]
+    assert "lack sufficient positive values" in result["reason"]
 
 
 def test_stack_profile_must_observe_probe_work(tmp_path):
@@ -88,6 +91,45 @@ def test_stack_profile_must_observe_probe_work(tmp_path):
         result = probe(tmp_path / "new", "time")
     assert result["status"] == "probe_failed"
     assert "No observed probe work" in result["reason"]
+
+
+@pytest.mark.parametrize("change", ["zero", "missing", "wrong-work"])
+def test_fixed_probe_requires_both_counters_and_observed_probe_work(tmp_path, change):
+    def bad(*args, **kwargs):
+        profile = fake_capture(*args, **kwargs)
+        sample = profile["samples"][0]
+        if change == "zero":
+            sample["event_values"]["FIXED_CYCLES"] = 0
+        elif change == "missing":
+            sample["event_values"] = {}
+        else:
+            sample["frames"] = [{"name": "unrelated"}]
+        return profile
+
+    with patch("topdown.collector.apple_probe.doctor", return_value=ENVIRONMENT), \
+         patch("topdown.collector.apple_probe._run"), \
+         patch("topdown.collector.apple_probe.record_profile", side_effect=bad):
+        result = probe(tmp_path / "fixed", "fixed")
+    assert result["status"] == "probe_failed"
+    assert result["tma_available"] is False
+
+
+@pytest.mark.parametrize("native_value,status", [(100, "counters_present"), (0, "probe_failed")])
+@pytest.mark.parametrize("mode,events", [("m1", M1_EVENTS), ("m1-map", M1_MAP_EVENTS),
+                                        ("m1-fetch", M1_FETCH_EVENTS)])
+def test_m1_probe_requires_nonzero_native_vector_and_observed_work(tmp_path, native_value, status, mode, events):
+    def m1_capture(*args, **kwargs):
+        profile = fake_capture(*args, **kwargs)
+        profile["samples"][0]["native_event_values"] = [100, 200, native_value] + [0] * (len(events) - 3)
+        return profile
+
+    with patch("topdown.collector.apple_probe.doctor", return_value=ENVIRONMENT), \
+         patch("topdown.collector.apple_probe._require_m1_host"), \
+         patch("topdown.collector.apple_probe._run"), \
+         patch("topdown.collector.apple_probe.record_profile", side_effect=m1_capture):
+        result = probe(tmp_path / mode, mode)
+    assert result["status"] == status
+    assert result["tma_available"] is False
 
 
 @pytest.mark.parametrize("env,status", [({"error": "requires macOS"}, "unsupported_host"),

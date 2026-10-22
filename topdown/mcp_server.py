@@ -21,7 +21,10 @@ _MCP_INSTRUCTIONS = (
     "Analysis (TMA) data using pmu-tools/toplev on Intel or perf stat "
     "--topdown on ARM Neoverse. Use the available tools to profile "
     "processes, query bottlenecks, compare runs, and explain CPU "
-    "performance metrics."
+    "performance metrics. Apple silicon uses native results: use apple_doctor, "
+    "collect_apple_profile or import_apple_result, query_apple_result, and get_apple_hotspots. "
+    "Apple runs share the run list and labels, while retaining native units, scope and integer precision. "
+    "Apple bottleneck shares and sample-frequency hotspots are separate from Linux slot TMA."
 )
 
 
@@ -46,12 +49,124 @@ def _create_mcp(host: str = "localhost", port: int = 8000) -> FastMCP:
 mcp = FastMCP("topdown-profiler", instructions=_MCP_INSTRUCTIONS)
 
 
+def _comparison_mux_note(metrics_a: list[dict], metrics_b: list[dict]) -> str:
+    """MUX note for a comparison, using the noisier of the two runs."""
+    from topdown.units import lowest_mux, mux_note
+
+    muxes = [m for m in (lowest_mux(metrics_a), lowest_mux(metrics_b)) if m is not None]
+    return f"\n\n{mux_note(min(muxes))}" if muxes else ""
+
+
 def _get_backend():
     config = get_config()
     return get_backend(config)
 
 
+def _apple_run_guidance(*runs):
+    if any(run.labels.get("collector") == "apple" for run in runs):
+        return ("This run contains native Apple measurements. Use query_apple_result or get_apple_hotspots; "
+                "Linux slot-TMA analysis and comparisons are unavailable for Apple results.")
+    return None
+
+
 # ──────────────────────────── Tools ────────────────────────────
+
+
+@mcp.tool()
+def apple_doctor() -> dict:
+    """Inspect Apple profiling capabilities on the MCP server host without recording a workload."""
+    from topdown.collector.apple import doctor
+
+    return doctor()
+
+
+@mcp.tool()
+def import_apple_result(path: str, process_name: str | None = None, labels: dict[str, str] | None = None) -> dict:
+    """Store a native Apple profile.json/stat.json/soc.json file or capture directory from the server host.
+
+    Retains counters as integers and keeps native Apple categories, scopes and trace gaps.
+    Each import creates a labeled run, visible in list_profiling_runs. Does not create Linux TMA samples.
+    """
+    from pathlib import Path
+    from topdown.apple_storage import query_apple_result as query, store_apple_result
+    from topdown.collector.apple import AppleProfileError
+
+    backend = _get_backend()
+    try:
+        run = store_apple_result(backend, Path(path), process_name, labels)
+        return query(backend, run.run_id)
+    except (AppleProfileError, OSError, ValueError) as exc:
+        return {"error": str(exc)}
+    finally:
+        backend.close()
+
+
+@mcp.tool()
+def collect_apple_profile(
+    mode: str = "stat", command: list[str] | None = None, pid: int | None = None,
+    duration_seconds: float = 5, process_name: str | None = None, labels: dict[str, str] | None = None,
+) -> dict:
+    """Capture and store native Apple results on this MCP server's macOS host.
+
+    stat accepts exactly one executable argv list or existing PID. For a PID, duration is the
+    observation interval; for a launched stat command it is the timeout. fixed/counters/cpu/time/trace
+    and experimental m1/m1-map/m1-fetch modes launch a command, require Instruments and whole seconds.
+    soc accepts no target and observes all processes at system/cluster scope. Duration is bounded to
+    300 seconds. Failed captures retain local artifacts and are not automatically stored.
+    """
+    import uuid
+    from pathlib import Path
+    from topdown.apple_storage import collect_apple_result, query_apple_result as query, store_apple_result, validate_run_options
+
+    root = Path(get_config().db_path).parent / "apple-captures"
+    output = root / str(uuid.uuid4())
+    try:
+        validate_run_options(process_name, labels)
+        root.mkdir(parents=True, exist_ok=True)
+        path = collect_apple_result(output, mode, command, pid, duration_seconds)
+        backend = _get_backend()
+        try:
+            run = store_apple_result(backend, path, process_name, labels)
+            return {**query(backend, run.run_id), "artifacts": str(output)}
+        finally:
+            backend.close()
+    except Exception as exc:
+        return {"error": str(exc), "artifacts": str(output)}
+
+
+@mcp.tool()
+def query_apple_result(run_id: str, section: str = "summary", offset: int = 0, limit: int = 100) -> dict:
+    """Read a stored native Apple result by run ID, on any server OS.
+
+    summary returns native totals/categories, scope and provenance without bulk observations.
+    Read samples, intervals, gaps, channels or leaf_sample_counts in pages (limit 1–1000).
+    Native integers, histogram units and null Intel TMA fields are retained.
+    """
+    from topdown.apple_storage import query_apple_result as query
+    from topdown.collector.apple import AppleProfileError
+
+    backend = _get_backend()
+    try:
+        return query(backend, run_id, section, offset, limit)
+    except AppleProfileError as exc:
+        return {"error": str(exc)}
+    finally:
+        backend.close()
+
+
+@mcp.tool()
+def get_apple_hotspots(run_id: str, limit: int = 20) -> dict:
+    """Rank stored Apple stack samples by function frequency; shares are sample fractions, not CPU-time/TMA percentages."""
+    from topdown.apple_storage import stored_apple_hotspots
+    from topdown.collector.apple import AppleProfileError
+
+    backend = _get_backend()
+    try:
+        return stored_apple_hotspots(backend, run_id, limit)
+    except AppleProfileError as exc:
+        return {"error": str(exc)}
+    finally:
+        backend.close()
 
 
 @mcp.tool()
@@ -81,7 +196,8 @@ def collect_topdown(
     from topdown.collector.process_resolver import resolve_pids
     from topdown.collector.labels import collect_auto_labels, merge_labels
     from topdown.storage.models import Run, Sample
-    from topdown.analysis.bottleneck import find_bottlenecks, summarize_bottlenecks
+    from topdown.analysis.bottleneck import find_bottlenecks, find_detail_bottlenecks, summarize_bottlenecks
+    from topdown.units import lowest_mux
 
     config = get_config()
     collector = resolve_collector(config)
@@ -89,7 +205,7 @@ def collect_topdown(
     if collector == "apple":
         from topdown.collector.apple import APPLE_COLLECTION_MESSAGE
 
-        return APPLE_COLLECTION_MESSAGE
+        return APPLE_COLLECTION_MESSAGE + " Use collect_apple_profile to capture and store native Apple results through MCP."
 
     ok, msg = check_perf_permissions()
     if not ok:
@@ -147,8 +263,9 @@ def collect_topdown(
         backend.update_run(run.run_id, run.ended_at, run.duration_seconds)
 
         metrics = backend.get_aggregated_metrics(run.run_id)
-        bottleneck_list = find_bottlenecks(metrics, top_n=5)
-        summary = summarize_bottlenecks(bottleneck_list)
+        summary = summarize_bottlenecks(
+            find_bottlenecks(metrics, top_n=5), find_detail_bottlenecks(metrics, top_n=5), lowest_mux(metrics)
+        )
 
         return (
             f"Collection complete.\n"
@@ -179,7 +296,12 @@ def query_bottlenecks(
         min_percentage: Minimum bottleneck percentage to include
         top_n: Maximum number of results
     """
-    from topdown.analysis.bottleneck import find_bottlenecks, summarize_bottlenecks
+    from topdown.analysis.bottleneck import (
+        find_bottlenecks,
+        find_detail_bottlenecks,
+        summarize_bottlenecks,
+    )
+    from topdown.units import lowest_mux, mux_note
 
     backend = _get_backend()
     try:
@@ -188,17 +310,22 @@ def query_bottlenecks(
             return "No runs found matching filters."
 
         run = runs[0]
+        if guidance := _apple_run_guidance(run):
+            return guidance
         metrics = backend.get_aggregated_metrics(run.run_id)
         found = find_bottlenecks(metrics, top_n=top_n, min_percentage=min_percentage)
+        details = find_detail_bottlenecks(metrics, top_n=top_n, min_percentage=min_percentage)
 
-        if not found:
-            return f"No bottlenecks above {min_percentage}% found."
+        if not found and not details:
+            message = f"No bottlenecks above {min_percentage}% found."
+            mux = lowest_mux(metrics)
+            return message + (f"\n{mux_note(mux)}" if mux is not None else "")
 
         lines = [
-            f"Run: {run.run_id[:12]} | {run.process_name} | L{run.level} | {run.started_at.strftime('%Y-%m-%d %H:%M')}",
+            f"Run: {run.run_id} | {run.process_name} | L{run.level} | {run.started_at.strftime('%Y-%m-%d %H:%M')}",
             f"Labels: {', '.join(f'{k}={v}' for k, v in run.labels.items() if k in ('git_branch', 'test_name', 'topology', 'build_variant'))}",
             "",
-            summarize_bottlenecks(found),
+            summarize_bottlenecks(found, details, lowest_mux(metrics)),
         ]
         return "\n".join(lines)
     finally:
@@ -217,23 +344,30 @@ def query_by_bottleneck(
     Returns runs where the specified metric exceeds the threshold, with their labels.
 
     Args:
-        metric_name: TMA metric name (e.g. 'DRAM_Bound', 'L3_Bound', 'Branch_Mispredicts')
-        min_pct: Minimum percentage threshold
+        metric_name: TMA node name, matched exactly at any depth (e.g. 'DRAM_Bound',
+            'L3_Bound', 'Backend_Bound.Memory_Bound'). If no node has that exact name,
+            falls back to a case-insensitive substring match and says so.
+        min_pct: Minimum value, in the node's own unit (slots, clocks, stalls...)
         labels: Optional label filters
         last_hours: Time window in hours
     """
     import json
 
+    from topdown.storage.base import DEFAULT_NODE_LIMIT, MATCH_SUBSTRING
+    from topdown.units import format_value, node_query_empty_message, node_query_header, truncated_note
+
+    if not metric_name:
+        return "metric_name is required (e.g. 'DRAM_Bound')."
     backend = _get_backend()
     try:
-        results = backend.query_by_bottleneck(
-            metric_name=metric_name, min_pct=min_pct,
-            labels=labels, last_hours=last_hours,
+        results, match, truncated = backend.find_runs_by_node(
+            metric_name, min_pct=min_pct, labels=labels, last_hours=last_hours,
         )
+        substring = match == MATCH_SUBSTRING
         if not results:
-            return f"No runs found where {metric_name} >= {min_pct}%"
+            return node_query_empty_message(metric_name, min_pct, substring)
 
-        lines = [f"Runs where {metric_name} >= {min_pct}%:\n"]
+        lines = [node_query_header(metric_name, min_pct, substring) + "\n"]
         for r in results:
             run_labels = r.get("labels", "{}")
             if isinstance(run_labels, str):
@@ -242,9 +376,12 @@ def query_by_bottleneck(
                           if k in ("git_branch", "git_hash", "test_name", "topology", "build_variant", "client_tool")}
             label_str = ", ".join(f"{k}={v}" for k, v in interesting.items())
             lines.append(
-                f"  {r['run_id'][:12]} | {r.get('avg_value', 0):.1f}% | "
+                f"  {r['run_id']} | {r.get('metric_name', '')} "
+                f"{format_value(r.get('avg_value', 0), r.get('unit'))} | "
                 f"{r.get('process_name', '')} | {label_str}"
             )
+        if truncated:
+            lines.append("\n" + truncated_note(DEFAULT_NODE_LIMIT))
         return "\n".join(lines)
     finally:
         backend.close()
@@ -282,12 +419,14 @@ def get_funnel(
                 return "No runs found matching filters."
             run = runs[0]
 
+        if guidance := _apple_run_guidance(run):
+            return guidance
         metrics = backend.get_aggregated_metrics(run.run_id)
         if not metrics:
             return "No metrics found for this run."
 
         result = build_funnel(metrics, max_level=level)
-        header = f"Run: {run.run_id[:12]} | {run.process_name} | L{run.level}\n\n"
+        header = f"Run: {run.run_id} | {run.process_name} | L{run.level}\n\n"
         return header + format_funnel_text(result)
     finally:
         backend.close()
@@ -325,6 +464,8 @@ def compare_funnel(
         if not run_b:
             return f"Run '{run_id_b}' not found."
 
+        if guidance := _apple_run_guidance(run_a, run_b):
+            return guidance
         metrics_a = backend.get_aggregated_metrics(run_a.run_id)
         metrics_b = backend.get_aggregated_metrics(run_b.run_id)
 
@@ -332,9 +473,9 @@ def compare_funnel(
         funnel_b = build_funnel(metrics_b, max_level=level)
 
         header = (
-            f"A: {run_a.run_id[:12]} | {run_a.labels.get('git_branch', '?')} | "
+            f"A: {run_a.run_id} | {run_a.labels.get('git_branch', '?')} | "
             f"{run_a.labels.get('test_name', '?')}\n"
-            f"B: {run_b.run_id[:12]} | {run_b.labels.get('git_branch', '?')} | "
+            f"B: {run_b.run_id} | {run_b.labels.get('git_branch', '?')} | "
             f"{run_b.labels.get('test_name', '?')}\n\n"
         )
         return header + format_funnel_comparison(funnel_a, funnel_b, label_a, label_b)
@@ -363,16 +504,19 @@ def compare_runs(run_id_a: str, run_id_b: str) -> str:
         if not run_b:
             return f"Run '{run_id_b}' not found."
 
+        if guidance := _apple_run_guidance(run_a, run_b):
+            return guidance
         metrics_a = backend.get_aggregated_metrics(run_a.run_id)
         metrics_b = backend.get_aggregated_metrics(run_b.run_id)
 
         deltas = do_compare(metrics_a, metrics_b)
         if not deltas:
-            return "No significant differences found."
+            return "No significant differences found." + _comparison_mux_note(metrics_a, metrics_b)
 
         return (
-            f"Comparing {run_a.run_id[:12]} (baseline) vs {run_b.run_id[:12]}\n\n"
+            f"Comparing {run_a.run_id} (baseline) vs {run_b.run_id}\n\n"
             + summarize_comparison(deltas)
+            + _comparison_mux_note(metrics_a, metrics_b)
         )
     finally:
         backend.close()
@@ -406,18 +550,21 @@ def compare_by_labels(
             return f"No run found matching labels: {label_b}"
 
         run_a, run_b = runs_a[0], runs_b[0]
+        if guidance := _apple_run_guidance(run_a, run_b):
+            return guidance
         metrics_a = backend.get_aggregated_metrics(run_a.run_id)
         metrics_b = backend.get_aggregated_metrics(run_b.run_id)
 
         deltas = do_compare(metrics_a, metrics_b)
         if not deltas:
-            return "No significant differences found."
+            return "No significant differences found." + _comparison_mux_note(metrics_a, metrics_b)
 
         label_str_a = ", ".join(f"{k}={v}" for k, v in label_a.items())
         label_str_b = ", ".join(f"{k}={v}" for k, v in label_b.items())
         return (
             f"Comparing [{label_str_a}] vs [{label_str_b}]\n\n"
             + summarize_comparison(deltas)
+            + _comparison_mux_note(metrics_a, metrics_b)
         )
     finally:
         backend.close()
@@ -434,7 +581,10 @@ def explain_metric(metric_name: str) -> str:
         metric_name: TMA metric name to explain
     """
     from topdown.knowledge import get_metric_info
+    from topdown.units import MUX_EXPLANATION, is_quality_metric
 
+    if is_quality_metric(metric_name):
+        return f"## {metric_name}\nData-quality indicator, not a TMA node.\n\n{MUX_EXPLANATION}"
     info = get_metric_info(metric_name)
     if not info:
         return f"Unknown metric '{metric_name}'. Use a full path like 'Backend_Bound.Memory_Bound' or a leaf name like 'DRAM_Bound'."
@@ -487,9 +637,10 @@ def list_profiling_runs(
             interesting = {k: v for k, v in r.labels.items()
                           if k in ("git_branch", "test_name", "topology", "build_variant")}
             label_str = ", ".join(f"{k}={v}" for k, v in interesting.items()) if interesting else ""
+            kind = f"Apple {r.labels.get('measurement_kind', 'native')}" if r.labels.get("collector") == "apple" else f"L{r.level}"
             lines.append(
-                f"  {r.run_id[:12]} | {r.started_at.strftime('%Y-%m-%d %H:%M')} | "
-                f"{r.process_name} | L{r.level} | {r.duration_seconds:.1f}s"
+                f"  {r.run_id} | {r.started_at.strftime('%Y-%m-%d %H:%M')} | "
+                f"{r.process_name} | {kind} | {r.duration_seconds:.1f}s"
                 + (f" | {label_str}" if label_str else "")
             )
         return "\n".join(lines)
@@ -510,8 +661,11 @@ def run_tree(run_id: str) -> str:
         metrics = backend.get_aggregated_metrics(run_id)
         if not metrics:
             return f"No metrics for run {run_id}"
-        tree = build_tree(metrics)
-        return format_tree_text(tree)
+        from topdown.units import lowest_mux, mux_note
+
+        text = format_tree_text(build_tree(metrics))
+        mux = lowest_mux(metrics)
+        return f"{text}\n\n{mux_note(mux)}" if mux is not None else text
     finally:
         backend.close()
 
@@ -552,6 +706,11 @@ def _register_tools_and_resources(target: FastMCP):
     """Re-register all tools and resources on a new FastMCP instance."""
     # Tools
     target.tool()(collect_topdown)
+    target.tool()(apple_doctor)
+    target.tool()(import_apple_result)
+    target.tool()(collect_apple_profile)
+    target.tool()(query_apple_result)
+    target.tool()(get_apple_hotspots)
     target.tool()(query_bottlenecks)
     target.tool()(query_by_bottleneck)
     target.tool()(get_funnel)
