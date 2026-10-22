@@ -352,6 +352,23 @@ recorded samples, with missing stacks reported separately. Counter values are
 not summed, and the report does not infer CPU-time or TMA percentages. Use
 `--limit 10 --json` for a structured report.
 
+### M6 GPU top-down experiment
+
+The [GPU experiment guide](docs/apple-gpu-experiment.md) adds a native replay
+workflow: rank GPU passes, inspect Apple's limiters, change the kernel, and verify
+the result. On this M6, reducing loop-control instructions preserves the checksum
+and shifts the dominant limiter from Control Flow to F32 execution:
+
+| Four-pass workload | Replay GPU time | Native limiter example |
+|---|---:|---|
+| Original compute loop | 0.2661 ms | Control Flow 71.31% |
+| Same FMAs, unrolled loop | 0.0861 ms | F32 55.86% |
+
+The guide includes M6 capture/report commands, matched 4/8-pass controls, memory
+experiments, and measurement evidence. Limiters overlap, and some M6 values
+exceed 100%; they are retained and flagged. GPU scripts currently produce local
+reports from source-checkout experiments.
+
 ## Microarchitecture Analysis Example (Linux)
 
 Here is a real-world example analyzing redis-server under a memtier benchmark:
