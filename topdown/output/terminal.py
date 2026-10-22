@@ -13,6 +13,7 @@ from topdown.analysis.compare import MetricDelta
 from topdown.storage.models import Run
 from topdown.units import (
     COMPOSITION_NOTE,
+    ESTIMATE_NOTE,
     delta_arrow,
     format_delta,
     format_value,
@@ -176,10 +177,14 @@ def print_comparison(deltas: list[MetricDelta], label_a: str = "Run A", label_b:
 
     for d in deltas:
         color = color_for_direction(d.direction)
+        unit_b = d.unit_b or d.unit
+        suffix_a = unit_suffix(d.unit)
+        suffix_b = unit_suffix(unit_b)
+        label_values = suffix_a != suffix_b or suffix_a == " (est.)"
         table.add_row(
-            d.metric_name + unit_suffix(d.unit),
-            f"{d.value_a:.1f}%" if unit_suffix(d.unit) else format_value(d.value_a, d.unit),
-            f"{d.value_b:.1f}%" if unit_suffix(d.unit) else format_value(d.value_b, d.unit),
+            d.metric_name + ("" if label_values else suffix_a),
+            format_value(d.value_a, d.unit) if label_values or not suffix_a else f"{d.value_a:.1f}%",
+            format_value(d.value_b, unit_b) if label_values or not suffix_b else f"{d.value_b:.1f}%",
             Text(format_delta(d.delta, d.unit), style=color),
             Text(f"{delta_arrow(d.delta)} {d.direction}", style=color),
         )
@@ -187,6 +192,8 @@ def print_comparison(deltas: list[MetricDelta], label_a: str = "Run A", label_b:
     console.print(table)
     if any(d.direction in ("improved", "regressed") for d in deltas):
         console.print(f"[dim]{COMPOSITION_NOTE}[/dim]")
+    if any(unit_suffix(d.unit) == " (est.)" or unit_suffix(d.unit_b) == " (est.)" for d in deltas):
+        console.print(f"[dim]{ESTIMATE_NOTE}[/dim]")
 
 
 def print_runs_table(runs: list[Run], title: str = "Profiling Runs"):

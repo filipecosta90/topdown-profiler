@@ -663,6 +663,33 @@ class TestCompareRuns:
         assert "45.0% (est.) -> 30.0% (-15.0 pp)" in reverse
         assert ESTIMATE_NOTE in reverse
 
+    def test_terminal_comparison_labels_only_estimated_side(self):
+        from rich.console import Console
+
+        from topdown.output import terminal
+
+        a = [{"metric_name": "Backend_Bound", "value": 30.0, "unit": "% Slots"}]
+        b = [{"metric_name": "Backend_Bound", "value": 45.0, "unit": "% Slots_est"}]
+        console = Console(width=120, color_system=None, record=True)
+        original, terminal.console = terminal.console, console
+        try:
+            terminal.print_comparison(compare_runs(a, b))
+        finally:
+            terminal.console = original
+        text = console.export_text()
+        assert "30.0%" in text and "45.0% (est.)" in text
+        assert ESTIMATE_NOTE in text
+
+        console = Console(width=120, color_system=None, record=True)
+        terminal.console = console
+        try:
+            terminal.print_comparison(compare_runs(b, a))
+        finally:
+            terminal.console = original
+        text = console.export_text()
+        assert "45.0% (est.)" in text and "30.0%" in text
+        assert ESTIMATE_NOTE in text
+
     def test_only_slot_shares_are_judged(self):
         a = [
             {"metric_name": "Backend_Bound", "value": 40.0, "unit": "% Slots"},
