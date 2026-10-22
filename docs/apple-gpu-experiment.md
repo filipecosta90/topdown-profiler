@@ -70,6 +70,12 @@ pipeline-slot partition. In fact, summing the individual limiter sampled means
 for the 100-pass stream run gives **260.23%** (Buffer Write 99.44%, Buffer Read
 67.15%, MMU 48.63%, GPU Last Level Cache 43.68%, plus smaller values). The
 subsystem limiters overlap and cannot be treated as children in a 100% tree.
+The `Top Performance Limiter` label provides a narrower, categorical view: ALU
+was the highest limiter for 98.68% of the 100-pass ALU run's sampled top-limiter
+time, while Buffer Write was highest for 99.98% of the corresponding stream run.
+Those are shares of **sampled top-limiter labels**, not shares of GPU time or
+pipeline slots. Apple demonstrates this highest-limiter track in its GPU counter
+walkthrough.
 See Apple's
 [GPU counter walkthrough](https://developer.apple.com/videos/play/wwdc2020/10603/),
 [Metal compute guidance](https://developer.apple.com/videos/play/tech-talks/10580/),
@@ -90,6 +96,10 @@ Instruments. Set `DEVELOPER_DIR` to the actual Xcode app location if it differs.
 The output directory must be new. The template helper copies Apple's installed
 template and edits the two `counterprofile` settings in the copy. It fails if the
 template layout or defaults differ; it never edits the Xcode installation.
+On this Xcode version, `xctrace record --show-recording-options` did not expose
+Metal counter selection; trying a `Metal Application` JSON entry with
+`--recording-options` returned “does not support recording options.” The copied
+template is the reproducible CLI route tested here.
 
 ```sh
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer

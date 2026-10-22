@@ -93,7 +93,19 @@
           "counter_intervals": 284
         }
       },
-      "sum_of_individual_limiter_means_percent": 74.687046
+      "sum_of_individual_limiter_means_percent": 74.687046,
+      "top_limiter_categories": [
+        {
+          "name": "ALU Limiter",
+          "sampled_time_ns": 5297335,
+          "share_of_top_limiter_samples_percent": 98.6759
+        },
+        {
+          "name": "MMU Limiter",
+          "sampled_time_ns": 71083,
+          "share_of_top_limiter_samples_percent": 1.3241
+        }
+      ]
     },
     {
       "workload": "alu",
@@ -175,7 +187,24 @@
           "counter_intervals": 562
         }
       },
-      "sum_of_individual_limiter_means_percent": 73.614422
+      "sum_of_individual_limiter_means_percent": 73.614422,
+      "top_limiter_categories": [
+        {
+          "name": "ALU Limiter",
+          "sampled_time_ns": 10711796,
+          "share_of_top_limiter_samples_percent": 99.5392
+        },
+        {
+          "name": "MMU Limiter",
+          "sampled_time_ns": 29585,
+          "share_of_top_limiter_samples_percent": 0.2749
+        },
+        {
+          "name": "GPU Last Level Cache Limiter",
+          "sampled_time_ns": 20000,
+          "share_of_top_limiter_samples_percent": 0.1858
+        }
+      ]
     },
     {
       "workload": "stream",
@@ -257,7 +286,24 @@
           "counter_intervals": 5634
         }
       },
-      "sum_of_individual_limiter_means_percent": 260.229887
+      "sum_of_individual_limiter_means_percent": 260.229887,
+      "top_limiter_categories": [
+        {
+          "name": "Buffer Write Limiter",
+          "sampled_time_ns": 111792628,
+          "share_of_top_limiter_samples_percent": 99.982
+        },
+        {
+          "name": "MMU Limiter",
+          "sampled_time_ns": 10375,
+          "share_of_top_limiter_samples_percent": 0.0093
+        },
+        {
+          "name": "GPU Last Level Cache Limiter",
+          "sampled_time_ns": 9707,
+          "share_of_top_limiter_samples_percent": 0.0087
+        }
+      ]
     },
     {
       "workload": "stream",
@@ -339,7 +385,39 @@
           "counter_intervals": 11813
         }
       },
-      "sum_of_individual_limiter_means_percent": 247.325058
+      "sum_of_individual_limiter_means_percent": 247.325058,
+      "top_limiter_categories": [
+        {
+          "name": "Buffer Write Limiter",
+          "sampled_time_ns": 231371837,
+          "share_of_top_limiter_samples_percent": 98.861
+        },
+        {
+          "name": "Texture Sample Limiter",
+          "sampled_time_ns": 1678708,
+          "share_of_top_limiter_samples_percent": 0.7173
+        },
+        {
+          "name": "Texture Write Limiter",
+          "sampled_time_ns": 500000,
+          "share_of_top_limiter_samples_percent": 0.2136
+        },
+        {
+          "name": "ALU Limiter",
+          "sampled_time_ns": 420000,
+          "share_of_top_limiter_samples_percent": 0.1795
+        },
+        {
+          "name": "GPU Last Level Cache Limiter",
+          "sampled_time_ns": 38374,
+          "share_of_top_limiter_samples_percent": 0.0164
+        },
+        {
+          "name": "MMU Limiter",
+          "sampled_time_ns": 28499,
+          "share_of_top_limiter_samples_percent": 0.0122
+        }
+      ]
     }
   ],
   "utilizations_counter_set": {

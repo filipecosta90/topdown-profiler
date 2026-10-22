@@ -109,6 +109,9 @@ def test_summary_weights_sampled_values_and_keeps_units():
     <row><start-time>100</start-time><duration>10</duration><uint32>1</uint32>
     <gpu-counter-name fmt="GPU Read Bandwidth">2.GPU Read Bandwidth</gpu-counter-name>
     <formatted-label fmt="2 GB/s"/><fixed-decimal>2</fixed-decimal><boolean>0</boolean></row>
+    <row><start-time>100</start-time><duration>30</duration><uint32>2</uint32>
+    <gpu-counter-name fmt="Top Performance Limiter">-2.Top Performance Limiter</gpu-counter-name>
+    <formatted-label fmt="30% (1.ALU Limiter)"/><fixed-decimal>30</fixed-decimal><boolean>1</boolean></row>
     </node></trace-query-result>"""
     gpu = b"""<trace-query-result><node><schema name="metal-gpu-intervals">
     <col><mnemonic>start</mnemonic></col><col><mnemonic>duration</mnemonic></col>
@@ -116,7 +119,8 @@ def test_summary_weights_sampled_values_and_keeps_units():
     <row><start-time>100</start-time><duration>30</duration>
     <formatted-label fmt="topdown GPU probe pass 0:burn compute pass 0"/></row>
     </node></trace-query-result>"""
-    means = MODULE.summarize(counters, gpu)["sampled_counter_means"]
+    summary = MODULE.summarize(counters, gpu)
+    means = summary["sampled_counter_means"]
     assert means["ALU Limiter"] == {
         "value": 23.333333,
         "unit": "%",
@@ -124,3 +128,8 @@ def test_summary_weights_sampled_values_and_keeps_units():
         "counter_intervals": 2,
     }
     assert means["GPU Read Bandwidth"]["unit"] == "GB/s"
+    assert summary["top_limiter_categories"] == [{
+        "name": "ALU Limiter",
+        "sampled_time_ns": 30,
+        "share_of_top_limiter_samples_percent": 100.0,
+    }]

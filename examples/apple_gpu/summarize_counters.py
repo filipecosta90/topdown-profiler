@@ -92,7 +92,7 @@ def summarize(source: bytes, gpu_intervals: bytes | None = None) -> dict:
             if percentage not in {"0", "1"}:
                 raise ValueError(f"invalid percentage flag for {name}")
             unit = "%" if percentage == "1" else "GB/s" if " GB/s" in label else "native"
-            values.append((start, start + duration, name, value, unit))
+            values.append((start, start + duration, name, value, unit, label))
     result = {
         "schema": "metal-gpu-counter-intervals",
         "counter_rows": sum(names.values()),
@@ -145,7 +145,8 @@ def summarize(source: bytes, gpu_intervals: bytes | None = None) -> dict:
         ),
     }
     means = {}
-    for start, end, name, value, unit in values:
+    top_categories = Counter()
+    for start, end, name, value, unit, label in values:
         overlap = _overlap(start, end, windows)
         if not overlap:
             continue
@@ -155,6 +156,10 @@ def summarize(source: bytes, gpu_intervals: bytes | None = None) -> dict:
         metric["weighted_sum"] += overlap * value
         metric["sampled_time_ns"] += overlap
         metric["counter_intervals"] += 1
+        if name == "Top Performance Limiter":
+            category = re.search(r"\((-?\d+\.([^()]*)\))$", label)
+            if category:
+                top_categories[category.group(2)] += overlap
     result["sampled_counter_means"] = {
         name: {
             "value": round(metric["weighted_sum"] / metric["sampled_time_ns"], 6),
@@ -164,6 +169,15 @@ def summarize(source: bytes, gpu_intervals: bytes | None = None) -> dict:
         }
         for name, metric in sorted(means.items())
     }
+    top_total = sum(top_categories.values())
+    result["top_limiter_categories"] = [
+        {
+            "name": name,
+            "sampled_time_ns": duration,
+            "share_of_top_limiter_samples_percent": round(100 * duration / top_total, 4),
+        }
+        for name, duration in sorted(top_categories.items(), key=lambda item: (-item[1], item[0]))
+    ]
     return result
 
 
