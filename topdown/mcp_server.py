@@ -194,7 +194,7 @@ def query_bottlenecks(
         find_detail_bottlenecks,
         summarize_bottlenecks,
     )
-    from topdown.units import lowest_mux
+    from topdown.units import lowest_mux, mux_note
 
     backend = _get_backend()
     try:
@@ -208,7 +208,9 @@ def query_bottlenecks(
         details = find_detail_bottlenecks(metrics, top_n=top_n, min_percentage=min_percentage)
 
         if not found and not details:
-            return f"No bottlenecks above {min_percentage}% found."
+            message = f"No bottlenecks above {min_percentage}% found."
+            mux = lowest_mux(metrics)
+            return message + (f"\n{mux_note(mux)}" if mux is not None else "")
 
         lines = [
             f"Run: {run.run_id} | {run.process_name} | L{run.level} | {run.started_at.strftime('%Y-%m-%d %H:%M')}",

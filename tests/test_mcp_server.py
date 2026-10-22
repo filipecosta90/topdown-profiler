@@ -222,6 +222,12 @@ class TestIntelRunThroughTools:
         ) in lines
         assert lines[-1].startswith("Data quality: MUX 3.0%")
 
+    def test_no_bottlenecks_still_reports_mux_quality(self, intel_db):
+        from topdown.mcp_server import query_bottlenecks
+        text = query_bottlenecks(labels={"variant": self.RUN_A[:4]}, min_percentage=100.0)
+        assert text.startswith("No bottlenecks above 100.0% found.")
+        assert "Data quality: MUX 3.0%" in text
+
     def test_query_by_bottleneck_names_node_and_unit(self, intel_db):
         from topdown.mcp_server import query_by_bottleneck
         lines = query_by_bottleneck(metric_name="L1_Bound", min_pct=5.0).splitlines()

@@ -262,6 +262,11 @@ def format_funnel_comparison(
             if better_when and abs(delta) >= DELTA_MARK_THRESHOLD:
                 indicator = " ▲" if delta * better_when > 0 else " ▼"
                 marked = True
+        if any(unit_suffix(e.unit) == " (est.)" for e in (entry_a, entry_b) if e):
+            col_a = format_value(entry_a.value, entry_a.unit) if entry_a else "  —  "
+            col_b = format_value(entry_b.value, entry_b.unit) if entry_b else "  —  "
+            if suffix != " (units differ)":
+                suffix = ""
 
         # Pad the metric name + tree prefix to fixed width
         name_col = f"{_tree_prefix(ref.indent)}{ref.path}"
@@ -286,6 +291,8 @@ def format_funnel_comparison(
     if marked:
         lines.append(f"▲ better / ▼ worse: slot-share change of at least {DELTA_MARK_THRESHOLD:.0f} points")
         lines.append(COMPOSITION_NOTE)
+    if any(unit_suffix(e.unit) == " (est.)" for e in (*result_a.entries, *result_b.entries)):
+        lines.append(ESTIMATE_NOTE)
     if result_a.mux is not None or result_b.mux is not None:
         mux_a = f"{result_a.mux:.1f}%" if result_a.mux is not None else "—"
         mux_b = f"{result_b.mux:.1f}%" if result_b.mux is not None else "—"

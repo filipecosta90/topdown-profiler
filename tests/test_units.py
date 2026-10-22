@@ -22,6 +22,7 @@ from topdown.analysis.topdown_tree import build_tree, format_tree_text
 from topdown.collector.csv_parser import CsvFormat, parse_line, parse_output
 from topdown.units import (
     COMPOSITION_NOTE,
+    ESTIMATE_NOTE,
     delta_direction,
     format_value,
     is_below_threshold,
@@ -649,6 +650,19 @@ class TestCompareRuns:
         (d,) = compare_runs(a, b)
         assert d.direction == "improved"
 
+    def test_measured_and_estimated_slot_shares_label_each_value(self):
+        a = [{"metric_name": "Backend_Bound", "value": 30.0, "unit": "% Slots"}]
+        b = [{"metric_name": "Backend_Bound", "value": 45.0, "unit": "% Slots_est"}]
+        (delta,) = compare_runs(a, b)
+        assert delta.to_dict()["unit_b"] == "% Slots_est"
+        text = summarize_comparison([delta])
+        assert "30.0% -> 45.0% (est.) (+15.0 pp)" in text
+        assert ESTIMATE_NOTE in text
+
+        reverse = summarize_comparison(compare_runs(b, a))
+        assert "45.0% (est.) -> 30.0% (-15.0 pp)" in reverse
+        assert ESTIMATE_NOTE in reverse
+
     def test_only_slot_shares_are_judged(self):
         a = [
             {"metric_name": "Backend_Bound", "value": 40.0, "unit": "% Slots"},
@@ -738,10 +752,16 @@ class TestComparisonAndFunnelDetails:
         assert d.direction == "unchanged"
 
     def test_estimate_note_in_funnel(self, spr_metrics):
-        from topdown.units import ESTIMATE_NOTE
-
         assert ESTIMATE_NOTE in format_funnel_text(build_funnel(spr_metrics, max_level=3)).splitlines()
         assert ESTIMATE_NOTE not in format_funnel_text(build_funnel(AMD_METRICS))
+
+    def test_estimated_comparison_labels_the_estimated_side(self):
+        a = [{"metric_name": "Backend_Bound", "value": 30.0, "unit": "% Slots"}]
+        b = [{"metric_name": "Backend_Bound", "value": 45.0, "unit": "% Slots_est"}]
+        text = format_funnel_comparison(build_funnel(a), build_funnel(b))
+        row = next(line for line in text.splitlines() if line.startswith("Backend_Bound"))
+        assert "30.0%" in row and "45.0% (est.)" in row
+        assert ESTIMATE_NOTE in text.splitlines()
 
     def test_zero_slot_row_has_no_bar(self):
         metrics = [*AMD_METRICS, {"metric_name": "Bad_Speculation", "value": 0.0, "unit": "%"}]

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from topdown.units import (
     COMPOSITION_NOTE,
+    ESTIMATE_NOTE,
     OTHER_DENOMINATOR_TITLE,
     UNCHANGED_BELOW,
     USEFUL_MIX_TITLE,
@@ -17,6 +18,7 @@ from topdown.units import (
     is_slot_unit,
     normalize_unit,
     unit_class,
+    unit_suffix,
 )
 
 # Rows listed per group by summarize_comparison.
@@ -35,6 +37,7 @@ class MetricDelta:
     direction: str  # "improved", "regressed", "unchanged", or "changed" (not judged)
     unit: str
     level: int
+    unit_b: str = ""
 
     def to_dict(self) -> dict:
         return {
@@ -45,6 +48,7 @@ class MetricDelta:
             "delta_percent": self.delta_percent,
             "direction": self.direction,
             "unit": self.unit,
+            "unit_b": self.unit_b or self.unit,
             "level": self.level,
         }
 
@@ -105,6 +109,7 @@ def compare_runs(
                 direction=direction,
                 unit=unit,
                 level=name.count(".") + 1,
+                unit_b=lookup_b[name]["unit"],
             )
         )
 
@@ -139,6 +144,11 @@ def summarize_comparison(deltas: list[MetricDelta]) -> str:
                 lines.append(f"  ... +{len(group) - SUMMARY_ROWS} more")
     if regressed or improved:
         lines.append(COMPOSITION_NOTE)
+    if lines and any(
+        unit_suffix(d.unit) == " (est.)" or unit_suffix(d.unit_b) == " (est.)"
+        for d in (*regressed, *improved, *changed)
+    ):
+        lines.append(ESTIMATE_NOTE)
     if not lines:
         return "No significant differences found."
 
@@ -148,7 +158,7 @@ def summarize_comparison(deltas: list[MetricDelta]) -> str:
 def _delta_line(d: MetricDelta) -> str:
     return (
         f"  {delta_arrow(d.delta)} {d.metric_name}: "
-        f"{format_value(d.value_a, d.unit)} -> {format_value(d.value_b, d.unit)} "
+        f"{format_value(d.value_a, d.unit)} -> {format_value(d.value_b, d.unit_b or d.unit)} "
         f"({format_delta(d.delta, d.unit)})"
     )
 
