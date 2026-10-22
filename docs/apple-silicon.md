@@ -119,7 +119,7 @@ duration is capped at 300 seconds; launched `stat` commands use it as a timeout.
 The MCP server must run on macOS to collect, and resolves executable/file paths
 on that host. Imports, database queries, and reports can run on other supported
 OSes. The summary omits bulk arrays; use `section=samples`, `intervals`, `gaps`,
-`channels`, or `leaf_sample_counts` to page through the relevant native data.
+`channels`, `leaf_sample_counts`, or GPU `encoders` to page through the relevant native data.
 `list_profiling_runs` discovers both Linux and Apple runs. Linux metric
 comparisons and funnels continue to operate on Linux TMA rows.
 
@@ -1201,3 +1201,17 @@ suggestions were not treated as evidence. Calls/outputs are retained locally in
 `.local-runs/cpu-perf/`. Actual implementation/review was one sequential Codex
 session; exact serving model and token costs are unknown. No independent agent,
 optimization population, performance acceptance, upstream PR or publication is claimed.
+
+## Native GPU profiling
+
+`topdown apple gpu record --output /tmp/gpu-001 --mode alu --store` captures a
+checksum-verified Metal control, profiles its replay and stores native encoder
+counters. Use `topdown apple gpu report --run-id RUN_ID` to rank its costs and
+limiters, or `apple query RUN_ID --section encoders` for paginated raw counters.
+Existing `.gputrace` captures use `apple gpu profile`. Replay requires full Xcode
+and Apple M3/A17 Pro or later; stored GPU reports work on any supported OS.
+
+MCP exposes `collect_apple_gpu_profile`, `profile_apple_gpu_trace` and
+`get_apple_gpu_report`, alongside the shared import/query tools. See the
+[GPU guide](apple-gpu-experiment.md#cli-database-and-mcp) for commands, native
+limiter interpretation, M6 measurements and the separate M1 Instruments path.

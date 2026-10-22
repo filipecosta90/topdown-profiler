@@ -1,7 +1,7 @@
 """MCP (Model Context Protocol) server for topdown-profiler.
 
 Exposes TMA collection, querying, and analysis as MCP tools and resources
-for AI-assisted CPU performance analysis.
+for AI-assisted CPU and GPU performance analysis.
 
 Auth modes (via TOPDOWN_AUTH_MODE env var):
 - "none" (default): no auth, suitable for stdio transport / local use
@@ -25,6 +25,10 @@ _MCP_INSTRUCTIONS = (
     "collect_apple_profile or import_apple_result, query_apple_result, and get_apple_hotspots. "
     "Apple runs share the run list and labels, while retaining native units, scope and integer precision. "
     "Apple bottleneck shares and sample-frequency hotspots are separate from Linux slot TMA."
+    " For Apple GPU replay use collect_apple_gpu_profile (packaged Metal controls), profile_apple_gpu_trace "
+    "(existing server-local .gputrace), query_apple_result(section='encoders'), and get_apple_gpu_report. "
+    "Replay requires Apple silicon M3/A17 Pro+ and Xcode. GPU limiters overlap and may exceed 100%; "
+    "retain native sampling coverage and compare matched replay settings."
 )
 
 
@@ -64,7 +68,8 @@ def _get_backend():
 
 def _apple_run_guidance(*runs):
     if any(run.labels.get("collector") == "apple" for run in runs):
-        return ("This run contains native Apple measurements. Use query_apple_result or get_apple_hotspots; "
+        report = "get_apple_gpu_report" if any(run.labels.get("processor") == "gpu" for run in runs) else "get_apple_hotspots"
+        return (f"This run contains native Apple measurements. Use query_apple_result or {report}; "
                 "Linux slot-TMA analysis and comparisons are unavailable for Apple results.")
     return None
 
@@ -139,8 +144,8 @@ def query_apple_result(run_id: str, section: str = "summary", offset: int = 0, l
     """Read a stored native Apple result by run ID, on any server OS.
 
     summary returns native totals/categories, scope and provenance without bulk observations.
-    Read samples, intervals, gaps, channels or leaf_sample_counts in pages (limit 1–1000).
-    Native integers, histogram units and null Intel TMA fields are retained.
+    Read samples, intervals, gaps, channels, leaf_sample_counts or GPU encoders in pages (limit 1–1000).
+    Native integer precision, GPU counter strings, histogram units and unavailable Intel TMA are retained.
     """
     from topdown.apple_storage import query_apple_result as query
     from topdown.collector.apple import AppleProfileError
@@ -163,6 +168,76 @@ def get_apple_hotspots(run_id: str, limit: int = 20) -> dict:
     backend = _get_backend()
     try:
         return stored_apple_hotspots(backend, run_id, limit)
+    except AppleProfileError as exc:
+        return {"error": str(exc)}
+    finally:
+        backend.close()
+
+
+def _collect_gpu(trace, mode, passes, items, execution, process_name, labels):
+    import uuid
+    from pathlib import Path
+    from topdown.apple_storage import query_apple_result as query, store_apple_result, validate_run_options
+    from topdown.collector.apple_gpu import collect, record
+
+    output = Path(get_config().db_path).parent / "apple-gpu-captures" / str(uuid.uuid4())
+    try:
+        validate_run_options(process_name, labels)
+        if trace is None:
+            record(output, mode, passes, items, execution)
+        else:
+            collect(Path(trace), output, execution)
+        backend = _get_backend()
+        try:
+            run = store_apple_result(backend, output / "profile.json", process_name, labels)
+            return {**query(backend, run.run_id), "artifacts": str(output)}
+        finally:
+            backend.close()
+    except Exception as exc:
+        return {"error": str(exc), "artifacts": str(output)}
+
+
+@mcp.tool()
+def collect_apple_gpu_profile(
+    mode: str = "compute", passes: int = 4, items: int = 16384, execution: str = "overlapping",
+    process_name: str | None = None, labels: dict[str, str] | None = None,
+) -> dict:
+    """Capture a checksum-verified packaged Metal control, replay it, and store native GPU counters.
+
+    Runs on the MCP server's Apple silicon macOS host with Xcode (replay requires M3/A17 Pro+).
+    Modes: compute, alu (reduced loop overhead), memory, stream (64 floats/thread).
+    Bounds: passes 1–500, items 1–16777216, product <=268435456; stream items divisible by 64.
+    Compilation/capture timeouts are 90/60 seconds; replay budget 300 seconds plus session cleanup.
+    Replay execution is overlapping or serial, GPU state default. Failed captures retain artifacts.
+    """
+    return _collect_gpu(None, mode, passes, items, execution, process_name, labels)
+
+
+@mcp.tool()
+def profile_apple_gpu_trace(
+    path: str, execution: str = "overlapping", process_name: str | None = None, labels: dict[str, str] | None = None,
+) -> dict:
+    """Replay an existing server-local .gputrace and store its native GPU counters (M3/A17 Pro+, Xcode).
+
+    Only the captured Metal workload is replayed; this does not launch or profile an arbitrary process.
+    Retains native counters, overlapping limiters and sampling coverage. Replay budget: 300 seconds.
+    """
+    return _collect_gpu(path, None, None, None, execution, process_name, labels)
+
+
+@mcp.tool()
+def get_apple_gpu_report(run_id: str, limit: int = 20, offset: int = 0) -> dict:
+    """Rank stored Apple GPU encoders by replay cost with native limiter values and sampling coverage.
+
+    Works on any server OS. Pages up to 1000 encoders without renormalizing their original cost shares.
+    Native limiters overlap and values above 100% are retained and flagged; these are not CPU slot TMA.
+    """
+    from topdown.apple_storage import stored_apple_gpu_report
+    from topdown.collector.apple import AppleProfileError
+
+    backend = _get_backend()
+    try:
+        return stored_apple_gpu_report(backend, run_id, limit, offset)
     except AppleProfileError as exc:
         return {"error": str(exc)}
     finally:
@@ -711,6 +786,9 @@ def _register_tools_and_resources(target: FastMCP):
     target.tool()(collect_apple_profile)
     target.tool()(query_apple_result)
     target.tool()(get_apple_hotspots)
+    target.tool()(collect_apple_gpu_profile)
+    target.tool()(profile_apple_gpu_trace)
+    target.tool()(get_apple_gpu_report)
     target.tool()(query_bottlenecks)
     target.tool()(query_by_bottleneck)
     target.tool()(get_funnel)

@@ -3,13 +3,15 @@
 Start with the most expensive GPU passes, inspect Apple's native limiters, change
 the workload, and verify both the result and its GPU timing. M6 supports this
 workflow through **GPU replay profiling**, even though its Instruments counter
-timeline currently exposes little useful compute data. These source-checkout
-scripts produce local JSON and readable reports. GPU database/MCP integration is
-not included in this experiment.
+timeline currently exposes little useful compute data. The packaged `apple gpu`
+CLI collects native counters, stores them in SQLite/PostgreSQL, and exposes
+collection, paginated queries and bottleneck reports through MCP.
 
 The commands use new output paths and do not change host security settings.
 Raw captures stay local; reviewed M6 measurements are in
-[apple-gpu-m6-validation.json](apple-gpu-m6-validation.json).
+[apple-gpu-m6-validation.json](apple-gpu-m6-validation.json). Its
+`measurement_commit` identifies the original experiment source for the recorded
+source hashes; the packaged workflow adds storage and MCP integration.
 
 ## M6 finding and useful GPU report
 
@@ -60,8 +62,65 @@ coverage also varies: the memory captures report 10/12 and 5/12 sampled cores,
 while the compute, ALU and stream captures report 12/12. The report prints this
 coverage and preserves all exported counters as native strings.
 
-### Reproduce replay profiling on M6
+### CLI, database and MCP
 
+Install the project and use full Xcode. Replay profiling requires M3/A17 Pro or
+later; the M1 Instruments experiment below uses a different collection path.
+
+```sh
+export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+# New output directory; compiles the packaged probe, captures, replays and stores.
+topdown apple gpu record --mode compute --passes 4 --items 16384 \
+  --output /tmp/m6-gpu-compute-001 --store --label test_name=m6-gpu-compute
+topdown apple gpu record --mode alu --passes 4 --items 16384 \
+  --output /tmp/m6-gpu-alu-001 --store --label test_name=m6-gpu-alu
+
+# Use the run_id printed by either capture.
+topdown apple gpu report --run-id RUN_ID --limit 4
+topdown apple gpu report --run-id RUN_ID --json
+topdown apple query RUN_ID --section encoders --offset 0 --limit 2
+
+# Existing Metal capture, or an exported profile from another machine.
+topdown apple gpu profile /path/workload.gputrace --output /tmp/m6-replay-001 --store
+topdown apple store /path/profile.json --process metal-workload --label chip=M6
+topdown apple gpu report /path/profile.json
+```
+
+Use `--db /path/results.db` with `--store` for a specific SQLite database and
+with run-ID query/report commands to read it. For PostgreSQL, install the
+`postgresql` extra and set `TOPDOWN_BACKEND=postgresql` and `TOPDOWN_DSN` as in
+[the storage guide](apple-silicon.md#database-storage-and-mcp). The existing
+native Apple document table stores the complete GPU JSON atomically with its run;
+no Linux metric samples are created. GPU runs have `collector=apple`,
+`processor=gpu`, `device`, and `measurement_kind=apple-gpu-replay-profile` labels.
+Native integer counters remain strings exactly as exported by the GPU debugger.
+Imports without timestamps are explicitly labeled with an import-time basis.
+
+The MCP server exposes:
+
+| Tool | Purpose |
+|---|---|
+| `collect_apple_gpu_profile(mode, passes, items, execution, process_name, labels)` | Capture the packaged Metal control and store its replay profile |
+| `profile_apple_gpu_trace(path, execution, process_name, labels)` | Replay an existing server-local `.gputrace` and store the profile |
+| `import_apple_result(path, process_name, labels)` | Store an existing GPU `profile.json` |
+| `query_apple_result(run_id, section="encoders", offset=0, limit=100)` | Page through native encoder counters |
+| `get_apple_gpu_report(run_id, limit=20, offset=0)` | Rank encoder costs and native limiters |
+
+For example, call `collect_apple_gpu_profile` with
+`{"mode":"alu","passes":4,"items":16384,"labels":{"test_name":"m6-gpu"}}`,
+then pass its `run_id` to `get_apple_gpu_report`. Collection runs on the server's
+Mac; importing, querying and reporting saved results work on any supported OS.
+Paths refer to the server host. Report pagination retains original costs without
+renormalizing the selected encoders. Compilation/capture timeouts are 90/60
+seconds; replay has a 300-second budget plus up to 15 seconds for session cleanup.
+Failed collection/storage preserves local artifacts and returns an error.
+The run's timestamp range covers the collection workflow; use the native
+`timeline` for replay GPU timing and `probe.gpu_seconds` for original command GPU
+timestamps. Neither is application CPU time.
+
+### Reproduce the lower-level replay experiment
+
+The source-checkout wrappers use the same packaged collector and report code.
 Use a fresh directory and full Xcode:
 
 ```sh

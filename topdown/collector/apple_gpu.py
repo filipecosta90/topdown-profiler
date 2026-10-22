@@ -1,0 +1,211 @@
+"""Collect native GPU replay counters with gpudebug; keep capture resources local."""
+
+import argparse
+from datetime import datetime, timezone
+import hashlib
+import json
+import os
+from pathlib import Path
+import platform
+import re
+import subprocess
+import sys
+import time
+
+from topdown.collector.apple import TMA_ROOTS
+
+GPU_KIND = "apple-gpu-replay-profile"
+GPU_MODES = {"compute", "alu", "memory", "stream"}
+
+
+def validate_options(mode="compute", passes=4, items=16384, execution="overlapping"):
+    if (not isinstance(mode, str) or mode not in GPU_MODES or type(passes) is not int or not 1 <= passes <= 500
+            or type(items) is not int or not 1 <= items <= 16777216 or passes * items > 268435456
+            or (mode == "stream" and items % 64) or execution not in ("overlapping", "serial")):
+        raise ValueError("Choose compute/alu/memory/stream, passes 1–500, items 1–16777216, passes*items <= 268435456, "
+                         "stream items divisible by 64, and overlapping/serial execution")
+
+
+def _require_host():
+    if platform.system() != "Darwin" or platform.machine() != "arm64":
+        raise ValueError("GPU capture/replay requires Apple silicon macOS and Xcode; stored reports work on any OS")
+
+
+def record(output: Path, mode="compute", passes=4, items=16384, execution="overlapping") -> dict:
+    """Capture the packaged, checksum-verified Metal control and profile its replay."""
+    validate_options(mode, passes, items, execution)
+    _require_host()
+    output = output.resolve()
+    output.mkdir(parents=True, exist_ok=False)
+    started = datetime.now(timezone.utc).isoformat()
+    source = Path(__file__).with_name("apple_gpu_probe.swift")
+
+    def run(name, command, timeout, env=None):
+        (output / f"{name}.command.json").write_text(json.dumps(command))
+        try:
+            result = subprocess.run(command, text=True, capture_output=True, timeout=timeout, env=env)
+        except subprocess.TimeoutExpired as exc:
+            (output / f"{name}.stdout").write_bytes(exc.stdout or b"")
+            (output / f"{name}.stderr").write_bytes(exc.stderr or b"")
+            raise ValueError(f"GPU {name} timed out; artifacts: {output}") from exc
+        (output / f"{name}.stdout").write_text(result.stdout)
+        (output / f"{name}.stderr").write_text(result.stderr)
+        if result.returncode:
+            raise ValueError(f"GPU {name} failed: {result.stderr.strip() or result.stdout.strip()}; artifacts: {output}")
+
+    binary, trace = output / "probe", output / "capture.gputrace"
+    run("compile", ["xcrun", "swiftc", "-O", "-framework", "Metal", str(source), "-o", str(binary)], 90)
+    run("capture", [str(binary), str(passes), "--mode", mode, "--items", str(items),
+                    "--capture", str(trace), "--result", str(output / "probe.json")], 60,
+        {**os.environ, "MTL_CAPTURE_ENABLED": "1"})
+    probe = json.loads((output / "probe.json").read_text())
+    if (not isinstance(probe, dict) or probe.get("checksum_verified") is not True
+            or probe.get("mode") != mode or probe.get("passes") != passes or probe.get("items") != items):
+        raise ValueError(f"GPU control failed checksum/configuration verification; artifacts: {output}")
+    result = collect(trace, output / "replay", execution)
+    result.update(started_at=started, ended_at=datetime.now(timezone.utc).isoformat(),
+                  probe=probe, environment={"arch": platform.machine(), "os_version": platform.mac_ver()[0]},
+                  source_sha256=hashlib.sha256(source.read_bytes()).hexdigest())
+    (output / "profile.json").write_text(json.dumps(result, indent=2, allow_nan=False) + "\n")
+    return result
+
+
+def json_documents(text: str) -> list[dict]:
+    decoder = json.JSONDecoder()
+    documents = []
+    while text.strip():
+        value, end = decoder.raw_decode(text.lstrip())
+        if not isinstance(value, dict):
+            raise ValueError("Expected gpudebug JSON objects")
+        documents.append(value)
+        text = text.lstrip()[end:]
+    if not documents:
+        raise ValueError("gpudebug returned no JSON")
+    return documents
+
+
+def collect(trace: Path, output: Path, execution: str = "overlapping") -> dict:
+    if execution not in ("overlapping", "serial"):
+        raise ValueError("Choose overlapping or serial replay execution")
+    if not trace.exists() or trace.suffix != ".gputrace":
+        raise ValueError("Require an existing .gputrace capture")
+    output.mkdir(parents=True, exist_ok=False)
+    sequence = 0
+    session = None
+    started = datetime.now(timezone.utc).isoformat()
+    expires = time.monotonic() + 300
+
+    def run(arguments, timeout=120):
+        nonlocal sequence, session
+        if "--terminate" not in arguments:
+            timeout = min(timeout, max(0, expires - time.monotonic()))
+            if not timeout:
+                raise ValueError(f"GPU replay exceeded its 300 second budget; artifacts: {output}")
+        sequence += 1
+        command = ["xcrun", "gpudebug", *arguments]
+        (output / f"{sequence:03d}.command.json").write_text(json.dumps(command))
+        try:
+            result = subprocess.run(command, text=True, capture_output=True, timeout=timeout)
+        except subprocess.TimeoutExpired as exc:
+            (output / f"{sequence:03d}.stdout").write_bytes(exc.stdout or b"")
+            (output / f"{sequence:03d}.stderr").write_bytes(exc.stderr or b"")
+            if "-t" in arguments:
+                match = re.search(rb"Session (\d+) created\.", exc.stdout or b"")
+                if match:
+                    session = match.group(1).decode()
+            raise ValueError(f"gpudebug timed out; partial artifacts: {output}") from exc
+        (output / f"{sequence:03d}.stdout").write_text(result.stdout)
+        (output / f"{sequence:03d}.stderr").write_text(result.stderr)
+        if "-t" in arguments:
+            match = re.search(r"Session (\d+) created\.", result.stdout)
+            if match:
+                session = match.group(1)
+        if result.returncode:
+            raise ValueError(f"gpudebug failed: {result.stderr.strip() or result.stdout.strip()}; artifacts: {output}")
+        return result.stdout
+
+    def query(command):
+        response = run(["-s", session, "--json", "-c", command])
+        try:
+            return json_documents(response)[-1]
+        except ValueError as exc:
+            raise ValueError(f"Unexpected gpudebug response to {command!r}: {response.strip()[:300]}; artifacts: {output}") from exc
+
+    try:
+        opened = run(["-t", str(trace.resolve()), "--timeout", "180", "-c", "profile"])
+        match = re.search(r"Session (\d+) created\.", opened)
+        if not match:
+            raise ValueError(f"gpudebug did not create a session; artifacts: {output}")
+        session = match.group(1)
+        run(["-s", session, "-c", f"profile run --gpu-state default --exec {execution}"])
+        status = query("profile")
+        if status.get("state") != "loaded":
+            raise ValueError(f"GPU replay profiling is unavailable: {status}; artifacts: {output}")
+        # Xcode can report "loaded" before its asynchronous performance tree is populated.
+        deadline = time.monotonic() + 30
+        while True:
+            try:
+                query("go /performance")
+                query("go /performance/encoders")
+                listing = query("list --all")
+                if listing.get("children"):
+                    break
+            except ValueError as exc:
+                if "has no info" not in str(exc) and "no info handler" not in str(exc):
+                    raise
+            if time.monotonic() >= deadline:
+                raise ValueError(f"GPU performance tables did not become ready; artifacts: {output}")
+            time.sleep(0.25)
+        children = listing.get("children")
+        if (not isinstance(children, list) or not children or listing.get("totalCount") != len(children)
+                or any(not isinstance(row, dict) or not re.fullmatch(r"[a-z]+\d+", str(row.get("name", ""))) for row in children)):
+            raise ValueError("Incomplete or unexpected GPU encoder listing")
+        encoders = [{"id": row["name"], "listing": row, "counters": query(f"info /performance/encoders/{row['name']}")}
+                    for row in children]
+        query("go /performance/timeline/counters")
+        timeline = query("info /performance/timeline")
+        document = {
+            "schema_version": 1, "measurement_kind": "apple-gpu-replay-profile",
+            "scope": {"kind": "captured-metal-workload", "trace_name": trace.name},
+            "settings": {"execution": execution, "gpu_state": "default", "replayed": True},
+            "device": query("status").get("device"), "timeline": timeline, "encoders": encoders,
+            "tma_available": False, "tma": dict.fromkeys(TMA_ROOTS),
+            "started_at": started, "ended_at": datetime.now(timezone.utc).isoformat(),
+            "limitations": [
+                "Measurements describe replay of the captured Metal workload, not original application wall time.",
+                "Native limiter percentages overlap and must not be summed into a pipeline-slot partition.",
+                "Encoder cost is the profiler's cost attribution, not a CPU-time percentage.",
+                "Default replay GPU state and execution mode can change timings; compare matched settings.",
+            ],
+        }
+        from topdown.apple_gpu_report import summarize
+
+        summarize(document)
+        (output / "profile.json").write_text(json.dumps(document, indent=2, allow_nan=False) + "\n")
+        return document
+    finally:
+        if session is not None:
+            failing = sys.exc_info()[0] is not None
+            try:
+                run(["--terminate", session], timeout=15)
+            except (OSError, ValueError):
+                if not failing:
+                    raise
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("trace", type=Path)
+    parser.add_argument("--output", required=True, type=Path, help="new directory for native JSON and command logs")
+    parser.add_argument("--execution", choices=["overlapping", "serial"], default="overlapping")
+    args = parser.parse_args()
+    try:
+        result = collect(args.trace, args.output, args.execution)
+    except (ValueError, OSError) as exc:
+        parser.error(str(exc))
+    print(json.dumps({"profile": str(args.output / "profile.json"), "device": result["device"],
+                      "encoder_count": len(result["encoders"]), "timeline": result["timeline"]}, indent=2))
+
+
+if __name__ == "__main__":
+    main()

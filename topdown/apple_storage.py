@@ -14,7 +14,7 @@ PROFILE_SCHEMAS = {kind: schema for _, schema, kind in MODES.values()}
 PROFILE_SCHEMAS["apple-guided-bottleneck-intervals"] = "MetricTable"
 STAT_KIND = "process-accounted-fixed-counters"
 SOC_KIND = "native-soc-firmware-state-observations"
-BULK_FIELDS = {"samples", "intervals", "gaps", "channels", "leaf_sample_counts"}
+BULK_FIELDS = {"samples", "intervals", "gaps", "channels", "leaf_sample_counts", "encoders"}
 EVENT_GROUPS = {MODES[mode][2]: events for mode, events in
                 [("fixed", FIXED_EVENTS), ("m1", M1_EVENTS), ("m1-map", M1_MAP_EVENTS), ("m1-fetch", M1_FETCH_EVENTS)]}
 
@@ -130,10 +130,18 @@ def _validate_profile(result, rows):
 def validate_result(result: dict) -> None:
     if not isinstance(result, dict) or not isinstance(result.get("measurement_kind"), str):
         raise AppleProfileError("Require a native Apple profile.json, stat.json or soc.json result")
-    if result.get("tma_available") is not False or result.get("tma") != dict.fromkeys(TMA_ROOTS):
+    gpu = result["measurement_kind"] == "apple-gpu-replay-profile"
+    if result.get("tma_available") is not False or result.get("tma", dict.fromkeys(TMA_ROOTS) if gpu else None) != dict.fromkeys(TMA_ROOTS):
         raise AppleProfileError("Apple results must retain unavailable Intel TMA fields as null")
     kind = result["measurement_kind"]
-    if kind == STAT_KIND:
+    if gpu:
+        from topdown.apple_gpu_report import summarize
+
+        try:
+            summarize(result)
+        except ValueError as exc:
+            raise AppleProfileError(str(exc)) from exc
+    elif kind == STAT_KIND:
         counters = result.get("counters")
         if (not isinstance(counters, dict) or not {"instructions", "cycles"}.issubset(counters)
                 or not all(_uint(value) for value in counters.values())):
@@ -237,6 +245,8 @@ def store_apple_result(backend, path: Path, process_name: str | None = None, lab
             if isinstance(environment.get(key), str):
                 all_labels.setdefault(key, environment[key])
     all_labels.update(collector="apple", measurement_kind=result["measurement_kind"], time_basis=time_basis)
+    if result["measurement_kind"] == "apple-gpu-replay-profile":
+        all_labels.update(processor="gpu", device=result["device"])
     run = Run(started_at=started, ended_at=ended, duration_seconds=(ended - started).total_seconds() if ended else 0,
               process_name=process_name, level=0, system_wide=system_wide, labels=all_labels)
     metadata = {"imported_at": imported.isoformat(), "source_sha256": source_sha256, "time_basis": time_basis,
@@ -247,7 +257,7 @@ def store_apple_result(backend, path: Path, process_name: str | None = None, lab
 
 def query_apple_result(backend, run_id: str, section: str = "summary", offset: int = 0, limit: int = 100) -> dict:
     if section not in {"summary", *BULK_FIELDS} or type(offset) is not int or offset < 0 or type(limit) is not int or not 1 <= limit <= 1000:
-        raise AppleProfileError("Choose summary/samples/intervals/gaps/channels/leaf_sample_counts, offset >= 0 and limit 1–1000")
+        raise AppleProfileError("Choose summary/samples/intervals/gaps/channels/leaf_sample_counts/encoders, offset >= 0 and limit 1–1000")
     run = backend.get_run(run_id)
     document = backend.get_apple_result(run_id)
     if run is None or document is None:
@@ -270,6 +280,18 @@ def stored_apple_hotspots(backend, run_id: str, limit: int = 20) -> dict:
     if document is None:
         raise AppleProfileError(f"No stored Apple result for run {run_id}")
     return {"run_id": run_id, **summarize_hotspots(document["result"], limit)}
+
+
+def stored_apple_gpu_report(backend, run_id: str, limit: int = 20, offset: int = 0) -> dict:
+    from topdown.apple_gpu_report import summarize
+
+    document = backend.get_apple_result(run_id)
+    if document is None:
+        raise AppleProfileError(f"No stored Apple result for run {run_id}")
+    try:
+        return {"run_id": run_id, **summarize(document["result"], limit, offset)}
+    except ValueError as exc:
+        raise AppleProfileError(str(exc)) from exc
 
 
 def collect_apple_result(output: Path, mode: str, command: list[str] | None, pid: int | None,

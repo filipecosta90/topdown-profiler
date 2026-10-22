@@ -1,6 +1,6 @@
 # topdown-profiler
 
-CPU profiling and Top-Down Microarchitecture Analysis (TMA) for Intel, AMD Zen, ARM Neoverse, and Apple silicon (M1/M6). Linux TMA and native Apple results share SQL storage, run labels, and an MCP server; Apple measurements retain their native counters and categories.
+CPU/GPU profiling and Top-Down Microarchitecture Analysis (TMA) for Intel, AMD Zen, ARM Neoverse, and Apple silicon (M1/M6). Linux TMA and native Apple results share SQL storage, run labels, and an MCP server; Apple measurements retain their native counters and categories.
 
 On Linux, wraps [pmu-tools/toplev](https://github.com/andikleen/pmu-tools) on Intel, [AMD uProf](https://www.amd.com/en/developer/uprof.html) (`AMDuProfPcm`) on AMD Zen, or `perf stat --topdown` on ARM Neoverse to collect, store, and query CPU performance data — like [Polar Signals](https://www.polarsignals.com/) but for hardware performance counters.
 
@@ -110,7 +110,7 @@ AMDuProfPcm --help  # sanity check
 | `x86_64` + `AuthenticAMD` (uProf installed) | `uprof_pcm` | `TOPDOWN_COLLECTOR=uprof_pcm` |
 | `x86_64` + `AuthenticAMD` (no uProf) | `perf_stat_amd` | `TOPDOWN_COLLECTOR=perf_stat_amd` |
 | Linux `aarch64` | `perf_stat` | `TOPDOWN_COLLECTOR=perf_stat` |
-| macOS `arm64` | Native `topdown apple` commands; M1 Apple guided four-way bottlenecks; Intel slot TMA unvalidated | — |
+| macOS `arm64` | Native Apple CPU/GPU profiles; M1 guided CPU bottlenecks; M3+ GPU replay | — |
 
 `/proc/cpuinfo` `vendor_id` drives the Intel vs AMD split on x86_64.
 On AMD, the presence of `AMDuProfPcm` in `PATH` (or `TOPDOWN_UPROF_PCM_PATH`)
@@ -366,8 +366,19 @@ and shifts the dominant limiter from Control Flow to F32 execution:
 
 The guide includes M6 capture/report commands, matched 4/8-pass controls, memory
 experiments, and measurement evidence. Limiters overlap, and some M6 values
-exceed 100%; they are retained and flagged. GPU scripts currently produce local
-reports from source-checkout experiments.
+exceed 100%; they are retained and flagged. Use the packaged CLI with full Xcode
+(M3/A17 Pro or later for replay):
+
+```sh
+topdown apple gpu record --mode alu --passes 4 --items 16384 \
+  --output /tmp/m6-gpu-001 --store --label test_name=m6-gpu
+topdown apple gpu report --run-id RUN_ID
+topdown apple query RUN_ID --section encoders --limit 4
+```
+
+GPU results support SQLite/PostgreSQL and MCP collection, queries and reports.
+Use `apple gpu profile` for an existing `.gputrace`. The guide also preserves the
+M1 Instruments counter experiment; replay profiling is unavailable on M1.
 
 ## Microarchitecture Analysis Example (Linux)
 
@@ -547,6 +558,9 @@ Then ask Claude:
 | `import_apple_result` | Store an existing Apple JSON artifact from the server host |
 | `query_apple_result` | Read native Apple summaries and paginated observations by run ID |
 | `get_apple_hotspots` | Rank functions from stored Apple stack samples |
+| `collect_apple_gpu_profile` | Capture a packaged Metal control and store GPU replay counters |
+| `profile_apple_gpu_trace` | Replay and store an existing server-local Metal capture |
+| `get_apple_gpu_report` | Rank stored GPU encoder costs and native limiters |
 
 Apple collection runs on the MCP server's macOS host. Stored Apple data can be
 queried from a server on any supported OS using the same database configuration.

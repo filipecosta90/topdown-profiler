@@ -1507,5 +1507,127 @@
     "The memory controls do not establish a calibrated DRAM-bound classification.",
     "Native core sampling coverage varies; comparisons must account for the reported coverage.",
     "Raw .trace/.gputrace captures and system-wide counter exports remain local."
-  ]
+  ],
+  "measurement_commit": "10847a14f5cf1cc3337ca0ef72b0f1b60dbd8e90",
+  "integration_validation": {
+    "cli_record": {
+      "workflow": "apple gpu record --store; apple query --section encoders; apple gpu report --run-id",
+      "profile_sha256": "c66e11e1f37be1e9aba843d51960ca7cc7e3ef343051e1d578617ce313fb6f64",
+      "started_at": "2026-10-22T16:20:16.607589+00:00",
+      "ended_at": "2026-10-22T16:20:24.461207+00:00",
+      "device": "Apple M6",
+      "settings": {
+        "execution": "overlapping",
+        "gpu_state": "default",
+        "replayed": true
+      },
+      "timeline": {
+        "Commands": "4",
+        "Consistent state": "yes",
+        "Cores": "12 sampled / 12 total",
+        "Encoders": "4",
+        "Frame begin": "0 ns",
+        "Frame duration": "0.0858 ms",
+        "Frame end": "85833 ns",
+        "GPU time": "0.0858 ms",
+        "Overlap": "yes",
+        "Profiled state": "default"
+      },
+      "encoder_count": 4
+    },
+    "mcp": {
+      "tools_exercised": [
+        "collect_apple_gpu_profile",
+        "query_apple_result",
+        "get_apple_gpu_report"
+      ],
+      "device": "Apple M6",
+      "timeline": {
+        "Commands": "4",
+        "Consistent state": "yes",
+        "Cores": "12 sampled / 12 total",
+        "Encoders": "4",
+        "Frame begin": "0 ns",
+        "Frame duration": "0.2646 ms",
+        "Frame end": "264583 ns",
+        "GPU time": "0.2646 ms",
+        "Overlap": "yes",
+        "Profiled state": "default"
+      },
+      "encoder_count": 4,
+      "top_encoder_limiter": {
+        "name": "Control Flow Limiter",
+        "percent": 72.54,
+        "native_value": "72,54%",
+        "exceeds_100": false
+      }
+    },
+    "existing_trace": {
+      "workflow": "apple gpu profile --execution serial --store",
+      "profile_sha256": "318683c72c621fbab802ae26703d805cb2e6fa83ff3ba77cc6608dfe6ee691a6",
+      "started_at": "2026-10-22T16:24:27.844904+00:00",
+      "ended_at": "2026-10-22T16:24:34.779684+00:00",
+      "device": "Apple M6",
+      "settings": {
+        "execution": "serial",
+        "gpu_state": "default",
+        "replayed": true
+      },
+      "timeline": {
+        "Commands": "4",
+        "Consistent state": "yes",
+        "Cores": "12 sampled / 12 total",
+        "Encoders": "4",
+        "Frame begin": "0 ns",
+        "Frame duration": "0.0867 ms",
+        "Frame end": "86666 ns",
+        "GPU time": "0.0867 ms",
+        "Overlap": "yes",
+        "Profiled state": "default"
+      },
+      "encoder_count": 4
+    },
+    "installed_wheel": {
+      "workflow": "installed wheel, outside checkout: apple gpu profile --execution serial --store",
+      "profile_sha256": "12805dbf37eaeac88d9a8a23ed36816daad699fb3865f61d61787b87601b5bdd",
+      "started_at": "2026-10-22T16:26:07.633449+00:00",
+      "ended_at": "2026-10-22T16:26:14.618080+00:00",
+      "device": "Apple M6",
+      "settings": {
+        "execution": "serial",
+        "gpu_state": "default",
+        "replayed": true
+      },
+      "timeline": {
+        "Commands": "4",
+        "Consistent state": "yes",
+        "Cores": "12 sampled / 12 total",
+        "Encoders": "4",
+        "Frame begin": "0 ns",
+        "Frame duration": "0.0861 ms",
+        "Frame end": "86125 ns",
+        "GPU time": "0.0861 ms",
+        "Overlap": "yes",
+        "Profiled state": "default"
+      },
+      "encoder_count": 4,
+      "wheel_sha256": "ee2c2ab1f255f1d108af1fd4c817a4c9e104d5b06cd15a085a1677bf1c4c77fb",
+      "bundled_swift_probe_verified": true,
+      "native_probe_capture_also_verified_with_prior_wheel": true
+    },
+    "postgresql": {
+      "disposable_server": true,
+      "native_profiles_round_tripped": 3,
+      "native_document_equality_verified": true,
+      "encoder_pagination_verified": true,
+      "mcp_queries_and_reports_verified": true,
+      "linux_metric_samples_created": false
+    },
+    "local_m6_test_suite": {
+      "passed": 1196,
+      "skipped": 5,
+      "coverage_percent": 84.54776323500684,
+      "previous_coverage_percent": 83.86558129826759
+    }
+  }
 }

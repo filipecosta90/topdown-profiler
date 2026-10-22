@@ -86,3 +86,15 @@ def test_additive_schema_keeps_existing_linux_samples(postgres_backend, tmp_path
     native = store_apple_result(backend, path)
     assert backend.get_apple_result(native.run_id)
     assert backend.get_samples(linux.run_id)[0].value == 42
+
+
+def test_gpu_jsonb_preserves_native_limiters_and_encoder_pagination(postgres_backend, tmp_path):
+    from tests.test_apple_gpu_integration import check_round_trip
+
+    check_round_trip(postgres_backend, tmp_path)
+
+
+def test_jsonb_measured_m6_profiles_keep_counters_and_coverage(postgres_backend, tmp_path):
+    from tests.test_apple_gpu_integration import check_measured_profiles
+
+    check_measured_profiles(postgres_backend, tmp_path)

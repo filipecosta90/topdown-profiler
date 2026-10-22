@@ -1,6 +1,5 @@
 """Native replay percentages remain distinct from additive pipeline-slot shares."""
 
-import importlib.util
 import json
 from pathlib import Path
 import subprocess
@@ -10,15 +9,8 @@ import pytest
 SCRIPTS = Path(__file__).resolve().parents[1] / "examples" / "apple_gpu"
 
 
-def script(name):
-    spec = importlib.util.spec_from_file_location(name, SCRIPTS / f"{name}.py")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-REPLAY = script("replay_profile")
-REPORT = script("report_replay")
+from topdown.collector import apple_gpu as REPLAY  # noqa: E402
+from topdown import apple_gpu_report as REPORT  # noqa: E402
 
 
 def native_profile():
@@ -161,8 +153,9 @@ def test_performance_readiness_has_a_deadline(tmp_path, fake_gpudebug, monkeypat
     trace = tmp_path / "test.gputrace"
     trace.mkdir()
     fake_gpudebug["pending"] = 10
-    clock = iter([0, 31])
-    monkeypatch.setattr(REPLAY.time, "monotonic", lambda: next(clock))
+    clock = [0]
+    monkeypatch.setattr(REPLAY.time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(REPLAY.time, "sleep", lambda _: clock.__setitem__(0, 31))
     with pytest.raises(ValueError, match="did not become ready"):
         REPLAY.collect(trace, tmp_path / "not-ready")
     assert fake_gpudebug["commands"][-1][-2:] == ["--terminate", "42"]
@@ -216,7 +209,7 @@ EVIDENCE = json.loads((SCRIPTS.parents[1] / "docs/apple-gpu-m6-validation.json")
 @pytest.mark.parametrize("case", EVIDENCE["replay_cases"], ids=lambda case: case["case"])
 def test_measured_m6_profiles_keep_native_values_and_sampling_coverage(case):
     profile = {"measurement_kind": "apple-gpu-replay-profile", "tma_available": False,
-               "device": "Apple M6", "settings": case["settings"], "timeline": case["timeline"],
+               "device": "Apple M6", "scope": {"kind": "captured-metal-workload", "trace_name": "test.gputrace"}, "settings": case["settings"], "timeline": case["timeline"],
                "encoders": [{"id": row["id"], "listing": {"values": [{"value": row["label"]}]},
                              "counters": row["native_counters"]} for row in case["encoders"]]}
     report = REPORT.summarize(profile)
@@ -227,3 +220,70 @@ def test_measured_m6_profiles_keep_native_values_and_sampling_coverage(case):
     assert case["probe"]["checksum_verified"]
     if case["case"].startswith("memory-"):
         assert any(entry["exceeds_100"] for row in report["encoders"] for entry in row["limiters"])
+
+
+def test_replay_timestamps_can_be_imported_without_the_probe_wrapper(tmp_path, fake_gpudebug, sqlite_backend):
+    from datetime import datetime
+    from topdown.apple_storage import store_apple_result
+
+    trace = tmp_path / "test.gputrace"
+    trace.mkdir()
+    output = tmp_path / "replay"
+    result = REPLAY.collect(trace, output)
+    assert datetime.fromisoformat(result["started_at"]) <= datetime.fromisoformat(result["ended_at"])
+    run = store_apple_result(sqlite_backend, output)
+    assert run.labels["time_basis"] == "result_timestamps" and run.duration_seconds >= 0
+
+
+def test_total_replay_budget_still_cleans_up_the_owned_session(tmp_path, fake_gpudebug, monkeypatch):
+    trace = tmp_path / "test.gputrace"
+    trace.mkdir()
+    native_run, clock = REPLAY.subprocess.run, [0]
+    monkeypatch.setattr(REPLAY.time, "monotonic", lambda: clock[0])
+    def run(command, **kwargs):
+        response = native_run(command, **kwargs)
+        if "-c" in command and command[command.index("-c") + 1].startswith("profile run"):
+            clock[0] = 301
+        return response
+    monkeypatch.setattr(REPLAY.subprocess, "run", run)
+    with pytest.raises(ValueError, match="300 second budget"):
+        REPLAY.collect(trace, tmp_path / "timeout")
+    assert fake_gpudebug["commands"][-1][-2:] == ["--terminate", "42"]
+
+
+@pytest.mark.parametrize("failure", ["timeout", "exit-code"])
+def test_partial_session_start_failures_are_cleaned_up(tmp_path, monkeypatch, failure):
+    trace = tmp_path / "test.gputrace"
+    trace.mkdir()
+    calls = []
+    def run(command, **kwargs):
+        calls.append(command)
+        if "--terminate" in command:
+            return subprocess.CompletedProcess(command, 0, "Session 42 terminated.", "")
+        if failure == "timeout":
+            raise subprocess.TimeoutExpired(command, 120, output=b"Session 42 created.\n", stderr=b"partial failure")
+        return subprocess.CompletedProcess(command, 1, "Session 42 created.\n", "native failure")
+    monkeypatch.setattr(REPLAY.subprocess, "run", run)
+    output = tmp_path / "failed"
+    with pytest.raises(ValueError, match="artifacts"):
+        REPLAY.collect(trace, output)
+    assert calls[-1][-2:] == ["--terminate", "42"]
+    assert (output / "001.stdout").read_text() == "Session 42 created.\n"
+    assert not (output / "profile.json").exists()
+
+
+@pytest.mark.parametrize("already_failing", [True, False])
+def test_cleanup_failure_does_not_hide_the_original_error(tmp_path, fake_gpudebug, monkeypatch, already_failing):
+    trace = tmp_path / "test.gputrace"
+    trace.mkdir()
+    native_run = REPLAY.subprocess.run
+    fake_gpudebug["loaded"] = not already_failing
+    def run(command, **kwargs):
+        response = native_run(command, **kwargs)
+        if "--terminate" in command:
+            return subprocess.CompletedProcess(command, 1, "", "cleanup failed")
+        return response
+    monkeypatch.setattr(REPLAY.subprocess, "run", run)
+    with pytest.raises(ValueError, match="profiling is unavailable" if already_failing else "cleanup failed"):
+        REPLAY.collect(trace, tmp_path / "cleanup")
+    assert fake_gpudebug["commands"][-1][-2:] == ["--terminate", "42"]
