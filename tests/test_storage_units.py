@@ -341,6 +341,13 @@ def test_huge_or_non_finite_time_window_means_everything(backend, hours):
     assert len(backend.list_runs(last_hours=hours)) == 1
 
 
+@pytest.mark.parametrize("hours", [-1.0, -1e12])
+def test_negative_time_window_returns_no_runs(backend, hours):
+    _run_with(backend, [("Backend_Bound", 40.0, "%")])
+    assert backend.query_by_bottleneck("Backend_Bound", last_hours=hours) == []
+    assert backend.list_runs(last_hours=hours) == []
+
+
 def test_enormous_averages_do_not_overflow_ordering(backend):
     _run_with(backend, [("Backend_Bound", 1e300, "%"), ("Frontend_Bound", 40.0, "%")])
     assert [r["metric_name"] for r in backend.query_bottlenecks(min_percentage=1.0)] == [

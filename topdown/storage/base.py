@@ -15,8 +15,8 @@ MAX_WINDOW_HOURS = 24 * 365 * 100
 
 
 def window_hours(last_hours: float) -> float:
-    """``last_hours`` capped at ``MAX_WINDOW_HOURS``; NaN or infinity mean the whole history."""
-    return min(last_hours, MAX_WINDOW_HOURS) if math.isfinite(last_hours) else MAX_WINDOW_HOURS
+    """Bound finite windows to 0..``MAX_WINDOW_HOURS``; non-finite means the whole history."""
+    return max(0.0, min(last_hours, MAX_WINDOW_HOURS)) if math.isfinite(last_hours) else MAX_WINDOW_HOURS
 
 
 def escape_like(text: str) -> str:
