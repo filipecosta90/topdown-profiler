@@ -121,12 +121,17 @@ timestamps. Neither is application CPU time.
 ### Reproduce the lower-level replay experiment
 
 The source-checkout wrappers use the same packaged collector and report code.
+The packaged replay probe and the M1 Instruments probe use different controls;
+`alu` reduces loop overhead in the replay probe, while the Instruments `alu`
+control retains the original loop. Their `stream` controls also differ: the replay
+probe uses vectorized FMAs, while the Instruments probe uses scalar addition.
+Use the matching source and measurement path when reproducing each result.
 Use a fresh directory and full Xcode:
 
 ```sh
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 mkdir /tmp/topdown-gpu-replay-001
-xcrun swiftc -O -framework Metal examples/apple_gpu/probe.swift \
+xcrun swiftc -O -framework Metal topdown/collector/apple_gpu_probe.swift \
   -o /tmp/topdown-gpu-replay-001/probe
 
 MTL_CAPTURE_ENABLED=1 /tmp/topdown-gpu-replay-001/probe 4 --mode compute \
@@ -191,6 +196,65 @@ Limiter” categories are **not** interchangeable with Intel CPU pipeline-slot T
 fractions. No bottleneck percentages are claimed from this first capture. Raw
 traces stay local because they include activity from other processes.
 
+**Check timestamp overlap, not only row count.** Two fresh recordings that exited
+immediately after the probe had counter rows but zero counter intervals overlapping
+its labeled GPU passes. The counter stream ended about 31 ms and 80 ms, respectively,
+before the first pass. Keeping the recorder alive for one second after the probe
+completed produced overlap. On this M1, a four-pass capture then covered all four
+passes (12 overlapping counter intervals); a 100-pass capture covered all 100
+(284 intervals, 5.37 ms sampled within 34.04 ms GPU work); and a 200-pass capture
+covered 199 of 200 (562 intervals, 10.76 ms sampled within 67.53 ms GPU work).
+These are sampled portions of labeled work, not complete instruction accounting.
+
+## M1 workload contrast
+
+The `alu` workload performs 1,024 dependent FMA operations per item. The `stream`
+workload reads and writes 64 MiB each per pass with one addition per item. Both
+verify a deterministic checksum. With the one-second capture tail, the native
+counter samples that overlap the labeled passes changed substantially:
+
+| Workload | Passes | GPU work | Sampled work | ALU Limiter | Buffer Write Limiter | GPU Read Bandwidth |
+|---|---:|---:|---:|---:|---:|---:|
+| ALU | 100 | 34.04 ms | 5.37 ms | 73.61% | 0.11% | 0.18 GB/s |
+| ALU | 200 | 67.53 ms | 10.76 ms | 72.92% | 0.11% | 0.09 GB/s |
+| Stream | 100 | 225.47 ms | 111.81 ms | 1.33% | 99.44% | 29.60 GB/s |
+| Stream | 200 | 466.83 ms | 234.04 ms | 1.61% | 98.26% | 28.93 GB/s |
+
+The table uses overlap-duration-weighted means of **sampled** counter intervals,
+not a complete census of each pass. The 100-pass stream capture had no other
+active GPU interval overlap in the exported timeline. The 200-pass stream capture
+had 17.83 ms of other active GPU interval overlap within 466.83 ms of probe work;
+the ALU captures had less than 0.33 ms each. The raw traces remain local. The
+sanitized [M1 validation data](apple-gpu-m1-validation.json) includes pass counts,
+checksums, coverage, units, and selected sampled means for M6 comparison.
+
+Apple explains that utilization and limiter counters describe related but
+different aspects of GPU work, and that a high ALU limiter alone does not prove
+a performance problem. The contrast above shows the counter profiles respond to
+these two controlled workloads; it does not establish an Intel-style 100% GPU
+pipeline-slot partition. In fact, summing the individual limiter sampled means
+for the 100-pass stream run gives **260.23%** (Buffer Write 99.44%, Buffer Read
+67.15%, MMU 48.63%, GPU Last Level Cache 43.68%, plus smaller values). The
+subsystem limiters overlap and cannot be treated as children in a 100% tree.
+The `Top Performance Limiter` label provides a narrower, categorical view: ALU
+was the highest limiter for 98.68% of the 100-pass ALU run's sampled top-limiter
+time, while Buffer Write was highest for 99.98% of the corresponding stream run.
+Those are shares of **sampled top-limiter labels**, not shares of GPU time or
+pipeline slots. Apple demonstrates this highest-limiter track in its GPU counter
+walkthrough.
+See Apple's
+[GPU counter walkthrough](https://developer.apple.com/videos/play/wwdc2020/10603/),
+[Metal compute guidance](https://developer.apple.com/videos/play/tech-talks/10580/),
+and [occupancy analysis](https://developer.apple.com/documentation/xcode/finding-your-metal-apps-gpu-occupancy).
+
+The separate **Performance Utilizations** counter set also worked on this M1
+with template profile code 4. New 100-pass captures covered all labeled passes:
+ALU Utilization was 34.63% for the FMA probe and 1.35% for the streaming probe;
+GPU Read Bandwidth was 0.02 versus 29.59 GB/s. The streaming bandwidth agrees
+with the Performance Limiters capture (29.60 GB/s). This is an independent
+counter-set check, still subject to the same system-wide sampling limits. Its
+sanitized results are also in the validation JSON.
+
 ## Reproduce the Instruments comparison
 
 Use Xcode's developer directory; Command Line Tools alone do not include
@@ -198,6 +262,10 @@ Instruments. Set `DEVELOPER_DIR` to the actual Xcode app location if it differs.
 The output directory must be new. The template helper copies Apple's installed
 template and edits the two `counterprofile` settings in the copy. It fails if the
 template layout or defaults differ; it never edits the Xcode installation.
+On this Xcode version, `xctrace record --show-recording-options` did not expose
+Metal counter selection; trying a `Metal Application` JSON entry with
+`--recording-options` returned “does not support recording options.” The copied
+template is the reproducible CLI route tested here.
 
 ```sh
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
@@ -213,20 +281,32 @@ xcrun xctrace record \
   --template /tmp/topdown-gpu-check-001/limiters.tracetemplate \
   --output /tmp/topdown-gpu-check-001/limiters.trace \
   --time-limit 8s --no-prompt --target-stdout - \
-  --launch -- /tmp/topdown-gpu-check-001/probe 4
+  --launch -- /bin/sh -c '/tmp/topdown-gpu-check-001/probe 4 && sleep 1'
 
 xcrun xctrace export --input /tmp/topdown-gpu-check-001/limiters.trace \
   --toc --output /tmp/topdown-gpu-check-001/toc.xml
 xcrun xctrace export --input /tmp/topdown-gpu-check-001/limiters.trace \
   --xpath '/trace-toc/run[@number="1"]/data/table[@schema="metal-gpu-counter-intervals"]' \
   --output /tmp/topdown-gpu-check-001/counters.xml
+xcrun xctrace export --input /tmp/topdown-gpu-check-001/limiters.trace \
+  --xpath '/trace-toc/run[@number="1"]/data/table[@schema="metal-gpu-intervals"]' \
+  --output /tmp/topdown-gpu-check-001/gpu-intervals.xml
 python3 examples/apple_gpu/summarize_counters.py \
-  /tmp/topdown-gpu-check-001/counters.xml
+  /tmp/topdown-gpu-check-001/counters.xml \
+  --gpu-intervals /tmp/topdown-gpu-check-001/gpu-intervals.xml
 ```
 
-Check the TOC's `counter-profile` attribute, the actual counter-name inventory,
-and the probe's checksum. Nonzero row counts alone do not establish useful
-compute counters: M6 can export thousands of RT-only observations.
+The shell exits with the probe's status and waits one second only on success. The
+wait gives Instruments time to retain delayed counter samples. Confirm the TOC
+says `Counter Set: Performance Limiters`, the probe prints its checksum, and
+`probe_coverage.passes_with_counter_samples` is nonzero. `counter_rows` alone
+does not establish probe coverage. Use 100 and 200 passes for longer comparison
+captures; the four-pass run is a smoke check. Inspect sampled time, pass coverage,
+and `other_active_gpu_time_overlapping_ns` before interpreting
+`sampled_counter_means`. The latter are weighted only over sampled intervals.
+To run the memory control, substitute `probe 100 stream` in the shell command and
+use a new trace/output directory. `probe 100 alu` selects the original workload
+explicitly.
 To try Performance Utilizations, create a second template with `--profile 4` and
 capture to another new trace path. Profile numbers 3 and 4 are observations from
 Xcode 27.1, not a public compatibility contract; verify the TOC on each Xcode
@@ -241,10 +321,12 @@ The evidence records those counts, inventories and source hashes. It does not
 establish why Instruments exposes this limited/inconsistent inventory on M6.
 
 Before reporting a GPU bottleneck share, compare idle and matched N/2N probe
-captures, align the target's labeled GPU intervals with sample timestamps, check
-other-process activity, and confirm each counter's unit and denominator. The
-summary script intentionally reports row counts and names only. Use the replay
-report above for the measured M6 top-down experiment.
+captures, check concurrent GPU activity, and confirm each counter's unit and
+denominator. The summary script reports row counts, timestamp overlap, and native
+sampled means with units. It does not convert them to CPU TMA fractions. For
+example, the native `GPU Read Bandwidth` row is in GB/s and has
+`is-percentage=0`, despite the generic schema also containing a `percent-value`
+column.
 
 Apple's [Metal performance analysis guide](https://developer.apple.com/documentation/xcode/analyzing-the-performance-of-your-metal-app/)
 describes selecting Performance Limiters in Instruments. Apple's

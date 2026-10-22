@@ -1628,6 +1628,12 @@
       "skipped": 5,
       "coverage_percent": 84.54776323500684,
       "previous_coverage_percent": 83.86558129826759
+    },
+    "combined_m1_m6_test_suite": {
+      "passed": 1201,
+      "skipped": 5,
+      "coverage_percent": 84.54776323500684,
+      "postgresql_enabled": true
     }
   }
 }
