@@ -90,6 +90,31 @@ class PostgreSQLBackend(StorageBackend):
             return None
         return self._row_to_run(row)
 
+    def insert_apple_result(self, run: Run, document: dict) -> str:
+        payload = json.dumps(document, allow_nan=False)
+        kind = document["result"]["measurement_kind"]
+        conn = self._get_conn()
+        try:
+            conn.execute(
+                """INSERT INTO runs (run_id, started_at, ended_at, duration_seconds,
+                   process_name, level, system_wide, labels) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
+                (run.run_id, run.started_at, run.ended_at, run.duration_seconds,
+                 run.process_name, run.level, run.system_wide, json.dumps(run.labels)),
+            )
+            conn.execute("INSERT INTO apple_results (run_id, measurement_kind, document) VALUES (%s, %s, %s)",
+                         (run.run_id, kind, payload))
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        return run.run_id
+
+    def get_apple_result(self, run_id: str) -> dict | None:
+        if not _is_valid_uuid(run_id):
+            return None
+        row = self._get_conn().execute("SELECT document FROM apple_results WHERE run_id = %s", (run_id,)).fetchone()
+        return row["document"] if row else None
+
     def list_runs(
         self,
         process_name: str | None = None,

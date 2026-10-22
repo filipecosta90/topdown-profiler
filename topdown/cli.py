@@ -238,7 +238,7 @@ def list_runs(
         table.add_column("Run ID", style="cyan", max_width=12)
         table.add_column("Started", style="green")
         table.add_column("Process", style="yellow")
-        table.add_column("Level")
+        table.add_column("Kind")
         table.add_column("Duration")
         table.add_column("Key Labels", max_width=50)
 
@@ -255,7 +255,7 @@ def list_runs(
                 r.run_id[:12],
                 r.started_at.strftime("%Y-%m-%d %H:%M"),
                 r.process_name,
-                str(r.level),
+                "Apple" if r.labels.get("collector") == "apple" else str(r.level),
                 f"{r.duration_seconds:.1f}s",
                 label_str,
             )
@@ -333,6 +333,9 @@ def query(
                 return
             run = runs[0]
 
+        if run.labels.get("collector") == "apple":
+            console.print(f"Native Apple result. Use 'topdown apple query {run.run_id}' or 'topdown apple report --run-id {run.run_id}'.")
+            return
         metrics = backend.get_aggregated_metrics(run.run_id)
         if not metrics:
             console.print(f"No metrics found for run {run.run_id[:12]}")
@@ -429,6 +432,9 @@ def compare(
             console.print("[red]Error:[/red] Provide run IDs or --label-a / --label-b")
             raise typer.Exit(1)
 
+        if any(run.labels.get("collector") == "apple" for run in (found_a, found_b)):
+            console.print("Native Apple results require 'topdown apple query' or 'topdown apple report'; Linux TMA comparisons are unavailable.")
+            return
         metrics_a = backend.get_aggregated_metrics(found_a.run_id)
         metrics_b = backend.get_aggregated_metrics(found_b.run_id)
 

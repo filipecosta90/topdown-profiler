@@ -21,7 +21,10 @@ _MCP_INSTRUCTIONS = (
     "Analysis (TMA) data using pmu-tools/toplev on Intel or perf stat "
     "--topdown on ARM Neoverse. Use the available tools to profile "
     "processes, query bottlenecks, compare runs, and explain CPU "
-    "performance metrics."
+    "performance metrics. Apple silicon uses native results: use apple_doctor, "
+    "collect_apple_profile or import_apple_result, query_apple_result, and get_apple_hotspots. "
+    "Apple runs share the run list and labels, while retaining native units, scope and integer precision. "
+    "Apple bottleneck shares and sample-frequency hotspots are separate from Linux slot TMA."
 )
 
 
@@ -51,7 +54,111 @@ def _get_backend():
     return get_backend(config)
 
 
+def _apple_run_guidance(*runs):
+    if any(run.labels.get("collector") == "apple" for run in runs):
+        return ("This run contains native Apple measurements. Use query_apple_result or get_apple_hotspots; "
+                "Linux slot-TMA analysis and comparisons are unavailable for Apple results.")
+    return None
+
+
 # ──────────────────────────── Tools ────────────────────────────
+
+
+@mcp.tool()
+def apple_doctor() -> dict:
+    """Inspect Apple profiling capabilities on the MCP server host without recording a workload."""
+    from topdown.collector.apple import doctor
+
+    return doctor()
+
+
+@mcp.tool()
+def import_apple_result(path: str, process_name: str | None = None, labels: dict[str, str] | None = None) -> dict:
+    """Store a native Apple profile.json/stat.json/soc.json file or capture directory from the server host.
+
+    Retains counters as integers and keeps native Apple categories, scopes and trace gaps.
+    Each import creates a labeled run, visible in list_profiling_runs. Does not create Linux TMA samples.
+    """
+    from pathlib import Path
+    from topdown.apple_storage import query_apple_result as query, store_apple_result
+    from topdown.collector.apple import AppleProfileError
+
+    backend = _get_backend()
+    try:
+        run = store_apple_result(backend, Path(path), process_name, labels)
+        return query(backend, run.run_id)
+    except (AppleProfileError, OSError, ValueError) as exc:
+        return {"error": str(exc)}
+    finally:
+        backend.close()
+
+
+@mcp.tool()
+def collect_apple_profile(
+    mode: str = "stat", command: list[str] | None = None, pid: int | None = None,
+    duration_seconds: float = 5, process_name: str | None = None, labels: dict[str, str] | None = None,
+) -> dict:
+    """Capture and store native Apple results on this MCP server's macOS host.
+
+    stat accepts exactly one executable argv list or existing PID. For a PID, duration is the
+    observation interval; for a launched stat command it is the timeout. fixed/counters/cpu/time/trace
+    and experimental m1/m1-map/m1-fetch modes launch a command, require Instruments and whole seconds.
+    soc accepts no target and observes all processes at system/cluster scope. Duration is bounded to
+    300 seconds. Failed captures retain local artifacts and are not automatically stored.
+    """
+    import uuid
+    from pathlib import Path
+    from topdown.apple_storage import collect_apple_result, query_apple_result as query, store_apple_result, validate_run_options
+
+    root = Path(get_config().db_path).parent / "apple-captures"
+    output = root / str(uuid.uuid4())
+    try:
+        validate_run_options(process_name, labels)
+        root.mkdir(parents=True, exist_ok=True)
+        path = collect_apple_result(output, mode, command, pid, duration_seconds)
+        backend = _get_backend()
+        try:
+            run = store_apple_result(backend, path, process_name, labels)
+            return {**query(backend, run.run_id), "artifacts": str(output)}
+        finally:
+            backend.close()
+    except Exception as exc:
+        return {"error": str(exc), "artifacts": str(output)}
+
+
+@mcp.tool()
+def query_apple_result(run_id: str, section: str = "summary", offset: int = 0, limit: int = 100) -> dict:
+    """Read a stored native Apple result by run ID, on any server OS.
+
+    summary returns native totals/categories, scope and provenance without bulk observations.
+    Read samples, intervals, gaps, channels or leaf_sample_counts in pages (limit 1–1000).
+    Native integers, histogram units and null Intel TMA fields are retained.
+    """
+    from topdown.apple_storage import query_apple_result as query
+    from topdown.collector.apple import AppleProfileError
+
+    backend = _get_backend()
+    try:
+        return query(backend, run_id, section, offset, limit)
+    except AppleProfileError as exc:
+        return {"error": str(exc)}
+    finally:
+        backend.close()
+
+
+@mcp.tool()
+def get_apple_hotspots(run_id: str, limit: int = 20) -> dict:
+    """Rank stored Apple stack samples by function frequency; shares are sample fractions, not CPU-time/TMA percentages."""
+    from topdown.apple_storage import stored_apple_hotspots
+    from topdown.collector.apple import AppleProfileError
+
+    backend = _get_backend()
+    try:
+        return stored_apple_hotspots(backend, run_id, limit)
+    except AppleProfileError as exc:
+        return {"error": str(exc)}
+    finally:
+        backend.close()
 
 
 @mcp.tool()
@@ -89,7 +196,7 @@ def collect_topdown(
     if collector == "apple":
         from topdown.collector.apple import APPLE_COLLECTION_MESSAGE
 
-        return APPLE_COLLECTION_MESSAGE
+        return APPLE_COLLECTION_MESSAGE + " Use collect_apple_profile to capture and store native Apple results through MCP."
 
     ok, msg = check_perf_permissions()
     if not ok:
@@ -188,6 +295,8 @@ def query_bottlenecks(
             return "No runs found matching filters."
 
         run = runs[0]
+        if guidance := _apple_run_guidance(run):
+            return guidance
         metrics = backend.get_aggregated_metrics(run.run_id)
         found = find_bottlenecks(metrics, top_n=top_n, min_percentage=min_percentage)
 
@@ -282,6 +391,8 @@ def get_funnel(
                 return "No runs found matching filters."
             run = runs[0]
 
+        if guidance := _apple_run_guidance(run):
+            return guidance
         metrics = backend.get_aggregated_metrics(run.run_id)
         if not metrics:
             return "No metrics found for this run."
@@ -325,6 +436,8 @@ def compare_funnel(
         if not run_b:
             return f"Run '{run_id_b}' not found."
 
+        if guidance := _apple_run_guidance(run_a, run_b):
+            return guidance
         metrics_a = backend.get_aggregated_metrics(run_a.run_id)
         metrics_b = backend.get_aggregated_metrics(run_b.run_id)
 
@@ -363,6 +476,8 @@ def compare_runs(run_id_a: str, run_id_b: str) -> str:
         if not run_b:
             return f"Run '{run_id_b}' not found."
 
+        if guidance := _apple_run_guidance(run_a, run_b):
+            return guidance
         metrics_a = backend.get_aggregated_metrics(run_a.run_id)
         metrics_b = backend.get_aggregated_metrics(run_b.run_id)
 
@@ -406,6 +521,8 @@ def compare_by_labels(
             return f"No run found matching labels: {label_b}"
 
         run_a, run_b = runs_a[0], runs_b[0]
+        if guidance := _apple_run_guidance(run_a, run_b):
+            return guidance
         metrics_a = backend.get_aggregated_metrics(run_a.run_id)
         metrics_b = backend.get_aggregated_metrics(run_b.run_id)
 
@@ -487,9 +604,10 @@ def list_profiling_runs(
             interesting = {k: v for k, v in r.labels.items()
                           if k in ("git_branch", "test_name", "topology", "build_variant")}
             label_str = ", ".join(f"{k}={v}" for k, v in interesting.items()) if interesting else ""
+            kind = f"Apple {r.labels.get('measurement_kind', 'native')}" if r.labels.get("collector") == "apple" else f"L{r.level}"
             lines.append(
                 f"  {r.run_id[:12]} | {r.started_at.strftime('%Y-%m-%d %H:%M')} | "
-                f"{r.process_name} | L{r.level} | {r.duration_seconds:.1f}s"
+                f"{r.process_name} | {kind} | {r.duration_seconds:.1f}s"
                 + (f" | {label_str}" if label_str else "")
             )
         return "\n".join(lines)
@@ -552,6 +670,11 @@ def _register_tools_and_resources(target: FastMCP):
     """Re-register all tools and resources on a new FastMCP instance."""
     # Tools
     target.tool()(collect_topdown)
+    target.tool()(apple_doctor)
+    target.tool()(import_apple_result)
+    target.tool()(collect_apple_profile)
+    target.tool()(query_apple_result)
+    target.tool()(get_apple_hotspots)
     target.tool()(query_bottlenecks)
     target.tool()(query_by_bottleneck)
     target.tool()(get_funnel)

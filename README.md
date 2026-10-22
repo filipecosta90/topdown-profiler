@@ -1,6 +1,6 @@
 # topdown-profiler
 
-CPU profiling and Top-Down Microarchitecture Analysis (TMA) for Intel, AMD Zen, ARM Neoverse, and Apple silicon (M1/M6). Linux TMA collection includes an MCP server, label-based querying, and pluggable SQL backends; experimental Apple profiling uses native macOS CLI commands.
+CPU profiling and Top-Down Microarchitecture Analysis (TMA) for Intel, AMD Zen, ARM Neoverse, and Apple silicon (M1/M6). Linux TMA and native Apple results share SQL storage, run labels, and an MCP server; Apple measurements retain their native counters and categories.
 
 On Linux, wraps [pmu-tools/toplev](https://github.com/andikleen/pmu-tools) on Intel, [AMD uProf](https://www.amd.com/en/developer/uprof.html) (`AMDuProfPcm`) on AMD Zen, or `perf stat --topdown` on ARM Neoverse to collect, store, and query CPU performance data — like [Polar Signals](https://www.polarsignals.com/) but for hardware performance counters.
 
@@ -225,8 +225,22 @@ Use `topdown apple` on macOS. Choose the diagnostic available on your chip:
 
 `stat` and M6 `soc` need neither root nor Xcode. Instruments captures need Xcode
 tools; fixed-counter and custom M1 modes also need full Xcode's `instrumentbuilder`.
-Apple results are JSON and raw artifacts; Linux database queries and `--funnel`
-do not read them. See the [Apple CLI guide](docs/apple-silicon.md) for advanced modes.
+Add `--store` to `apple stat`, `record`, or `soc` to save results to SQLite or
+PostgreSQL with the same run IDs and labels used by Linux. Native Apple queries
+and MCP tools read these results; `--funnel` remains a Linux slot-TMA view.
+See the [Apple CLI guide](docs/apple-silicon.md#database-storage-and-mcp) for storage and MCP details.
+
+```bash
+# Capture and store; the output includes a run_id.
+topdown apple stat --store --label test_name=apple-check \
+  --output /tmp/apple-db-001 -- /path/to/program args
+
+# Import an existing capture instead.
+topdown apple store /tmp/apple-capture --process redis-server --label chip=M1
+topdown apple query RUN_ID
+# For stored stack profiles (fixed/cpu/time/M1 event modes):
+topdown apple report --run-id RUN_ID
+```
 
 Both examples below use the included pointer-chasing workload. From a source
 checkout, build it with Xcode's compiler tools:
@@ -499,6 +513,14 @@ Then ask Claude:
 | `compare_by_labels` | Compare runs by label sets |
 | `explain_metric` | Explain a TMA metric with tuning hints |
 | `list_profiling_runs` | List recent runs |
+| `apple_doctor` | Inspect Apple profiling support on the server host |
+| `collect_apple_profile` | Capture and store native Apple counters, stacks, traces, or SoC observations |
+| `import_apple_result` | Store an existing Apple JSON artifact from the server host |
+| `query_apple_result` | Read native Apple summaries and paginated observations by run ID |
+| `get_apple_hotspots` | Rank functions from stored Apple stack samples |
+
+Apple collection runs on the MCP server's macOS host. Stored Apple data can be
+queried from a server on any supported OS using the same database configuration.
 
 ## Storage Backends
 
