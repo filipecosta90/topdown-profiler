@@ -1,0 +1,199 @@
+{
+  "recorded_at_utc": "2026-10-20T17:37:36.837610+00:00",
+  "base_commit": "ad27885f70c19548a01c87ec77cf7af9d7c6ff04",
+  "branch": "feat/m6-fixed-counter-cli",
+  "participant": "One controller; sequential implementation/review. Raw audit is a separate reconstruction by the same controller, not an independent participant.",
+  "machine": {
+    "cpu": "Apple M6",
+    "os": "macOS 27.0.1",
+    "build": "26A434",
+    "arch": "arm64",
+    "xctrace": "xctrace version 27.0 (27A266a)"
+  },
+  "working_cli": {
+    "process_accounting": {
+      "command": "topdown apple stat --output <new-directory> -- /path/program args; or --pid PID --duration 5",
+      "source": "proc_pid_rusage / RUSAGE_INFO_V4",
+      "root_required": false,
+      "xcode_required": false,
+      "controls": {
+        "launch_scaling_and_checksums": true,
+        "short_target_final_counts": true,
+        "target_exit_status": true,
+        "no_target_stdout_pipe_deadlock": true,
+        "timeout_term_and_kill_cleanup": true,
+        "interrupt_cleanup": true,
+        "attach_busy_leaves_target_running": true,
+        "attach_idle_zero_interval": true,
+        "descendant_cpu_excluded": true
+      },
+      "baseline_adjusted_2N_over_N": {
+        "instructions": 2.0000529085769223,
+        "cycles": 1.9965394998187944
+      },
+      "native_abi_crosscheck": "All final snapshot fields and offsets match an independent native-C read of the same waitable child."
+    },
+    "sampled_fixed_counters": {
+      "command": "topdown apple probe --mode fixed --output <new-directory>",
+      "status": "counters_present",
+      "exit_code": 0,
+      "target_completed": true,
+      "sample_count": 370,
+      "alu_work_samples": 367,
+      "unmeasured_target_rows": 2,
+      "other_pid_rows_excluded": 92,
+      "raw_audit_all_rows_match": true,
+      "events": [
+        "FIXED_CYCLES",
+        "FIXED_INSTRUCTIONS"
+      ],
+      "trigger": "time",
+      "scope": "one launched PID; native per-row values and stack association; no event aggregation",
+      "root_required": false,
+      "os_changes_required": false,
+      "artifact_sha256": {
+        "probe.json": "956acc8097e68a94d65a81dff819f09c070f701079a46e301ae623a0cc5fe074",
+        "profile.json": "0776bfe8080e96be2287bb0ef085cee3d3fbb072f3119d62f45fb28594e1d2ae",
+        "toc.xml": "7c81ebabdfe0fa94be9b718e4f443302d350351a09194e673fea342a6b865a7f",
+        "samples.xml": "6c2f2b582b7f2e5d4be4feba61f692fb79972a5496467d5bb92d01e822ed06df",
+        "raw-audit.json": "fd30e8560acadbab82934fddefe19bb68fb6a14f0eae5714c6230c7865313cc6",
+        "package-source": "65cfde649245db20ce5299095878309afa8374efbfa371493ba223fe2d02b902"
+      },
+      "idle_N_2N_controls": {
+        "trials": 9,
+        "all_checksums_verified": true,
+        "median_alu_work_samples": {
+          "0": 0,
+          "134217728": 199,
+          "268435456": 368
+        },
+        "sample_count_2N_over_N": 1.849246231155779,
+        "interpretation": "Native observations only. Sample counts do not scale exactly with work; sampling accuracy, loss, residency and cost attribution remain unvalidated."
+      }
+    }
+  },
+  "remaining_os_blocker": {
+    "root_cpu_profiler": "Recorder exit 2: configureHardwareCounters cannot set KPC configuration: Operation not permitted.",
+    "root_cpu_counters": "Recorder exit 0; no cpu-pmc-value or counters-profile table.",
+    "programmable_event_sweep": {
+      "public_event_names": 134,
+      "methods": [
+        "manual KPC",
+        "KPEP apply"
+      ],
+      "user_only_flags": [
+        1,
+        0
+      ],
+      "event_configurations_rejected": 536,
+      "additional_fully_populated_rejections": 4,
+      "all_sweep_status_counts": {
+        "counter_reads_completed": 2,
+        "configuration_rejected": 540
+      },
+      "empty_configuration_accepted": true,
+      "fixed_kpc_reads_succeeded": true,
+      "report_sha256": "99745017614b3e5b8395eb6937512c129cca32ea1215430274d9a04d60343c2c"
+    },
+    "fixed_cycle_pmi": "Custom fixed-cycle PMI request rejected: event Cycles unavailable. Supported sampled mode uses a timer.",
+    "kernel": {
+      "kernel_file": "/System/Library/Kernels/kernel.release.t8152",
+      "sha256": "bee8d08efa5b6edd6cdc166bc77a8f8689b2734dd17f47343dd63cf4cc7a2a57",
+      "disk_kernel_uuid": "77F5F1F1-C717-3A42-A5FA-487ACF280495",
+      "running_kernel_uuid": "77F5F1F1-C717-3A42-A5FA-487ACF280495",
+      "uuid_match": true,
+      "inspection": "Offline LLDB target creation/disassembly only; no process attached or kernel modified.",
+      "entry_symbol": "kpc_set_config / kpc_set_config_external",
+      "entry_address": "0xfffffe000750d9e4",
+      "internal_target": "0xfffffe000750d1a0",
+      "filter_observation": "Selected configuration words are tested with mask 0xffff; any nonzero selector reaches an error-print block and returns w0=1 (EPERM). No per-event allowlist lookup appears in this inspected path.",
+      "first_selector_test": "0xfffffe000750d338",
+      "denial_block": "0xfffffe000750d3cc",
+      "eperm_return": "0xfffffe000750d3e0",
+      "interpretation": "Consistent with a compiled empty/non-permissive event policy for this board; the source/build omission itself remains unproven.",
+      "security_setting_changes": false,
+      "comparison_kernel": "kernel.release.t8132",
+      "comparison_has_selector_lookup": true,
+      "comparison_lookup_entries": 104
+    },
+    "cpc_control": {
+      "name": "kern.cpc.secure",
+      "lookup_return": 0,
+      "errno": 0,
+      "written": false,
+      "format_return": 0,
+      "flags": "0x80600002",
+      "write_flag": false,
+      "format": "I"
+    },
+    "matching_development_kernel_installed": false,
+    "kernel_patch_or_boot_attempted": false,
+    "source_build_omission": "Inspected t8152 path rejects all nonzero selectors; t8132 contains a 104-entry selector lookup. The exact source/build cause remains unproven."
+  },
+  "validation": {
+    "python_versions": {
+      "3.10": "3.10.21",
+      "3.11": "3.11.16",
+      "3.12": "3.12.14",
+      "3.13": "3.13.15"
+    },
+    "tests_per_python": 510,
+    "existing_warnings": 3,
+    "lint": "ruff check topdown/ tests/: PASS",
+    "whitespace": "git diff --check: PASS",
+    "previous_line_coverage_percent": 66.78422571336966,
+    "line_coverage_percent": 69.21021377672209,
+    "stat_module_line_coverage_percent": 100.0,
+    "wheel_asset_inclusion": "Bundled .instrpkg source and stat module verified in a built wheel.",
+    "installed_wheel_smoke": {
+      "isolated_environment": true,
+      "working_directory_outside_checkout": true,
+      "wheel_sha256": "374d4f9727a4bc33220ae236bb0aae52b2cbcab40655da9aa86fdfa0c0836c81",
+      "implementation_and_instrument_bytes_match_checkout": true,
+      "short_target_stat": {
+        "command": "/usr/bin/true",
+        "exit_code": 0,
+        "instructions": 8698000,
+        "cycles": 4278898
+      },
+      "fixed_probe": {
+        "status": "counters_present",
+        "exit_code": 0,
+        "target_completed": true,
+        "sample_count": 373
+      }
+    }
+  },
+  "source_sha256": {
+    "topdown/collector/apple.py": "2c41fc0572bb60e066e677cf6a4d63f93fbd809484b8d22b12686152afd0f314",
+    "topdown/collector/apple_fixed.instrpkg": "65cfde649245db20ce5299095878309afa8374efbfa371493ba223fe2d02b902",
+    "topdown/collector/apple_stat.py": "8bf0905d55eeac9e25900df26dd0bc2be59718ef3342b3848e05e24d0ff98436",
+    "topdown/collector/apple_probe.py": "62b9388d9b2a6d8ebd6db1dad5e1ceebc5f8d54bc25c3fe8fc60381e6d71c6fa",
+    "topdown/apple_cli.py": "5eba282b09053f546416aae37bf0a36215b9cfbe49c547ff731264d7728acd41",
+    "tests/test_apple_fixed.py": "d769bf0811388f4dd76c8d994e079426747f3b6301037e1a25d50d9aef02562c",
+    "tests/test_apple_stat.py": "79a22d8607208749e12a697f006c6726123dbbf00145f3b8b1b0ab4c3b885cc4",
+    "tests/test_apple_probe.py": "6b1ae94341ce98f0abc80ffb7a398fa9024321c87de394fa3f0293d05661f288",
+    "tests/test_data/apple_fixed_profile_m6.xml": "f5ee0dd48aa6ac4136a7169cdde563fb0d6f022e56a1ed60705de69298173658"
+  },
+  "security_changes": {
+    "sip": "remains enabled",
+    "authenticated_root": "remains enabled",
+    "developer_tools": "already enabled before experiments",
+    "os_boot_permission_or_security_settings_changed": false,
+    "temporary_kpc_counter_state": "Restored by native diagnostic probes; no cleanup errors observed."
+  },
+  "tma_available": false,
+  "tma": {
+    "Frontend_Bound": null,
+    "Bad_Speculation": null,
+    "Backend_Bound": null,
+    "Retiring": null
+  },
+  "limits": [
+    "No successful nonzero programmable-event configuration or hardware cycle-triggered capture.",
+    "Native process-accounted counts and sampled KPC values retain separate semantics; no cross-source IPC or totals are derived.",
+    "Optional root same-process KPC/accounting cross-check awaits CLI authentication; no result is claimed.",
+    "No kernel build/boot, calibrated TMA shares, optimization acceptance, or independent reviewer is claimed."
+  ],
+  "raw_artifacts": "Retained in ignored local .local-runs only; no raw trace, binary, device metadata or developer-account credentials published."
+}

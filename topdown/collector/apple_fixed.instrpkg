@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<package>
+  <id>org.redis-performance.topdown.fixed-counters</id>
+  <title>Topdown Fixed Counters</title>
+  <owner><name>topdown-profiler</name></owner>
+  <import-schema>counters-profile</import-schema>
+  <instrument>
+    <id>org.redis-performance.topdown.fixed-counters.instrument</id>
+    <title>Topdown Fixed Counters</title>
+    <category>CPU</category>
+    <purpose>Capture native fixed cycles and instructions with a timer trigger.</purpose>
+    <icon>CPU Counters</icon>
+    <limitations/>
+    <create-table>
+      <id>fixed-counter-profile</id>
+      <schema-ref>counters-profile</schema-ref>
+      <attribute><name>target-pid</name><string>SINGLE</string></attribute>
+      <!-- ktrace requires numeric attributes as numbers despite the schema's string patterns. -->
+      <attribute><name>needs-kernel-callstack</name><integer>0</integer></attribute>
+      <attribute><name>pmc-events</name><array><string>FIXED_CYCLES</string><string>FIXED_INSTRUCTIONS</string></array></attribute>
+      <attribute><name>trigger</name><string>time</string></attribute>
+      <attribute><name>sample-rate-micro-seconds</name><integer>1000</integer></attribute>
+    </create-table>
+    <list>
+      <title>Native Fixed Counter Samples</title>
+      <table-ref>fixed-counter-profile</table-ref>
+      <column>time</column><column>process</column><column>thread</column><column>counters-array</column>
+    </list>
+  </instrument>
+</package>

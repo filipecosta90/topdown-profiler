@@ -1,0 +1,42 @@
+<?xml version='1.0' encoding='utf-8'?>
+<trace-query-result>
+  <node>
+    <schema name="processor-trace-gaps">
+      <col>
+        <mnemonic>timestamp</mnemonic>
+        <name>Timestamp</name>
+        <engineering-type>start-time</engineering-type>
+      </col>
+      <col>
+        <mnemonic>process</mnemonic>
+        <name>Process</name>
+        <engineering-type>process</engineering-type>
+      </col>
+      <col>
+        <mnemonic>thread</mnemonic>
+        <name>Thread</name>
+        <engineering-type>thread</engineering-type>
+      </col>
+      <col>
+        <mnemonic>description</mnemonic>
+        <name>Description</name>
+        <engineering-type>string</engineering-type>
+      </col>
+    </schema>
+    <row>
+      <start-time fmt="00:00.631.498">631498416</start-time>
+      <process fmt="fixture">
+        <pid fmt="42">42</pid>
+        <device-session fmt="fixture">fixture</device-session>
+      </process>
+      <thread fmt="fixture">
+        <tid fmt="420">420</tid>
+        <process fmt="fixture">
+          <pid fmt="42">42</pid>
+          <device-session fmt="fixture">fixture</device-session>
+        </process>
+      </thread>
+      <string fmt="Gap">Gap</string>
+    </row>
+  </node>
+</trace-query-result>

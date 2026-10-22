@@ -1,0 +1,88 @@
+<?xml version='1.0' encoding='utf-8'?>
+<trace-query-result>
+  <node>
+    <schema name="thread-state">
+      <col>
+        <mnemonic>start</mnemonic>
+        <name>Start Time</name>
+        <engineering-type>start-time</engineering-type>
+      </col>
+      <col>
+        <mnemonic>thread</mnemonic>
+        <name>Thread</name>
+        <engineering-type>thread</engineering-type>
+      </col>
+      <col>
+        <mnemonic>state</mnemonic>
+        <name>State</name>
+        <engineering-type>thread-state</engineering-type>
+      </col>
+      <col>
+        <mnemonic>duration</mnemonic>
+        <name>Duration</name>
+        <engineering-type>duration</engineering-type>
+      </col>
+      <col>
+        <mnemonic>process</mnemonic>
+        <name>Process</name>
+        <engineering-type>process</engineering-type>
+      </col>
+      <col>
+        <mnemonic>core</mnemonic>
+        <name>Core</name>
+        <engineering-type>core</engineering-type>
+      </col>
+    </schema>
+    <row>
+      <start-time fmt="00:00.631.699">631699875</start-time>
+      <thread fmt="fixture">
+        <tid fmt="420">420</tid>
+        <process fmt="fixture">
+          <pid fmt="42">42</pid>
+          <device-session fmt="fixture">fixture</device-session>
+        </process>
+      </thread>
+      <thread-state fmt="Interrupted">Interrupted</thread-state>
+      <duration fmt="416 ns">416</duration>
+      <process fmt="fixture">
+        <pid fmt="42">42</pid>
+        <device-session fmt="fixture">fixture</device-session>
+      </process>
+      <core fmt="CPU 7 (S Core)">7</core>
+    </row>
+    <row>
+      <start-time fmt="00:00.632.570">632570500</start-time>
+      <thread fmt="fixture">
+        <tid fmt="420">420</tid>
+        <process fmt="fixture">
+          <pid fmt="42">42</pid>
+          <device-session fmt="fixture">fixture</device-session>
+        </process>
+      </thread>
+      <thread-state fmt="Blocked">Blocked</thread-state>
+      <duration fmt="110.00 ms">110002708</duration>
+      <process fmt="fixture">
+        <pid fmt="42">42</pid>
+        <device-session fmt="fixture">fixture</device-session>
+      </process>
+      <sentinel />
+    </row>
+    <row>
+      <start-time fmt="00:00.742.583">742583000</start-time>
+      <thread fmt="fixture">
+        <tid fmt="420">420</tid>
+        <process fmt="fixture">
+          <pid fmt="42">42</pid>
+          <device-session fmt="fixture">fixture</device-session>
+        </process>
+      </thread>
+      <thread-state fmt="Running">Running</thread-state>
+      <duration fmt="278.96 µs">278958</duration>
+      <process fmt="fixture">
+        <pid fmt="42">42</pid>
+        <device-session fmt="fixture">fixture</device-session>
+      </process>
+      <core fmt="CPU 6 (S Core)">6</core>
+    </row>
+  </node>
+</trace-query-result>
