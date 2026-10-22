@@ -12,7 +12,8 @@ import pytest
 
 from topdown.apple_storage import (SOC_KIND, STAT_KIND, collect_apple_result, query_apple_result,
                                    store_apple_result, stored_apple_hotspots, validate_result)
-from topdown.collector.apple import AppleProfileError, FIXED_EVENTS, TMA_ROOTS, parse_profile
+from topdown.collector.apple import (AppleProfileError, FIXED_EVENTS, M1_EVENTS, M1_FETCH_EVENTS,
+                                     M1_MAP_EVENTS, MODES, TMA_ROOTS, parse_apple_bottlenecks, parse_profile)
 from topdown.collector.apple_trace import parse_trace_profile
 from topdown.storage.models import Run, Sample
 from topdown.storage.sqlite_backend import SQLiteBackend
@@ -47,11 +48,27 @@ def apple_artifact(tmp_path):
                                          DATA / "apple_processor_gaps_m6.xml", 42)
             result["measurement_kind"] = "hardware-traced-execution-intervals"
             name = "profile.json"
+        elif kind == "guided":
+            from tests.test_apple_bottlenecks import metric_xml
+            xml = tmp_path / "guided.xml"
+            xml.write_text(metric_xml())
+            result = parse_apple_bottlenecks(xml, 42)
+            result["measurement_kind"] = "apple-guided-bottleneck-intervals"
+            name = "profile.json"
+        elif kind in {"cpu", "time", "counters"}:
+            from tests.test_apple import xml_table
+            xml = tmp_path / f"{kind}.xml"
+            xml.write_text(xml_table(MODES[kind][1]))
+            result = parse_profile(xml, MODES[kind][1], 42)
+            result["measurement_kind"] = MODES[kind][2]
+            name = "profile.json"
         else:
-            shares = {"delivery": 0.1, "discarded": 0.2, "processing": 0.3, "useful": 0.4}
-            result = {**common, "measurement_kind": "apple-guided-bottleneck-intervals", "schema": "MetricTable",
-                      "scope": {"pid": 42}, "sample_count": 1, "samples": [{"cycles": 100, "shares": shares}],
-                      "apple_bottlenecks": {"cycles": 100, "shares": shares, "weighting": "sampled_core_cycles"}}
+            from tests.test_apple_m1_mode import synthetic_m1_xml
+            xml = tmp_path / f"{kind}.xml"
+            synthetic_m1_xml(xml)
+            events = {"m1": M1_EVENTS, "m1-map": M1_MAP_EVENTS, "m1-fetch": M1_FETCH_EVENTS}[kind]
+            result = parse_profile(xml, "counters-profile", 3362, fixed_events=events)
+            result["measurement_kind"] = MODES[kind][2]
             name = "profile.json"
         folder = tmp_path / kind
         folder.mkdir(exist_ok=True)
@@ -66,7 +83,7 @@ def apple_artifact(tmp_path):
     return write
 
 
-@pytest.mark.parametrize("kind", ["fixed", "stat", "soc", "trace", "guided"])
+@pytest.mark.parametrize("kind", ["fixed", "stat", "soc", "trace", "guided", "cpu", "time", "counters", "m1", "m1-map", "m1-fetch"])
 def test_native_documents_round_trip_without_linux_metric_rows(sqlite_backend, apple_artifact, kind):
     path, result = apple_artifact(kind)
     run = store_apple_result(sqlite_backend, path.parent, labels={"test_name": "apple-control", "collector": "fake"})
@@ -101,6 +118,30 @@ def test_capture_metadata_and_import_time_are_distinguished(sqlite_backend, appl
     second = store_apple_result(sqlite_backend, path, process_name="redis")
     assert second.labels["time_basis"] == "import_time" and second.process_name == "redis"
     assert second.run_id != run.run_id
+
+
+@pytest.mark.parametrize("kind", ["stat", "fixed"])
+def test_offset_timestamps_keep_recent_filters_and_ordering_in_utc(sqlite_backend, apple_artifact, kind):
+    now = datetime.now(timezone.utc)
+    runs = []
+    for age, offset in [(timedelta(minutes=5), -7), (timedelta(hours=5), 12)]:
+        path, result = apple_artifact(kind, capture=kind == "fixed")
+        metadata_path = path if kind == "stat" else path.parent / "capture.json"
+        times = json.loads(metadata_path.read_text())
+        stamp = (now - age).astimezone(timezone(timedelta(hours=offset)))
+        times.update(started_at=stamp.isoformat(), ended_at=(stamp + timedelta(seconds=2)).isoformat())
+        metadata_path.write_text(json.dumps(times))
+        run = store_apple_result(sqlite_backend, path)
+        runs.append(run)
+        assert run.started_at == stamp and run.started_at.utcoffset() == timedelta(0)
+        assert run.ended_at.utcoffset() == timedelta(0) and run.duration_seconds == 2
+        document = sqlite_backend.get_apple_result(run.run_id)
+        stored_times = document["result"] if kind == "stat" else document["metadata"]["capture"]
+        assert stored_times["started_at"] == times["started_at"]
+        if kind == "fixed":
+            assert document["result"] == result
+    assert [r.run_id for r in sqlite_backend.list_runs()] == [r.run_id for r in runs]
+    assert [r.run_id for r in sqlite_backend.list_runs(last_hours=1)] == [runs[0].run_id]
 
 
 def test_queries_paginate_and_keep_native_scope_and_metadata(sqlite_backend, apple_artifact):
@@ -210,6 +251,117 @@ def test_invalid_native_payloads(apple_artifact, kind):
         validate_result(invalid)
 
 
+@pytest.mark.parametrize("kind,field,value", [
+    ("fixed", ("scope", "pid"), True),
+    ("fixed", ("scope", "start_ns"), -1),
+    ("fixed", ("scope", "end_ns"), 0),
+    ("fixed", ("excluded_rows",), True),
+    ("fixed", ("samples", 0, "pid"), 9999),
+    ("fixed", ("samples", 0, "time_ns"), -1),
+    ("fixed", ("samples", 0, "tid"), True),
+    ("fixed", ("samples", 0, "core"), -1),
+    ("fixed", ("samples", 0, "weight"), 1.5),
+    ("fixed", ("samples", 0, "frames"), None),
+    ("fixed", ("samples", 0, "frames", 0, "name"), 3),
+    ("fixed", ("samples", 0, "event_values", "FIXED_CYCLES"), float(2**53 + 1)),
+    ("fixed", ("samples", 0, "event_values", "FIXED_INSTRUCTIONS"), 2**64),
+    ("fixed", ("configured_events",), ["UNKNOWN"]),
+    ("fixed", ("event_value_order_verified",), False),
+    ("m1", ("samples", 0, "native_event_values"), [1]),
+    ("m1-map", ("samples", 0, "native_event_values", 0), True),
+    ("m1-fetch", ("samples", 0, "native_event_values", 0), -1),
+    ("counters", ("samples", 0, "value"), float(2**53 + 1)),
+    ("counters", ("samples", 0, "event"), " "),
+    ("counters", ("samples", 0, "sample_index"), -1),
+    ("time", ("samples", 0, "weight"), False),
+    ("trace", ("intervals", 0), {}),
+    ("trace", ("intervals", 0, "tid"), 0),
+    ("trace", ("intervals", 0, "self_cycles"), 0.5),
+    ("trace", ("intervals", 0, "self_instructions"), 2**64),
+    ("trace", ("intervals", 0, "self_duration_ns"), 2**64 - 1),
+    ("trace", ("intervals", 0, "duration_ns"), 2**64 - 1),
+    ("trace", ("intervals", 0, "binary_offset"), -1),
+    ("trace", ("gaps", 0), None),
+    ("trace", ("gaps", 0, "pid"), 999),
+    ("trace", ("gaps", 0, "time_ns"), 2**64),
+    ("trace", ("gaps", 0, "description"), False),
+    ("guided", ("samples", 0, "cycles"), 0),
+    ("guided", ("samples", 0, "duration_ns"), -1),
+    ("guided", ("samples", 0, "shares", "useful"), 0),
+    ("guided", ("samples", 0, "shares", "useful"), 10**1000),
+    ("guided", ("apple_bottlenecks", "cycles"), 0),
+    ("guided", ("apple_bottlenecks", "shares", "delivery"), 0.405),
+    ("guided", ("apple_bottlenecks_by_core", 0, "core"), 7),
+    ("guided", ("apple_bottlenecks_by_core", 0, "cycles"), 999),
+])
+def test_corrupt_native_observations_are_rejected_before_storage(sqlite_backend, apple_artifact, kind, field, value):
+    path, result = apple_artifact(kind)
+    parent = result
+    for part in field[:-1]:
+        parent = parent[part]
+    parent[field[-1]] = value
+    path.write_text(json.dumps(result))
+    with pytest.raises(AppleProfileError):
+        store_apple_result(sqlite_backend, path)
+    assert sqlite_backend.list_runs() == []
+    assert sqlite_backend._get_conn().execute("SELECT COUNT(*) FROM apple_results").fetchone()[0] == 0
+
+
+def test_valid_zero_counters_and_unresolved_frames_are_retained(sqlite_backend, apple_artifact):
+    path, result = apple_artifact()
+    result["samples"][0].update(weight=0, tid=0, core=0, frames=[])
+    result["samples"][0]["event_values"] = dict.fromkeys(FIXED_EVENTS, 0)
+    result["samples"][1]["frames"] = [{"name": None, "address": None, "binary": None}]
+    path.write_text(json.dumps(result))
+    run = store_apple_result(sqlite_backend, path)
+    assert sqlite_backend.get_apple_result(run.run_id)["result"] == result
+
+
+@pytest.mark.parametrize("kind", ["fixed", "cpu", "time", "counters", "guided", "trace"])
+def test_native_observations_must_stay_in_the_selected_window(sqlite_backend, apple_artifact, kind):
+    path, result = apple_artifact(kind)
+    rows = result["intervals"] if kind == "trace" else result["samples"]
+    field = "start_ns" if kind == "trace" else "time_ns"
+    first = rows[0][field]
+    result["scope"]["end_ns"] = first
+    path.write_text(json.dumps(result))
+    with pytest.raises(AppleProfileError, match="PID/time scope"):
+        store_apple_result(sqlite_backend, path)
+    if kind == "trace":
+        result["scope"]["end_ns"] = first + rows[0]["duration_ns"] - 1
+        path.write_text(json.dumps(result))
+        with pytest.raises(AppleProfileError, match="complete native trace intervals"):
+            store_apple_result(sqlite_backend, path)
+    assert sqlite_backend.list_runs() == []
+
+
+def test_trace_zero_duration_and_empty_gaps_are_valid(sqlite_backend, apple_artifact):
+    path, result = apple_artifact("trace")
+    result.update(gaps=[], gap_count=0)
+    for row in result["intervals"]:
+        row["gap_markers_inside"] = 0
+    result["intervals"][0].update(duration_ns=0, self_duration_ns=None)
+    path.write_text(json.dumps(result))
+    run = store_apple_result(sqlite_backend, path)
+    assert sqlite_backend.get_apple_result(run.run_id)["result"] == result
+
+
+def test_guided_boundaries_and_summed_cycles_above_uint64_are_valid(sqlite_backend, tmp_path):
+    from tests.test_apple_bottlenecks import metric_xml
+    xml = tmp_path / "guided.xml"
+    xml.write_text(metric_xml().replace("<fixed-decimal>100</fixed-decimal>", f"<fixed-decimal>{2**64 - 1}</fixed-decimal>")
+                   .replace("<fixed-decimal>300</fixed-decimal>", f"<fixed-decimal>{2**64 - 1}</fixed-decimal>"))
+    path = tmp_path / "profile.json"
+    for end in [150, 250]:
+        result = parse_apple_bottlenecks(xml, 42, end_ns=end)
+        result["measurement_kind"] = "apple-guided-bottleneck-intervals"
+        assert result["samples"][-1]["time_ns"] + result["samples"][-1]["duration_ns"] > end
+        path.write_text(json.dumps(result))
+        run = store_apple_result(sqlite_backend, path)
+        assert sqlite_backend.get_apple_result(run.run_id)["result"] == result
+    assert result["apple_bottlenecks"]["cycles"] > 2**64
+
+
 @pytest.mark.parametrize("mode,command,pid,duration", [
     ("stat", None, None, 1), ("stat", ["/bin/true"], 1, 1), ("stat", [], None, 1),
     ("stat", None, 0, 1), ("soc", ["/bin/true"], None, 1), ("fixed", None, 42, 1),
@@ -308,6 +460,11 @@ def test_cli_import_query_report_and_missing_runs(tmp_path, monkeypatch, apple_a
     assert native_query.exit_code == 0 and "topdown apple query" in native_query.output
     comparison = runner.invoke(app, ["compare", run_id, run_id, "--db", db])
     assert comparison.exit_code == 0 and "unavailable" in comparison.output
+    for args in [["query", "--run-id", run_id, "--json"], ["query", "--csv"],
+                 ["query", "--funnel", "--json"], ["compare", run_id, run_id, "--json"]]:
+        unsupported = runner.invoke(app, [*args, "--db", db])
+        assert unsupported.exit_code == 1 and unsupported.stdout == ""
+        assert "topdown apple query" in unsupported.stderr
 
 
 @pytest.mark.parametrize("kind", ["stat", "soc", "fixed"])

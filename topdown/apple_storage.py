@@ -6,7 +6,8 @@ import math
 from datetime import datetime, timezone
 from pathlib import Path
 
-from topdown.collector.apple import APPLE_BOTTLENECKS, MODES, TMA_ROOTS, AppleProfileError
+from topdown.collector.apple import (APPLE_BOTTLENECKS, FIXED_EVENTS, M1_EVENTS, M1_FETCH_EVENTS,
+                                     M1_MAP_EVENTS, MODES, TMA_ROOTS, AppleProfileError)
 from topdown.storage.models import Run
 
 PROFILE_SCHEMAS = {kind: schema for _, schema, kind in MODES.values()}
@@ -14,10 +15,116 @@ PROFILE_SCHEMAS["apple-guided-bottleneck-intervals"] = "MetricTable"
 STAT_KIND = "process-accounted-fixed-counters"
 SOC_KIND = "native-soc-firmware-state-observations"
 BULK_FIELDS = {"samples", "intervals", "gaps", "channels", "leaf_sample_counts"}
+EVENT_GROUPS = {MODES[mode][2]: events for mode, events in
+                [("fixed", FIXED_EVENTS), ("m1", M1_EVENTS), ("m1-map", M1_MAP_EVENTS), ("m1-fetch", M1_FETCH_EVENTS)]}
 
 
 def _uint(value):
     return type(value) is int and 0 <= value < 2**64
+
+
+def _nonnegative(value):
+    return type(value) is int and value >= 0
+
+
+def _shares_valid(shares):
+    return (isinstance(shares, dict) and set(shares) == set(APPLE_BOTTLENECKS)
+            and all(type(v) in (int, float) and 0 <= v <= 1 and math.isfinite(v) for v in shares.values())
+            and abs(sum(shares.values()) - 1) <= 0.01)
+
+
+def _validate_frames(frames):
+    if (not isinstance(frames, list) or any(not isinstance(frame, dict)
+            or any(frame.get(key) is not None and not isinstance(frame[key], str)
+                   for key in ["name", "address", "binary", "binary_uuid", "load_address"]) for frame in frames)):
+        raise AppleProfileError("Require native stack frames with string or null code locations")
+
+
+def _validate_observation(row, scope, time_field):
+    if (not isinstance(row, dict) or type(row.get("pid")) is not int or row["pid"] != scope["pid"]
+            or not _nonnegative(row.get("tid")) or not _nonnegative(row.get(time_field))
+            or row[time_field] < scope["start_ns"]
+            or (scope["end_ns"] is not None and row[time_field] >= scope["end_ns"])):
+        raise AppleProfileError("Native observation disagrees with profile PID/time scope")
+
+
+def _validate_guided_summary(summary, rows):
+    cycles = sum(row["cycles"] for row in rows)
+    if (not isinstance(summary, dict) or not _shares_valid(summary.get("shares"))
+            or not _nonnegative(summary.get("cycles")) or summary["cycles"] != cycles
+            or type(summary.get("sample_count")) is not int or summary["sample_count"] != len(rows)
+            or summary.get("weighting") != "sampled_core_cycles"):
+        raise AppleProfileError("Guided bottleneck summary must match its native samples")
+    for event in APPLE_BOTTLENECKS:
+        expected = sum(row["cycles"] * row["shares"][event] for row in rows) / cycles
+        if not math.isclose(summary["shares"][event], expected, rel_tol=1e-12, abs_tol=1e-12):
+            raise AppleProfileError("Guided bottleneck shares must match their cycle-weighted samples")
+
+
+def _validate_profile(result, rows):
+    scope = result.get("scope")
+    if (not isinstance(scope, dict) or not _nonnegative(scope.get("pid")) or not scope["pid"]
+            or not _nonnegative(scope.get("start_ns")) or "end_ns" not in scope
+            or (scope["end_ns"] is not None and (not _nonnegative(scope["end_ns"]) or scope["end_ns"] <= scope["start_ns"]))):
+        raise AppleProfileError("Require an explicit positive PID and nonempty native time scope")
+    for field in ["excluded_rows", "unmeasured_rows", "boundary_rows_excluded", "invalid_intervals"]:
+        if not _nonnegative(result.get(field, 0)):
+            raise AppleProfileError(f"Invalid native {field}")
+    schema, kind = result["schema"], result["measurement_kind"]
+    if schema == "counters-profile":
+        events = EVENT_GROUPS[kind]
+        if result.get("configured_events") != list(events) or result.get("event_value_order_verified") is not (events == FIXED_EVENTS):
+            raise AppleProfileError("Require the native event configuration and verified mapping status")
+    for row in rows:
+        _validate_observation(row, scope, "start_ns" if schema == "processor-trace-intervals" else "time_ns")
+        if schema == "processor-trace-intervals":
+            if (not row["tid"] or not all(_uint(row.get(key)) for key in
+                    ["pid", "tid", "start_ns", "duration_ns", "depth", "self_instructions", "self_cycles", "gap_markers_inside"])
+                    or row["start_ns"] + row["duration_ns"] >= 2**64
+                    or (scope["end_ns"] is not None and row["start_ns"] + row["duration_ns"] > scope["end_ns"])
+                    or (row.get("self_duration_ns") is not None and
+                        (not _uint(row["self_duration_ns"]) or row["self_duration_ns"] > row["duration_ns"]))
+                    or (row.get("binary_offset") is not None and not _uint(row["binary_offset"]))):
+                raise AppleProfileError("Require complete native trace intervals and unsigned self counters")
+            _validate_frames(row.get("frames"))
+        elif schema == "MetricTable":
+            if (not _nonnegative(row.get("core")) or not _uint(row.get("duration_ns")) or not row["duration_ns"]
+                    or not _uint(row.get("cycles")) or not row["cycles"] or not _shares_valid(row.get("shares"))):
+                raise AppleProfileError("Require native guided intervals, cycles and four bottleneck shares")
+        else:
+            if not _nonnegative(row.get("core")):
+                raise AppleProfileError("Require a native core identity")
+            if schema == "cpu-pmc-value":
+                if (not isinstance(row.get("event"), str) or not row["event"].strip()
+                        or not _uint(row.get("value")) or not _nonnegative(row.get("sample_index"))):
+                    raise AppleProfileError("Require native event names, unsigned PMC values and sample indices")
+            else:
+                if not _nonnegative(row.get("weight")):
+                    raise AppleProfileError("Require a native integer sample weight")
+                _validate_frames(row.get("frames"))
+                if schema == "counters-profile":
+                    values = row.get("event_values") if events == FIXED_EVENTS else row.get("native_event_values")
+                    if events == FIXED_EVENTS:
+                        valid = isinstance(values, dict) and set(values) == set(events) and all(_uint(v) for v in values.values())
+                    else:
+                        valid = isinstance(values, list) and len(values) == len(events) and all(_uint(v) for v in values)
+                    if not valid:
+                        raise AppleProfileError("Require one native uint64 value per configured event")
+    if schema == "processor-trace-intervals":
+        for gap in result["gaps"]:
+            _validate_observation(gap, scope, "time_ns")
+            if (not gap["tid"] or not all(_uint(gap.get(key)) for key in ["pid", "tid", "time_ns"])
+                    or (gap.get("description") is not None and not isinstance(gap["description"], str))):
+                raise AppleProfileError("Require native trace gap identities and descriptions")
+    if schema == "MetricTable":
+        _validate_guided_summary(result.get("apple_bottlenecks"), rows)
+        by_core = result.get("apple_bottlenecks_by_core")
+        if (not isinstance(by_core, list) or not all(isinstance(entry, dict) and _nonnegative(entry.get("core")) for entry in by_core)
+                or len(by_core) != len({row["core"] for row in rows})
+                or {entry["core"] for entry in by_core} != {row["core"] for row in rows}):
+            raise AppleProfileError("Require one native guided summary per observed core")
+        for entry in by_core:
+            _validate_guided_summary(entry, [row for row in rows if row["core"] == entry["core"]])
 
 
 def validate_result(result: dict) -> None:
@@ -55,12 +162,7 @@ def validate_result(result: dict) -> None:
             if (not isinstance(result.get("gaps"), list) or type(result.get("gap_count")) is not int
                     or result["gap_count"] != len(result["gaps"]) or result.get("coverage_complete") is not False):
                 raise AppleProfileError("Trace results must retain their gaps and incomplete decoding status")
-        if result["schema"] == "MetricTable":
-            summary = result.get("apple_bottlenecks", {})
-            shares = summary.get("shares", {}) if isinstance(summary, dict) else {}
-            if (not isinstance(shares, dict) or set(shares) != set(APPLE_BOTTLENECKS)
-                    or not all(type(v) in (int, float) and math.isfinite(v) and 0 <= v <= 1 for v in shares.values())):
-                raise AppleProfileError("Require Apple's four native bottleneck shares")
+        _validate_profile(result, rows)
     else:
         raise AppleProfileError(f"Unsupported Apple measurement kind: {kind}")
     try:
@@ -85,7 +187,7 @@ def _date(value):
         date = datetime.fromisoformat(value)
         if date.tzinfo is None:
             raise ValueError("timezone required")
-        return date
+        return date.astimezone(timezone.utc)
     except (ValueError, TypeError) as exc:
         raise AppleProfileError("Apple artifact timestamps must be timezone-aware ISO dates") from exc
 

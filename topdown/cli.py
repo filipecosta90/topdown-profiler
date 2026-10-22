@@ -394,6 +394,9 @@ def query(
             run = runs[0]
 
         if run.labels.get("collector") == "apple":
+            if json_output or csv_output:
+                emit_note(f"Native Apple results require 'topdown apple query {run.run_id}'; Linux TMA output is unavailable.")
+                raise typer.Exit(1)
             console.print(f"Native Apple result. Use 'topdown apple query {run.run_id}' or 'topdown apple report --run-id {run.run_id}'.")
             return
         metrics = backend.get_aggregated_metrics(run.run_id)
@@ -515,6 +518,9 @@ def compare(
             raise typer.Exit(1)
 
         if any(run.labels.get("collector") == "apple" for run in (found_a, found_b)):
+            if json_output:
+                emit_note("Native Apple results require 'topdown apple query'; Linux TMA comparisons are unavailable.")
+                raise typer.Exit(1)
             console.print("Native Apple results require 'topdown apple query' or 'topdown apple report'; Linux TMA comparisons are unavailable.")
             return
         metrics_a = backend.get_aggregated_metrics(found_a.run_id)
