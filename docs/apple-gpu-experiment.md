@@ -66,10 +66,22 @@ Apple explains that utilization and limiter counters describe related but
 different aspects of GPU work, and that a high ALU limiter alone does not prove
 a performance problem. The contrast above shows the counter profiles respond to
 these two controlled workloads; it does not establish an Intel-style 100% GPU
-pipeline-slot partition. See Apple's
+pipeline-slot partition. In fact, summing the individual limiter sampled means
+for the 100-pass stream run gives **260.23%** (Buffer Write 99.44%, Buffer Read
+67.15%, MMU 48.63%, GPU Last Level Cache 43.68%, plus smaller values). The
+subsystem limiters overlap and cannot be treated as children in a 100% tree.
+See Apple's
 [GPU counter walkthrough](https://developer.apple.com/videos/play/wwdc2020/10603/),
 [Metal compute guidance](https://developer.apple.com/videos/play/tech-talks/10580/),
 and [occupancy analysis](https://developer.apple.com/documentation/xcode/finding-your-metal-apps-gpu-occupancy).
+
+The separate **Performance Utilizations** counter set also worked on this M1
+with template profile code 4. New 100-pass captures covered all labeled passes:
+ALU Utilization was 34.63% for the FMA probe and 1.35% for the streaming probe;
+GPU Read Bandwidth was 0.02 versus 29.59 GB/s. The streaming bandwidth agrees
+with the Performance Limiters capture (29.60 GB/s). This is an independent
+counter-set check, still subject to the same system-wide sampling limits. Its
+sanitized results are also in the validation JSON.
 
 ## Reproduce on M1 or test on M6
 
