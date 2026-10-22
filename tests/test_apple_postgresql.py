@@ -13,9 +13,9 @@ from topdown.storage.models import Run, Sample
 
 @pytest.fixture
 def postgres_backend():
-    dsn = os.environ.get("TOPDOWN_TEST_POSTGRESQL_DSN")
+    dsn = os.environ.get("TOPDOWN_TEST_DSN")
     if not dsn:
-        pytest.skip("Set TOPDOWN_TEST_POSTGRESQL_DSN to a disposable PostgreSQL database")
+        pytest.skip("Set TOPDOWN_TEST_DSN to a disposable PostgreSQL database")
     import psycopg
     from psycopg import sql
     from psycopg.rows import dict_row
