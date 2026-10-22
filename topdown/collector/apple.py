@@ -40,6 +40,7 @@ M1_FETCH_EVENTS = ("FIXED_CYCLES", "FIXED_INSTRUCTIONS", "RETIRE_UOP", "CORE_ACT
                    "L1I_TLB_MISS_DEMAND", "L2_TLB_MISS_INSTRUCTION", "FETCH_RESTART")
 M1_FETCH_PACKAGE = Path(__file__).with_name("apple_m1_fetch.instrpkg")
 M1_CPU_FAMILY = 0x1B588BB3
+M6_BLOCKED_KERNEL_UUID = "77F5F1F1-C717-3A42-A5FA-487ACF280495"
 APPLE_COLLECTION_MESSAGE = (
     "Apple silicon uses native Instruments profiles, not Linux perf/toplev. "
     "Use 'topdown apple doctor', 'topdown apple stat --output <new-directory> -- /path/to/program [args]', "
@@ -121,6 +122,8 @@ def doctor() -> dict:
         return result
     commands = {
         "cpu": ["sysctl", "-n", "machdep.cpu.brand_string"],
+        "os_build": ["sysctl", "-n", "kern.osversion"],
+        "kernel_uuid": ["sysctl", "-n", "kern.uuid"],
         "xctrace": ["xcrun", "xctrace", "version"],
         "templates": ["xcrun", "xctrace", "list", "templates"],
         "developer_tools_security": ["/usr/sbin/DevToolsSecurity", "-status"],
@@ -138,6 +141,22 @@ def doctor() -> dict:
                 result[key] = (proc.stdout or proc.stderr).strip()
         except (OSError, subprocess.TimeoutExpired) as exc:
             result.setdefault("errors", {})[key] = str(exc)
+    result["programmable_counters"] = {
+        "status": "unverified",
+        "reason": "Counter access requires a successful native probe; installed templates do not verify access.",
+        "next_step": "topdown apple probe --mode counters --output <new-directory>",
+    }
+    if result.get("cpu") == "Apple M6" and (result.get("kernel_uuid") or "").upper() == M6_BLOCKED_KERNEL_UUID:
+        result["programmable_counters"] = {
+            "status": "known_kernel_blocker",
+            "reason": "This M6 release kernel rejects programmable event selectors with EPERM. "
+                      "CPU Counters bottleneck data and CPU Profiler capture were unavailable with Xcode 27.0 and 27.1. "
+                      "Administrator access and Developer Mode do not bypass this event policy.",
+            "affected_modes": ["counters", "cpu"],
+            "next_step": "Use apple stat for process totals, or apple record --mode fixed for sampled stacks; "
+                         "then use apple report <capture-directory> for hotspots. "
+                         "Counter access on a different kernel must be checked with apple probe.",
+        }
     result["note"] = "Installed templates do not establish PMU access. No permission settings were changed."
     return result
 

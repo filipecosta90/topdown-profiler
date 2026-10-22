@@ -8,7 +8,7 @@ import typer
 
 from topdown.collector.apple import AppleProfileError, doctor, export_profile, record_profile
 
-app = typer.Typer(help="Count, capture and export native Apple silicon profiles; slot TMA remains unavailable.")
+app = typer.Typer(help="Count, capture, export and report native Apple silicon profiles; slot TMA remains unavailable.")
 
 
 def _profile_summary(profile, output):
@@ -91,6 +91,26 @@ def check():
     typer.echo(json.dumps(result, indent=2))
     if result.get("error") or not result.get("xctrace"):
         raise typer.Exit(1)
+
+
+@app.command(name="report")
+def report_hotspots(
+    profile: Annotated[Path, typer.Argument(exists=True, help="Apple capture directory or exported profile.json")],
+    limit: Annotated[int, typer.Option(min=1, help="Maximum number of functions to display")] = 20,
+    as_json: Annotated[bool, typer.Option("--json", help="Emit a structured hotspot report")] = False,
+):
+    """Rank function hotspots by recorded stack-sample frequency."""
+    from topdown.apple_report import load_hotspots, print_hotspots
+
+    try:
+        report = load_hotspots(profile, limit)
+    except AppleProfileError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    if as_json:
+        typer.echo(json.dumps(report, indent=2))
+    else:
+        print_hotspots(report)
 
 
 @app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})

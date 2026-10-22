@@ -10,6 +10,51 @@ They add no runtime dependencies and do not invoke `sudo` or change host setting
 The tested M6 rejects programmable events. Intel slot-TMA equivalence has not
 been established for the Apple categories.
 
+## Check support and view function hotspots
+
+```sh
+topdown apple doctor
+```
+
+`doctor` reads tool and kernel metadata without recording a workload. Its
+`programmable_counters` field reports `known_kernel_blocker` for the measured M6
+release kernel UUID `77F5F1F1-C717-3A42-A5FA-487ACF280495`. That kernel rejected
+programmable event selectors in the earlier root sweep and in the Xcode 27.0/27.1
+Instruments probes. The diagnostic identifies affected `counters`/`cpu` modes
+and suggests process accounting or fixed-counter stacks. Other kernels remain
+`unverified`; CPU names, installed templates, and Developer Mode alone do not
+establish hardware access. Use `apple probe` to check an unfamiliar kernel.
+Doctor's exit status continues to indicate whether the host and tools are
+available; inspect `programmable_counters.status` for this specific limitation.
+
+For a readable hotspot view on M6 or M1, capture fixed-counter stacks, then
+report the exported profile:
+
+```sh
+topdown apple record --mode fixed --duration 5 \
+  --output /tmp/apple-hotspots-001 -- /path/to/program args
+topdown apple report /tmp/apple-hotspots-001
+topdown apple report /tmp/apple-hotspots-001/profile.json --limit 10 --json
+```
+
+The report groups functions by symbol and binary, combining instruction addresses
+within the same named function. `Leaf samples` counts observations at the top of
+the stack; `In stack` counts each function once per sampled stack, including
+callers and deduplicating recursion. `Leaf share` divides by all measured rows,
+including rows without stack frames; unmeasured and missing-stack counts remain
+visible. `--limit` truncates the ranking without changing its denominator. The
+terminal view shortens long symbols to fit; `--json` retains their full names.
+Time Profiler, CPU Profiler, and experimental M1 event stack exports can also be
+read offline, including on non-Apple hosts.
+
+These are sample-frequency hotspots. The report does not sum counter values or
+native weights, infer CPU-time percentages, or produce TMA percentages. `stat`,
+`soc`, guided bottleneck tables, and execution intervals require their own native
+interpretation and cannot be read as sampled-stack profiles.
+
+The Xcode 27.1 recheck and native hotspot smoke test are recorded in
+[M6 diagnostics validation](apple-m6-diagnostics-validation.json).
+
 ## Process instruction and cycle totals
 
 `stat` uses macOS `proc_pid_rusage` accounting. It needs neither root nor Xcode and
@@ -838,8 +883,9 @@ changed.
 IOReport enumerates 207 AMC memory-controller channels, but subscriptions to each
 individual channel failed without root. Enumeration alone does not establish
 readable counters. A root comparison still requires interactive CLI authentication
-and has not been completed. No developer-kernel or bootable OS patch was built or
-tested. The existing kernel gate explains a blocker; it does not establish that
+and has not been completed. A development-kernel collection was subsequently built
+and inspected as described below; boot and runtime event access remain untested.
+The existing kernel gate explains a blocker; it does not establish that
 patching one branch would provide valid event mappings, safe counter programming,
 or a complete top-down model.
 
@@ -848,9 +894,14 @@ A support recheck on October 21 found no remedy in the retrieved
 A separate participant reports the failure on macOS 27.2 Beta; this is a user
 report, not a local test or Apple confirmation. Apple has released
 [Xcode 27.1](https://developer.apple.com/news/releases/?id=10152026a), but the
-retrieved 27.1/27.2 release notes supplied no M6/KPC fix. Newer Xcode/OS builds were
-not installed or tested here. Absence of a release-note entry does not establish
-whether a newer build changes behavior.
+retrieved 27.1/27.2 release notes supplied no M6/KPC fix. A local recheck on
+October 22 with Xcode 27.1 (27A9275), on the unchanged macOS 27.0.1 kernel,
+still produced no CPU Counters bottleneck table. CPU Profiler failed with KPC
+`EPERM`; its recording window contains a kernel log rejecting event `0x0011`,
+the installed database's `CORE_ACTIVE_CYCLE`. Fixed-counter profiling completed
+successfully. The UUID-matched release kernel rejects all nonzero programmable
+selectors, while the M1 kernel shipped with the same OS has an event lookup
+table. Newer macOS builds have not been tested locally.
 
 ## Matching M6 development kernel
 

@@ -321,6 +321,23 @@ The tested M6 OS blocks programmable events, so these measurements cannot yield
 Delivery / Discarded / Processing / Useful or the Linux TMA funnel. For function
 locations, use [fixed-counter stack samples or execution traces](docs/apple-silicon.md).
 
+### M6 hotspot report
+
+Check support, capture fixed-counter stacks, and rank the observed functions:
+
+```bash
+topdown apple doctor
+topdown apple record --mode fixed --duration 5 \
+  --output /tmp/m6-hotspots-001 -- /tmp/apple-controls memory 40000000 8388608
+topdown apple report /tmp/m6-hotspots-001
+```
+
+`doctor` recognizes the measured M6 kernel blocker and suggests available capture
+modes. The report shows leaf-sample shares and caller counts; these describe
+recorded samples, with missing stacks reported separately. Counter values are
+not summed, and the report does not infer CPU-time or TMA percentages. Use
+`--limit 10 --json` for a structured report.
+
 ## Microarchitecture Analysis Example (Linux)
 
 Here is a real-world example analyzing redis-server under a memtier benchmark:

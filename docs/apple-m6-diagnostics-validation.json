@@ -1,0 +1,65 @@
+{
+  "recorded_at_utc": "2026-10-22T12:00:50.209854+00:00",
+  "host": {
+    "cpu": "Apple M6",
+    "macOS": "27.0.1",
+    "build": "26A434",
+    "xcode": "27.1 (27A9275)",
+    "kernel_uuid": "77F5F1F1-C717-3A42-A5FA-487ACF280495",
+    "kernel_sha256": "bee8d08efa5b6edd6cdc166bc77a8f8689b2734dd17f47343dd63cf4cc7a2a57"
+  },
+  "counter_recheck": {
+    "counters": {
+      "status": "counter_data_missing",
+      "cli_exit_code": 3,
+      "sample_count": 0,
+      "target_completed": true,
+      "probe_sha256": "7d2922e617b891d3b203a534f9481bd32f47b8f6236b25d689b8feb576e2e880"
+    },
+    "fixed": {
+      "status": "counters_present",
+      "cli_exit_code": 0,
+      "sample_count": 362,
+      "target_completed": true,
+      "probe_sha256": "cc44ff1dfcee24170721ce3df30aacf2bd21236019c3295b17f2965c3234151f"
+    },
+    "cpu": {
+      "status": "permission_denied",
+      "cli_exit_code": 2,
+      "sample_count": 0,
+      "target_completed": false,
+      "probe_sha256": "399abffe2bf7ad67aa319510d37d2e7f991645f5d76daf5d2ccee76edd059b0c"
+    }
+  },
+  "kernel_rejection": {
+    "during_cpu_profiler_probe": true,
+    "event_selector": "0x0011",
+    "event_name": "CORE_ACTIVE_CYCLE",
+    "message": "kpc: kpc_set_config: not allowed to count event 0x0011",
+    "time_utc": "2026-10-22T11:31:38.881000+00:00",
+    "policy_control_read_only": true
+  },
+  "hotspot_validation": {
+    "target_completed": true,
+    "target_checksum_verified": true,
+    "sample_count": 367,
+    "unmeasured_rows": 2,
+    "missing_stack_samples": 1,
+    "leading_hotspot": {
+      "function": "alu_work",
+      "binary": "probe",
+      "leaf_samples": 364,
+      "leaf_share": 0.9918256130790191,
+      "stack_samples": 364
+    },
+    "profile_sha256": "8a2e907e7f7a9b7ea25c2d33e4351717b07b27de7b9972634821a2c011fb4d8d",
+    "report_sha256": "adaf2127ef7a21c5377bddfa81d04a0d16ba4125b0431c81384b01c7430602fd",
+    "installed_wheel_outside_checkout": "Same 364/367 alu_work observations; report module included in wheel"
+  },
+  "limits": [
+    "Known blocker detection matches this measured kernel UUID and Apple M6 CPU name; other kernels remain unverified.",
+    "Earlier root event sweeps are recorded in apple-m6-cli-validation.json; root configuration was not rerun with Xcode 27.1.",
+    "Sample-frequency hotspots do not establish CPU-time, instruction-cost or TMA percentages.",
+    "Kernel, boot and security settings were unchanged."
+  ]
+}
