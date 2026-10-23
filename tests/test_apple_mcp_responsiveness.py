@@ -414,3 +414,19 @@ async def test_cancellation_during_artifact_read_prevents_database_insert(tmp_pa
         assert db.execute('SELECT count(*) FROM apple_results').fetchone()[0]==0
     finally:
         db.close()
+
+
+@pytest.mark.asyncio
+async def test_methodology_resource_exposes_native_apple_scope_on_both_servers():
+    from mcp.server.fastmcp import FastMCP
+
+    authenticated = FastMCP("methodology-test")
+    mcp_server._register_tools_and_resources(authenticated)
+    for server in [mcp_server.mcp, authenticated]:
+        resources = await server.list_resources()
+        resource = next(item for item in resources if str(item.uri) == "topdown://methodology")
+        assert "Apple" in resource.description
+    text = mcp_server.methodology()
+    assert "Apple Silicon and macOS" in text and "query_apple_result" in text
+    assert "sample shares are not CPU-time percentages" in text
+    assert "keep Intel TMA roots null" in text
