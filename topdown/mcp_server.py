@@ -246,6 +246,9 @@ def get_apple_gpu_report(run_id: str, limit: StrictInt = 20, offset: StrictInt =
     """Rank stored Apple GPU encoders by replay cost with native limiter values and sampling coverage.
 
     Works on any server OS. Pages up to 1000 encoders without renormalizing their original cost shares.
+    New captures include timeline bandwidth, occupancy, active-core and F32 metrics with native units
+    and explicit observation availability; their definitions remain in the stored native result.
+    Timeline counters can include other GPU activity; sampled cores and consistent-state flags are retained.
     Native limiters overlap and values above 100% are retained and flagged; these are not CPU slot TMA.
     """
     from topdown.apple_storage import stored_apple_gpu_report

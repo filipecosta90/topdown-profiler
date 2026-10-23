@@ -377,6 +377,8 @@ topdown apple query RUN_ID --section encoders --limit 4
 ```
 
 GPU results support SQLite/PostgreSQL and MCP collection, queries and reports.
+Reports retain native bandwidth units, observed-counter coverage and sampled
+cores. Timeline hardware counters can include concurrent GPU activity.
 Use `apple gpu profile` for an existing `.gputrace`. The guide also preserves the
 M1 Instruments counter experiment, including sampled ALU versus Buffer Write
 limiter contrasts; replay profiling is unavailable on M1.

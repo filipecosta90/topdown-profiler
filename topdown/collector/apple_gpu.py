@@ -22,6 +22,7 @@ from topdown.collector.apple_environment import capture_environment
 
 GPU_KIND = "apple-gpu-replay-profile"
 GPU_MODES = {"compute", "alu", "memory", "stream"}
+TIMELINE_GROUPS = ("bandwidth", "occupancy", "shader_launch_limiter", "active_cores", "f32")
 
 
 @contextmanager
@@ -208,12 +209,37 @@ def collect(trace: Path, output: Path, execution: str = "overlapping") -> dict:
         encoders = [{"id": row["name"], "listing": row, "counters": query(f"info /performance/encoders/{row['name']}")}
                     for row in children]
         query("go /performance/timeline/counters")
+        available = query("list --all")
+        groups = {}
+        children = available.get("children")
+        if (not isinstance(children, list) or type(available.get("totalCount")) is not int
+                or available["totalCount"] != len(children)
+                or any(not isinstance(row, dict) or not isinstance(row.get("name"), str) for row in children)
+                or len({row["name"] for row in children}) != len(children)):
+            raise ValueError("Incomplete or unexpected GPU timeline counter groups")
+        for group in TIMELINE_GROUPS:
+            if group not in {row["name"] for row in children}:
+                continue
+            prefix = f"/performance/timeline/counters/{group}"
+            query(f"go {prefix}")
+            listing = query("list --all")
+            leaves = listing.get("children")
+            if (not isinstance(leaves, list) or type(listing.get("totalCount")) is not int
+                    or listing["totalCount"] != len(leaves)
+                    or any(not isinstance(row, dict) or not re.fullmatch(r"[a-z][a-z0-9_]*", str(row.get("name", "")))
+                           for row in leaves)
+                    or len({row["name"] for row in leaves}) != len(leaves)):
+                raise ValueError(f"Incomplete or unexpected GPU timeline counter listing: {group}")
+            # Unobserved leaves can return a synthetic zero from `info`; retain their absence.
+            groups[group] = {"listing": listing, "counters": {
+                row["name"]: query(f"info {prefix}/{row['name']}") if row.get("values") else None for row in leaves}}
         timeline = query("info /performance/timeline")
         document = {
             "schema_version": 1, "measurement_kind": "apple-gpu-replay-profile",
             "scope": {"kind": "captured-metal-workload", "trace_name": trace.name},
             "settings": {"execution": execution, "gpu_state": "default", "replayed": True},
             "device": query("status").get("device"), "timeline": timeline, "encoders": encoders,
+            "timeline_counter_groups": groups,
             "environment": environment,
             "tma_available": False, "tma": dict.fromkeys(TMA_ROOTS),
             "started_at": started, "ended_at": datetime.now(timezone.utc).isoformat(),
@@ -222,6 +248,7 @@ def collect(trace: Path, output: Path, execution: str = "overlapping") -> dict:
                 "Native limiter percentages overlap and must not be summed into a pipeline-slot partition.",
                 "Encoder cost is the profiler's cost attribution, not a CPU-time percentage.",
                 "Default replay GPU state and execution mode can change timings; compare matched settings.",
+                "Timeline hardware counters may include concurrent device activity; they are not exclusive to captured encoders.",
             ],
         }
         from topdown.apple_gpu_report import summarize

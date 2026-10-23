@@ -22,6 +22,45 @@ def _duration(value):
     return isinstance(value, str) and re.fullmatch(r"\d+(?:[.,]\d+)?\s*(?:ns|µs|μs|us|ms|s)", value) is not None
 
 
+def _timeline_metrics(groups):
+    if not isinstance(groups, dict) or any(not isinstance(group, str) for group in groups):
+        raise ValueError("Require native GPU timeline counter groups")
+    metrics = []
+    for group, entry in sorted(groups.items()):
+        if (not isinstance(group, str) or not re.fullmatch(r"[a-z][a-z0-9_]*", group)
+                or not isinstance(entry, dict) or not isinstance(entry.get("listing"), dict)
+                or not isinstance(entry.get("counters"), dict)):
+            raise ValueError("Invalid native GPU timeline counter group")
+        listing, counters = entry["listing"], entry["counters"]
+        children = listing.get("children")
+        if (not isinstance(children, list) or type(listing.get("totalCount")) is not int
+                or listing["totalCount"] != len(children)
+                or any(not isinstance(row, dict) or not isinstance(row.get("name"), str)
+                       or not re.fullmatch(r"[a-z][a-z0-9_]*", row["name"]) for row in children)
+                or len({row["name"] for row in children}) != len(children)
+                or set(counters) != {row["name"] for row in children}):
+            raise ValueError("Incomplete native GPU timeline counter listing")
+        for row in children:
+            values, detail = row.get("values"), counters[row["name"]]
+            if values is not None and (not isinstance(values, list)
+                                      or any(not isinstance(value, dict) or value.get("type") != "string"
+                                             or not isinstance(value.get("value"), str) for value in values)):
+                raise ValueError("Invalid native GPU timeline counter observation")
+            if values:
+                if (not isinstance(detail, dict) or not all(isinstance(key, str) and isinstance(value, str)
+                                                          for key, value in detail.items())
+                        or not detail.get("Name") or not detail.get("Value")
+                        or not detail.get("Description") or detail.get("Scope") != "timeline"):
+                    raise ValueError("Require native timeline counter units, description and scope")
+            elif detail is not None:
+                raise ValueError("Unobserved GPU timeline counters require null metadata")
+            metrics.append({"group": group, "id": row["name"], "observed": bool(values),
+                            "name": detail["Name"] if detail else row["name"],
+                            "native_value": detail["Value"] if detail else None,
+                            "description": detail["Description"] if detail else None})
+    return metrics
+
+
 def summarize(profile, limit=None, offset=0):
     if (not isinstance(profile, dict) or profile.get("measurement_kind") != "apple-gpu-replay-profile"
             or profile.get("tma_available") is not False or not isinstance(profile.get("timeline"), dict)
@@ -73,6 +112,9 @@ def summarize(profile, limit=None, offset=0):
             "tma_available": False, "limitations": profile.get("limitations", [])}
     if isinstance(profile.get("environment"), dict):
         report["environment"] = profile["environment"]
+    if "timeline_counter_groups" in profile:
+        report["timeline_metrics"] = _timeline_metrics(profile["timeline_counter_groups"])
+        report["timeline_counter_scope"] = {"kind": "gpu-timeline", "target_exclusive": False}
     return report
 
 
@@ -82,7 +124,15 @@ def render(report):
              f"Execution: {(report.get('settings') or {}).get('execution', 'unavailable')}",
              f"Cores: {report['timeline'].get('Cores', 'unavailable')} | "
              f"Profiled state: {report['timeline'].get('Profiled state', 'unavailable')}"]
+    if "Consistent state" in report["timeline"]:
+        lines.append(f"Consistent state: {report['timeline']['Consistent state']}")
     lines.append(f"Encoders: {len(report['encoders'])} of {report['total_encoders']} (offset {report['offset']})")
+    if "timeline_metrics" in report:
+        observed = [row for row in report["timeline_metrics"] if row["observed"]]
+        lines.append(f"Timeline counters: {len(observed)} observed / {len(report['timeline_metrics'])} listed")
+        lines.append("Timeline counter scope: GPU timeline; other device activity may contribute.")
+        for metric in observed:
+            lines.append(f"  {metric['name']}: {metric['native_value']}")
     for row in report["encoders"]:
         lines.append(f"  {row['label']} | cost {row['cost_percent']:.2f}% | {row['duration']}")
         for limiter in row["limiters"]:

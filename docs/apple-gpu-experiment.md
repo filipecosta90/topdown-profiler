@@ -25,7 +25,8 @@ Measured on Apple M6, macOS 27.0.1 (26A434), Xcode 27.1 (27A9275):
 
 The CPU programmable-counter kernel restriction does not prevent this GPU replay
 path. The replay captures include the probe's command queue, rather than a
-system-wide GPU activity stream.
+system-wide GPU activity stream. The timeline hardware counters have a wider
+scope and can include concurrent device activity, as the control below shows.
 
 The original kernel executes 1024 FMAs in a loop. The `alu` control performs the
 same 1024 FMAs with fewer loop-control instructions and produces the same
@@ -61,6 +62,94 @@ classification: the native launch limiter dominates both variants. Sampling
 coverage also varies: the memory captures report 10/12 and 5/12 sampled cores,
 while the compute, ALU and stream captures report 12/12. The report prints this
 coverage and preserves all exported counters as native strings.
+
+### M6 stream work per thread
+
+An additional [eight-trial control](apple-gpu-m6-stream-granularity.json) varies
+the vectorized stream kernel from 4 to 256 floats per thread. Every trial applies
+the same four passes to 16,777,216 floats in two shared buffers and verifies every
+output element against the CPU reference. The order is
+64, 4, 16, 256, 256, 16, 4, 64 floats per thread, with two trials per variant:
+
+| Floats/thread | Original command GPU time | Replay GPU time | Timeline shader-launch limiter | Native external GPU bandwidth |
+|---|---:|---:|---:|---:|
+| 4 | 4.0321–4.1526 ms | 4.0623–4.1010 ms | 100.32–100.33% | 122.95–124.57 GiB/s |
+| 16 | 4.1348–4.1406 ms | 4.0622–4.0720 ms | 97.68–97.71% | 123.40–124.54 GiB/s |
+| 64 | 4.1156–4.2007 ms | 4.0671–4.0984 ms | 90.89–91.11% | 122.81–123.82 GiB/s |
+| 256 | 4.1788–4.1885 ms | 4.0856–4.1892 ms | 65.99–66.55% | 120.26–122.98 GiB/s |
+
+All replays sampled 12/12 cores. Increasing work per thread reduces the native
+launch metric considerably while GPU times remain close. The debugger defines
+this limiter as launches **or stalled launches**, normalized to peak launch
+rate. Its memory counter measures traffic to memory external to the GPU,
+potentially device memory, and exports `GiB / Second`. These definitions support
+reading the launch, bandwidth and occupancy observations together. They do not
+establish DRAM saturation or a portable performance benefit. Two trials per
+variant and uncontrolled frequency/background activity also limit small timing
+comparisons. Algorithmic array bytes remain separate from native traffic.
+Apple's [profiling tools talk](https://developer.apple.com/videos/play/tech-talks/111374/)
+also explains that launch stalls can reflect back pressure. Its
+[performance guide](https://developer.apple.com/documentation/xcode/optimizing-gpu-performance)
+distinguishes the overlapping timeline from detailed counters measured for
+individual passes in isolation.
+
+Reproduce the balanced experiment using a fresh output directory:
+
+```sh
+python3 examples/apple_gpu/stream_granularity.py --output /tmp/m6-stream-width-001
+topdown apple gpu report /tmp/m6-stream-width-001/trial-00-vectors-16/replay
+```
+
+The script writes the four generated Swift sources, their source/binary hashes,
+capture logs, per-trial native profiles and `results.json`. Its generated sources
+match the committed measurement hashes. Raw traces stay local.
+The public runner was then exercised end to end for another eight trials, all
+with verified output and 12/12 sampled cores. Its original GPU times ranged from
+4.0817 to 4.2319 ms and replay times from 4.0290 to 4.1713 ms. This replication
+also found no consistent timing advantage as work per thread increased; its
+counter values and capture hashes are retained in the same evidence file.
+Three replication trials also have vertex or fragment timeline observations
+despite the captured queue containing only compute encoders. These values are
+preserved; counter availability varies between runs.
+
+### Timeline counters include concurrent GPU activity
+
+A separate [offscreen renderer](../examples/apple_gpu/background_render_probe.swift)
+was run during replay of the same four-encoder compute-only capture. The
+[baseline/background/after control](apple-gpu-m6-background-scope.json) records:
+
+| Condition | Replay GPU time | Sampled cores | Fragment occupancy in timeline |
+|---|---:|---:|---:|
+| Before background renderer | 4.1007 ms | 12/12 | Unobserved |
+| Concurrent offscreen renderer | 4.6705 ms | 2/12 | 19.46% |
+| After renderer stops | 4.1007 ms | 12/12 | Unobserved |
+
+The captured encoder list remains four compute passes throughout. The separate
+renderer completed 23,021 commands successfully. This supports treating timeline
+hardware counters as GPU observations that can include other device activity,
+rather than attributing every timeline metric to the captured encoders. It also
+shows why a native `Consistent state=yes` flag does not certify workload
+isolation: all three cases have that flag. Core coverage remains visible.
+
+To repeat the control, compile the renderer, take a baseline replay, then start
+the renderer before the next replay. Use separate new replay output paths:
+
+```sh
+mkdir /tmp/m6-background-001
+xcrun swiftc -O -framework Metal examples/apple_gpu/background_render_probe.swift \
+  -o /tmp/m6-background-001/probe
+/tmp/m6-background-001/probe /tmp/m6-background-001 &
+BACKGROUND_RENDER_PID=$!
+# Wait for /tmp/m6-background-001/ready, then profile your existing compute trace.
+topdown apple gpu profile /path/compute.gputrace --output /tmp/m6-background-replay-001
+touch /tmp/m6-background-001/stop
+wait "$BACKGROUND_RENDER_PID"
+```
+
+The renderer checks for `stop` after each completed command and otherwise exits
+after 40 seconds. It uses an offscreen texture and requires no window. Repeat
+the replay after it exits; original application timing and these replay
+observations remain separate measurements.
 
 ### Mixed compute, blit and render capture
 
@@ -127,6 +216,19 @@ kernel UUID in `environment`. Stored `cpu` labels use that recorded identity;
 the debugger's native GPU `device` string remains separate. Imports preserve
 the captured provenance when read on another host.
 Imports without timestamps are explicitly labeled with an import-time basis.
+
+New profiles include `timeline_counter_groups` for the available bandwidth,
+occupancy, shader-launch, active-core and F32 groups. Each observed leaf retains
+its native value, unit, description and timeline scope. A listed counter without
+an observation has null metadata: querying that leaf directly can otherwise
+produce a default zero. Reports print observed metrics and their coverage;
+JSON reports expose `timeline_metrics`, including explicit unavailable entries.
+The full native groups survive SQLite/PostgreSQL import and MCP summary queries.
+Reports expose `timeline_counter_scope.target_exclusive=false`: timeline hardware
+counters can include concurrent device activity. They print the native
+`Consistent state` flag alongside sampled-core coverage. Per-encoder counters
+and timeline means describe different measurement scopes.
+Older profiles without these groups retain their existing report format.
 
 The MCP server exposes:
 

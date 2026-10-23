@@ -98,6 +98,8 @@ def fake_gpudebug(monkeypatch):
             elif instruction == "info /performance/timeline":
                 assert state["timeline_opened"]
                 response = json.dumps(profile["timeline"])
+            elif instruction == "list --all" and state["timeline_opened"]:
+                response = '{"children":[],"totalCount":0}'
             elif instruction in {"go /performance/encoders", "list --all"}:
                 assert state["performance_opened"]
                 response = json.dumps({"children": [profile["encoders"][0]["listing"]], "totalCount": 1})
