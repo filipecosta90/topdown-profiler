@@ -142,7 +142,7 @@ def collect(trace: Path, output: Path, execution: str = "overlapping") -> dict:
             try:
                 # Killing a replay client can strand its XPC profiling operation after session removal.
                 with apple_runtime.uncancellable():
-                    result = apple_runtime.run(command, timeout=timeout, start_new_session=True)
+                    result = apple_runtime.run(command, timeout=timeout, start_new_session=True, stdin=subprocess.DEVNULL)
             except (subprocess.TimeoutExpired, AppleProfileError) as exc:
                 stdout = getattr(exc, "stdout", None) or b""
                 stderr = getattr(exc, "stderr", None) or b""
@@ -162,8 +162,11 @@ def collect(trace: Path, output: Path, execution: str = "overlapping") -> dict:
                 if match:
                     session = match.group(1)
             apple_runtime.check_cancelled()
-            if result.returncode:
-                raise ValueError(f"gpudebug failed: {result.stderr.strip() or result.stdout.strip()}; artifacts: {output}")
+            diagnostic = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", result.stdout + "\n" + result.stderr)
+            errors = [line.strip() for line in diagnostic.splitlines() if line.lstrip().lower().startswith("error:")]
+            if result.returncode or errors:
+                detail = "\n".join(errors) or result.stderr.strip() or result.stdout.strip()
+                raise ValueError(f"gpudebug failed: {detail}; artifacts: {output}")
             return result.stdout
 
     def query(command):

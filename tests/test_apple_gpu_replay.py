@@ -68,10 +68,11 @@ def test_multiple_json_responses_and_whitespace():
 @pytest.fixture
 def fake_gpudebug(monkeypatch):
     state = {"commands": [], "loaded": True, "performance_opened": False, "timeline_opened": False,
-             "error": None, "pending": 0}
+             "error": None, "pending": 0, "error_stream": "stdout", "warning": ""}
     profile = native_profile()
 
     def run(command, **kwargs):
+        assert kwargs["stdin"] == subprocess.DEVNULL and kwargs["start_new_session"]
         state["commands"].append(command)
         if "-t" in command:
             response = "Session 42 created.\nProfile: not loaded (0 sessions available)\n"
@@ -106,7 +107,9 @@ def fake_gpudebug(monkeypatch):
                 response = '{"device":"Apple M6"}'
             else:
                 raise AssertionError(instruction)
-        return subprocess.CompletedProcess(command, 0, response, "")
+        if response.startswith("error:") and state["error_stream"] == "stderr":
+            return subprocess.CompletedProcess(command, 0, "", "\x1b[31m" + response + "\x1b[0m")
+        return subprocess.CompletedProcess(command, 0, response, state["warning"])
     monkeypatch.setattr(REPLAY.subprocess, "run", run)
     return state
 
@@ -124,9 +127,11 @@ def test_collect_native_replay_preserves_metadata_and_closes_only_its_session(tm
 
 
 @pytest.mark.parametrize("failure", ["unsupported", "json-error"])
-def test_capture_failure_retains_logs_and_terminates_owned_session(tmp_path, fake_gpudebug, failure):
+@pytest.mark.parametrize("error_stream", ["stdout", "stderr"])
+def test_capture_failure_retains_logs_and_terminates_owned_session(tmp_path, fake_gpudebug, failure, error_stream):
     trace = tmp_path / "test.gputrace"
     trace.mkdir()
+    fake_gpudebug["error_stream"] = error_stream
     if failure == "unsupported":
         fake_gpudebug["loaded"] = False
     else:
@@ -139,14 +144,25 @@ def test_capture_failure_retains_logs_and_terminates_owned_session(tmp_path, fak
     assert list(output.glob("*.stdout"))
 
 
-def test_async_tables_are_retried_until_ready(tmp_path, fake_gpudebug, monkeypatch):
+@pytest.mark.parametrize("error_stream", ["stdout", "stderr"])
+def test_async_tables_are_retried_until_ready(tmp_path, fake_gpudebug, monkeypatch, error_stream):
     trace = tmp_path / "test.gputrace"
     trace.mkdir()
     fake_gpudebug["pending"] = 1
+    fake_gpudebug["error_stream"] = error_stream
     sleeps = []
     monkeypatch.setattr(REPLAY.time, "sleep", sleeps.append)
     result = REPLAY.collect(trace, tmp_path / "retry")
     assert result["encoders"] and sleeps == [0.25]
+
+
+def test_native_stderr_warnings_are_retained_without_discarding_valid_results(tmp_path, fake_gpudebug):
+    trace = tmp_path / "test.gputrace"
+    trace.mkdir()
+    fake_gpudebug["warning"] = "warning: capture format is newer\n"
+    output = tmp_path / "warnings"
+    assert REPLAY.collect(trace, output)["encoders"]
+    assert all(path.read_text() == fake_gpudebug["warning"] for path in output.glob("*.stderr"))
 
 
 def test_performance_readiness_has_a_deadline(tmp_path, fake_gpudebug, monkeypatch):

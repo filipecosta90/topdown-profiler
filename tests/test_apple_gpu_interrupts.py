@@ -26,7 +26,7 @@ program=''' + repr('''import os,json,sys,time
 from pathlib import Path
 root=Path(sys.argv[1]);phase=sys.argv[2]
 print("Session 42 created." if phase=="startup" else "profiling",flush=True)
-(root/'client.json').write_text(json.dumps({'pid':os.getpid(),'pgid':os.getpgrp()}))
+(root/'client.json').write_text(json.dumps({'pid':os.getpid(),'pgid':os.getpgrp(),'stdin_is_tty':os.isatty(0)}))
 while not (root/'release').exists():time.sleep(.01)
 (root/'client-finished').write_text('finished')
 print('native-command-finished',flush=True)
@@ -47,8 +47,14 @@ except KeyboardInterrupt:
     (root/'handler-restored').write_text('restored')
     raise SystemExit(130)
 ''')
-    cli = subprocess.Popen([sys.executable, str(harness), str(tmp_path), phase],
-                           stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True)
+    import pty
+
+    terminal, input_fd = pty.openpty()
+    try:
+        cli = subprocess.Popen([sys.executable, str(harness), str(tmp_path), phase], stdin=input_fd,
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True)
+    finally:
+        os.close(input_fd)
     try:
         deadline = time.monotonic() + 5
         while not (tmp_path / "client.json").exists() and time.monotonic() < deadline:
@@ -65,6 +71,7 @@ except KeyboardInterrupt:
         stdout, stderr = cli.communicate(timeout=5)
         assert cli.returncode == 130, (stdout, stderr)
         assert identity["pgid"] == identity["pid"] and identity["pgid"] != cli.pid
+        assert identity["stdin_is_tty"] is False
         assert (tmp_path / "client-finished").exists()
         assert (tmp_path / "handler-restored").exists()
         assert json.loads((tmp_path / "terminated.json").read_text()) == ["xcrun", "gpudebug", "--terminate", "42"]
@@ -72,6 +79,7 @@ except KeyboardInterrupt:
         captured = "".join(path.read_text() for path in (tmp_path / "replay").glob("*.stdout"))
         assert "native-command-finished" in captured
     finally:
+        os.close(terminal)
         (tmp_path / "release").touch()
         if cli.poll() is None:
             cli.terminate()
