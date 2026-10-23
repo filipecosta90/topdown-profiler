@@ -1,4 +1,4 @@
-"""Intel TMA methodology overview text."""
+"""CPU profiling methodology and native platform measurement limits."""
 
 TMA_METHODOLOGY = """\
 # Intel Top-Down Microarchitecture Analysis (TMA) Methodology
@@ -91,8 +91,32 @@ via ``perf stat --topdown``:
 The four L1 categories provide the high-level breakdown of where pipeline slots go.
 - **Same analysis tools:** The ``explain``, ``query``, ``compare``, and ``funnel`` commands \
 work identically on ARM L1 data.
-- **Auto-detected:** The tool automatically selects ``perf stat --topdown`` on aarch64 and \
+- **Auto-detected on Linux:** The tool automatically selects ``perf stat --topdown`` on aarch64 and \
 ``toplev`` on x86_64. Override with ``TOPDOWN_COLLECTOR`` environment variable.
+
+## Apple Silicon and macOS
+
+Apple M1/M6 measurements use native macOS collectors. They are not Intel slot TMA \
+or Linux ``perf stat --topdown`` data. Preserve their native scope and denominator:
+
+| Measurement | Scope and interpretation |
+|-------------|--------------------------|
+| ``stat`` | All threads and user/kernel execution of one PID, excluding descendants; process-lifetime totals or observed PID-interval deltas. |
+| Stack samples | Function frequency among recorded samples; sample shares are not CPU-time percentages. |
+| Guided CPU Counters | Apple's named ratios weighted by sampled core cycles; retain valid-interval and cycle coverage. |
+| Processor trace | Decoded execution intervals, native self counters and trace gaps; incomplete decoding is not full execution accounting. |
+| SoC firmware | System/cluster observations with native units, including unrelated processes; not PID-attributed stalls or exact DRAM throughput. |
+
+Use ``apple_doctor`` to inspect the server host, ``collect_apple_profile`` to capture, \
+and ``import_apple_result`` to store an existing native artifact. Read summaries and \
+ordered observation pages with ``query_apple_result``; use ``get_apple_hotspots`` for \
+sampled-stack reports. Collection runs on the MCP server host; stored queries and \
+reports also work offline on other supported operating systems.
+
+Availability depends on the chip, kernel and toolchain. Installed templates do not \
+verify counter access. Unknown coverage remains unavailable rather than becoming \
+zero measured work. Apple records keep Intel TMA roots null and create no Linux \
+TMA samples; use their native tools instead of Linux funnels and metric comparisons.
 """
 
 
