@@ -151,3 +151,22 @@ def test_strict_native_json_preserves_large_integers_unicode_and_decimals():
 
     payload='{"counter":18446744073709551615,"name":"µs","ratio":0.25}'
     assert decode_json_object(payload.encode())=={'counter':2**64-1,'name':'µs','ratio':.25}
+
+
+def test_native_json_decoder_preserves_stream_offsets_and_integer_precision():
+    from topdown.collector.apple_files import NativeJSONDecoder
+
+    source = '{"value":0.25} {"counter":18446744073709551615}'
+    decoder = NativeJSONDecoder()
+    first, end = decoder.raw_decode(source)
+    second, final = decoder.raw_decode(source, end + 1)
+    assert first == {"value":.25} and second == {"counter":2**64 - 1}
+    assert final == len(source)
+
+
+@pytest.mark.parametrize("source", ['{"Cost":"0%","Cost":"100%"}', '{"value":NaN}', '{"value":1e999}'])
+def test_native_json_stream_decoder_rejects_ambiguous_values(source):
+    from topdown.collector.apple_files import NativeJSONDecoder
+
+    with pytest.raises(ValueError):
+        NativeJSONDecoder().raw_decode(source)

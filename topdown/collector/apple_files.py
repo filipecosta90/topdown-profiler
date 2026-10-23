@@ -28,11 +28,20 @@ def _json_float(value):
     return number
 
 
+class NativeJSONDecoder(json.JSONDecoder):
+    def __init__(self, **kwargs):
+        kwargs.update(object_pairs_hook=_json_object, parse_constant=_json_constant, parse_float=_json_float)
+        super().__init__(**kwargs)
+
+    def raw_decode(self, source, idx=0):
+        try:
+            return super().raw_decode(source, idx)
+        except RecursionError as exc:
+            raise ValueError("Apple JSON exceeds the parser nesting limit") from exc
+
+
 def decode_json_object(data: bytes) -> dict:
-    try:
-        value = json.loads(data, object_pairs_hook=_json_object, parse_constant=_json_constant, parse_float=_json_float)
-    except RecursionError as exc:
-        raise ValueError("Apple JSON exceeds the parser nesting limit") from exc
+    value = json.loads(data, cls=NativeJSONDecoder)
     if not isinstance(value, dict):
         raise ValueError("Require a JSON object in an Apple artifact")
     return value
