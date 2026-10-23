@@ -599,3 +599,37 @@ def test_pid_worker_cancellation_retains_partial_data_without_signaling(tmp_path
         assert result["exit_code"] == 130 and result["counters"]["instructions"] == 200
     else:
         assert result["counters"] is None
+
+
+@pytest.mark.asyncio
+async def test_cancelled_setup_never_launches_the_owned_target(tmp_path, capture, monkeypatch):
+    import asyncio
+    import threading
+    from topdown.collector import apple_stat
+    from topdown.collector.apple_runtime import worker
+
+    started, release = threading.Event(), threading.Event()
+    report = apple_stat._report
+    def paused_report(reader):
+        result = report(reader)
+        started.set()
+        assert release.wait(3)
+        return result
+    monkeypatch.setattr(apple_stat, "_report", paused_report)
+    output = tmp_path / "cancelled-setup"
+    task = asyncio.create_task(worker(lambda: stat_process(output, [sys.executable]), capture=True)())
+    try:
+        assert await asyncio.to_thread(started.wait, 2)
+        task.cancel()
+        await asyncio.sleep(0)
+        release.set()
+        with pytest.raises(asyncio.CancelledError):
+            await asyncio.wait_for(task, 3)
+    finally:
+        release.set()
+        await asyncio.gather(task, return_exceptions=True)
+    capture.launch.assert_not_called()
+    capture.process.wait.assert_not_called()
+    retained = json.loads((output / "stat.json").read_text())
+    assert retained["status"] == "interrupted" and retained["exit_code"] == 130
+    assert retained["counters"] is None
