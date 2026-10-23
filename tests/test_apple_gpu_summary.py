@@ -133,3 +133,73 @@ def test_summary_weights_sampled_values_and_keeps_units():
         "sampled_time_ns": 30,
         "share_of_top_limiter_samples_percent": 100.0,
     }]
+
+
+def test_summary_requires_pid_for_concurrent_labeled_probes():
+    counters = b'<trace-query-result><schema name="metal-gpu-counter-intervals"/></trace-query-result>'
+    gpu = b"""<trace-query-result><node><schema name="metal-gpu-intervals">
+    <col><mnemonic>start</mnemonic></col><col><mnemonic>duration</mnemonic></col>
+    <col><mnemonic>event-label</mnemonic></col><col><mnemonic>state</mnemonic></col>
+    <col><mnemonic>process</mnemonic></col></schema>
+    <row><start-time>100</start-time><duration>20</duration>
+    <formatted-label fmt="topdown GPU probe pass 0:burn compute pass 0"/>
+    <gpu-state fmt="Active"/><process><pid>101</pid></process></row>
+    <row><start-time>110</start-time><duration>20</duration>
+    <formatted-label fmt="topdown GPU probe pass 0:burn compute pass 0"/>
+    <gpu-state fmt="Active"/><process><pid>202</pid></process></row>
+    </node></trace-query-result>"""
+    with pytest.raises(ValueError, match="multiple labeled probe PIDs"):
+        MODULE.summarize(counters, gpu)
+    result = MODULE.summarize(counters, gpu, pid=101)["probe_coverage"]
+    assert result["passes_observed"] == 1
+    assert result["gpu_work_time_ns"] == 20
+    assert result["other_active_gpu_time_overlapping_ns"] == 10
+    with pytest.raises(ValueError, match="no labeled probe intervals"):
+        MODULE.summarize(counters, gpu, pid=303)
+
+
+def test_summary_streams_files_and_keeps_cross_row_and_nested_references(tmp_path):
+    counters = tmp_path / "counters.xml"
+    counters.write_bytes(b"""<trace-query-result><node><schema name="metal-gpu-counter-intervals">
+    <col><mnemonic>start</mnemonic></col><col><mnemonic>duration</mnemonic></col>
+    <col><mnemonic>counter-id</mnemonic></col><col><mnemonic>name</mnemonic></col>
+    <col><mnemonic>label</mnemonic></col><col><mnemonic>value</mnemonic></col>
+    <col><mnemonic>is-percentage</mnemonic></col></schema>
+    <row><start-time id="1">100</start-time><duration id="2">10</duration><uint32>0</uint32>
+    <gpu-counter-name id="4" fmt="ALU Limiter">1.ALU Limiter</gpu-counter-name>
+    <formatted-label><fixed-decimal id="6">5</fixed-decimal></formatted-label>
+    <fixed-decimal ref="6"/><boolean id="7">1</boolean></row>
+    <row><start-time>110</start-time><duration ref="2"/><uint32>0</uint32>
+    <gpu-counter-name ref="4"/><formatted-label/>
+    <fixed-decimal ref="6"/><boolean ref="7"/></row>
+    </node></trace-query-result>""")
+    gpu = tmp_path / "gpu.xml"
+    gpu.write_bytes(b"""<trace-query-result><node><schema name="metal-gpu-intervals">
+    <col><mnemonic>start</mnemonic></col><col><mnemonic>duration</mnemonic></col>
+    <col><mnemonic>event-label</mnemonic></col><col><mnemonic>state</mnemonic></col>
+    <col><mnemonic>process</mnemonic></col></schema>
+    <row><start-time>100</start-time><duration>10</duration>
+    <formatted-label fmt="topdown GPU probe pass 0:burn compute pass 0"/>
+    <gpu-state fmt="Active"/><process id="21"><pid id="22">101</pid></process></row>
+    <row><start-time>110</start-time><duration>10</duration>
+    <formatted-label fmt="topdown GPU probe pass 1:burn compute pass 1"/>
+    <gpu-state fmt="Active"/><process ref="21"/></row>
+    </node></trace-query-result>""")
+    result = MODULE.summarize(counters, gpu)
+    assert result["probe_coverage"]["passes_observed"] == 2
+    assert result["sampled_counter_means"]["ALU Limiter"]["value"] == 5.0
+
+
+@pytest.mark.parametrize("source,message", [
+    (b'<trace-query-result><schema name="metal-gpu-counter-intervals"/>'
+     b'<row><start-time id="1">1</start-time><duration>1</duration><uint32>0</uint32>'
+     b'<gpu-counter-name>A</gpu-counter-name></row>'
+     b'<row><start-time id="1">2</start-time><duration>1</duration><uint32>0</uint32>'
+     b'<gpu-counter-name>A</gpu-counter-name></row></trace-query-result>', "duplicate XML id"),
+    (b'<trace-query-result><schema name="metal-gpu-counter-intervals"/>'
+     b'<row><start-time>1</start-time><duration>0</duration><uint32>0</uint32>'
+     b'<gpu-counter-name>A</gpu-counter-name></row></trace-query-result>', "duration must be positive"),
+])
+def test_summary_rejects_ambiguous_or_zero_length_samples(source, message):
+    with pytest.raises(ValueError, match=message):
+        MODULE.summarize(source)

@@ -3,33 +3,77 @@
 import argparse
 from bisect import bisect_left
 from collections import Counter
+import io
 import json
 import math
 from pathlib import Path
 import re
+from typing import NamedTuple
 import xml.etree.ElementTree as ET
 
 
 PROBE_LABEL = re.compile(r"^topdown GPU probe pass (\d+):(burn|stream) compute pass \1(?:\s|$)")
 
 
-def _table(source: bytes, expected_schema: str):
-    root = ET.fromstring(source)
-    schema = root.find(".//schema")
-    if schema is None or schema.get("name") != expected_schema:
-        raise ValueError(f"expected {expected_schema} schema")
-    columns = [column.findtext("mnemonic") for column in schema.findall("col")]
-    references = {node.get("id"): node for node in root.iter() if node.get("id")}
-    for row in root.iter("row"):
-        cells = []
-        for cell in row:
-            if cell.get("ref"):
-                try:
-                    cell = references[cell.get("ref")]
-                except KeyError as error:
-                    raise ValueError(f"unresolved XML reference {error.args[0]}") from error
-            cells.append(cell)
-        yield columns, cells
+class _Cell(NamedTuple):
+    text: str | None
+    fmt: str | None
+    pid: str | None = None
+
+
+def _table(source: bytes | Path, expected_schema: str):
+    stream = source.open("rb") if isinstance(source, Path) else io.BytesIO(source)
+    references = {}
+    columns = None
+    schema_count = 0
+    stack = []
+    with stream:
+        for event, element in ET.iterparse(stream, events=("start", "end")):
+            if event == "start":
+                stack.append(element)
+                continue
+            if element.tag == "schema":
+                schema_count += 1
+                if schema_count != 1 or element.get("name") != expected_schema:
+                    raise ValueError(f"expected one {expected_schema} schema")
+                columns = [column.findtext("mnemonic") for column in element.findall("col")]
+                if len(columns) != len(set(columns)):
+                    raise ValueError("duplicate table columns")
+            elif element.tag == "row":
+                if columns is None:
+                    raise ValueError("row appears before its schema")
+                for item in element.iter():
+                    if item.get("id"):
+                        if item.get("id") in references:
+                            raise ValueError(f"duplicate XML id {item.get('id')}")
+                        references[item.get("id")] = _Cell(item.text, item.get("fmt"))
+                for item in element.iter("process"):
+                    if item.get("id"):
+                        child = item.find("pid")
+                        if child is not None:
+                            value = references.get(child.get("ref")) if child.get("ref") else _Cell(child.text, None)
+                            references[item.get("id")] = _Cell(item.text, item.get("fmt"), value.text if value else None)
+                cells = []
+                for item in element:
+                    if item.get("ref"):
+                        try:
+                            cells.append(references[item.get("ref")])
+                        except KeyError as error:
+                            raise ValueError(f"unresolved XML reference {error.args[0]}") from error
+                    elif item.tag == "process":
+                        child = item.find("pid")
+                        value = references.get(child.get("ref")) if child is not None and child.get("ref") else None
+                        cells.append(_Cell(item.text, item.get("fmt"), value.text if value else child.text if child is not None else None))
+                    else:
+                        cells.append(_Cell(item.text, item.get("fmt")))
+                if columns and len(cells) != len(columns):
+                    raise ValueError("table row does not match its schema")
+                stack[-2].remove(element)
+                element.clear()
+                yield columns, cells
+            stack.pop()
+    if schema_count != 1:
+        raise ValueError(f"expected one {expected_schema} schema")
 
 
 def _integer(cell, field: str) -> int:
@@ -64,7 +108,15 @@ def _merge(windows: list[tuple[int, int]]) -> list[tuple[int, int]]:
     return merged
 
 
-def summarize(source: bytes, gpu_intervals: bytes | None = None) -> dict:
+def _process_pid(cell) -> int | None:
+    return _integer(_Cell(cell.pid, None), "probe PID") if cell.pid is not None else None
+
+
+def summarize(source: bytes, gpu_intervals: bytes | None = None, pid: int | None = None) -> dict:
+    if pid is not None and (type(pid) is not int or pid <= 0):
+        raise ValueError("probe PID must be a positive integer")
+    if pid is not None and gpu_intervals is None:
+        raise ValueError("probe PID requires GPU intervals")
     names = Counter()
     starts = set()
     samples = set()
@@ -76,12 +128,14 @@ def summarize(source: bytes, gpu_intervals: bytes | None = None) -> dict:
             raise ValueError("counter row lacks start time or counter name")
         start = _integer(row[0], "counter start")
         duration = _integer(row[1], "counter duration")
+        if duration == 0:
+            raise ValueError("counter duration must be positive")
         starts.add(start)
         samples.add((start, start + duration))
         names[row[3].text] += 1
         if {"name", "value", "label", "is-percentage"}.issubset(columns):
-            name = row[columns.index("name")].get("fmt") or row[columns.index("name")].text
-            label = row[columns.index("label")].get("fmt") or ""
+            name = row[columns.index("name")].fmt or row[columns.index("name")].text
+            label = row[columns.index("label")].fmt or ""
             try:
                 value = float(row[columns.index("value")].text)
             except (TypeError, ValueError) as error:
@@ -102,8 +156,8 @@ def summarize(source: bytes, gpu_intervals: bytes | None = None) -> dict:
     if gpu_intervals is None:
         return result
 
-    passes = {}
-    other_active = []
+    labeled = []
+    active = []
     state_available = False
     for columns, row in _table(gpu_intervals, "metal-gpu-intervals"):
         try:
@@ -112,18 +166,38 @@ def summarize(source: bytes, gpu_intervals: bytes | None = None) -> dict:
             label_cell = row[columns.index("event-label")]
         except (ValueError, IndexError) as error:
             raise ValueError("GPU interval table lacks probe fields") from error
-        match = PROBE_LABEL.match(label_cell.get("fmt") or label_cell.text or "")
+        match = PROBE_LABEL.match(label_cell.fmt or label_cell.text or "")
+        process_pid = None
+        if "process" in columns:
+            process_pid = _process_pid(row[columns.index("process")])
+            if match and process_pid is None:
+                raise ValueError("labeled probe GPU interval lacks a process PID")
         if match:
             start = _integer(start_cell, "probe start")
             duration = _integer(duration_cell, "probe duration")
-            passes.setdefault((match.group(2), int(match.group(1))), []).append((start, start + duration))
+            if duration == 0:
+                raise ValueError("probe duration must be positive")
+            labeled.append((process_pid, match.group(2), int(match.group(1)), start, start + duration))
         if "state" in columns:
             state_available = True
             state_cell = row[columns.index("state")]
-            if not match and (state_cell.get("fmt") or state_cell.text) == "Active":
+            if (state_cell.fmt or state_cell.text) == "Active":
                 start = _integer(start_cell, "other GPU start")
                 duration = _integer(duration_cell, "other GPU duration")
-                other_active.append((start, start + duration))
+                active.append((process_pid, bool(match), start, start + duration))
+
+    probe_pids = {process_pid for process_pid, _, _, _, _ in labeled if process_pid is not None}
+    if pid is None and len(probe_pids) > 1:
+        raise ValueError("multiple labeled probe PIDs; pass --pid to select one")
+    selected_pid = pid if pid is not None else next(iter(probe_pids), None)
+    if pid is not None and pid not in probe_pids:
+        raise ValueError(f"no labeled probe intervals for PID {pid}")
+    passes = {}
+    for process_pid, workload, index, start, end in labeled:
+        if selected_pid is None or process_pid == selected_pid:
+            passes.setdefault((workload, index), []).append((start, end))
+    other_active = [(start, end) for process_pid, probe, start, end in active
+                    if not probe or (selected_pid is not None and process_pid != selected_pid)]
 
     pass_windows = {key: _merge(pieces) for key, pieces in passes.items()}
     windows = _merge([window for pieces in pass_windows.values() for window in pieces])
@@ -185,10 +259,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("source", type=Path)
     parser.add_argument("--gpu-intervals", type=Path, help="exported metal-gpu-intervals XML for probe coverage")
+    parser.add_argument("--pid", type=int, help="select a labeled probe PID when the trace contains multiple probes")
     args = parser.parse_args()
     try:
-        intervals = args.gpu_intervals.read_bytes() if args.gpu_intervals else None
-        result = summarize(args.source.read_bytes(), intervals)
+        result = summarize(args.source, args.gpu_intervals, args.pid)
     except (ET.ParseError, ValueError, OSError) as error:
         parser.error(str(error))
     print(json.dumps(result, indent=2))

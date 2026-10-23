@@ -38,3 +38,10 @@ def test_metal_probe_alu_and_stream_workloads(tmp_path):
         assert match, result.stdout
         assert float(match.group(1)) > 0
         assert math.isclose(float(match.group(2)), expected, rel_tol=1e-6)
+        assert "checksum_verified=true" in result.stdout
+
+    for arguments in (["garbage"], ["0"], ["501"], ["4", "unknown"], ["4", "alu", "extra"]):
+        result = subprocess.run([str(executable), *arguments], capture_output=True, text=True, timeout=10)
+        assert result.returncode != 0
+        assert "Error:" in result.stderr
+        assert "device=" not in result.stdout

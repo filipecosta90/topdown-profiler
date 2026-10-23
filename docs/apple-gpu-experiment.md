@@ -298,12 +298,18 @@ python3 examples/apple_gpu/summarize_counters.py \
 
 The shell exits with the probe's status and waits one second only on success. The
 wait gives Instruments time to retain delayed counter samples. Confirm the TOC
-says `Counter Set: Performance Limiters`, the probe prints its checksum, and
+says `Counter Set: Performance Limiters`, the probe prints `checksum_verified=true`, and
 `probe_coverage.passes_with_counter_samples` is nonzero. `counter_rows` alone
 does not establish probe coverage. Use 100 and 200 passes for longer comparison
 captures; the four-pass run is a smoke check. Inspect sampled time, pass coverage,
 and `other_active_gpu_time_overlapping_ns` before interpreting
 `sampled_counter_means`. The latter are weighted only over sampled intervals.
+The summarizer reads exported counter rows incrementally; a 183 MB M1 XML export
+used 284 MB peak resident memory in this run, compared with 3.07 GB before the
+streaming change, and produced byte-identical JSON. If a trace includes multiple
+labeled probe processes, it fails until `--pid PID` selects one. The native
+counter stream is still system-wide; concurrent GPU activity remains visible in
+the overlap field.
 To run the memory control, substitute `probe 100 stream` in the shell command and
 use a new trace/output directory. `probe 100 alu` selects the original workload
 explicitly.
