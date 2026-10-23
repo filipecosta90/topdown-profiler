@@ -39,6 +39,10 @@ def profile():
             "ALU Limiter": {"sampled_passes": 2, "unit": "%", "minimum": 70, "p10": 72,
                             "median": 80, "p90": 88, "maximum": 90},
         },
+        "sampled_per_pass_metric_distributions_without_observed_other_activity": {
+            "ALU Limiter": {"sampled_passes": 1, "unit": "%", "minimum": 90, "p10": 90,
+                            "median": 90, "p90": 90, "maximum": 90},
+        },
         "top_limiter_categories": [
             {"name": "ALU Limiter", "sampled_time_ns": 950,
              "share_of_top_limiter_samples_percent": 95},
@@ -61,6 +65,8 @@ def test_m1_report_preserves_scope_coverage_and_clean_counter_means(profile):
     assert report["capture"]["binary_sha256"] == "a" * 64
     assert report["coverage"]["selected_pid"] == 42
     assert report["sampled_per_pass_metric_distributions"]["ALU Limiter"]["median"] == 80
+    assert report["sampled_per_pass_metric_distributions_without_observed_other_activity"][
+        "ALU Limiter"]["sampled_passes"] == 1
     text = MODULE.format_report(report)
     assert "device-wide Instruments samples" in text
     assert "Probe process: verified against the compiled binary (PID 42)" in text
@@ -69,12 +75,14 @@ def test_m1_report_preserves_scope_coverage_and_clean_counter_means(profile):
     assert "Per-pass ranges use unfiltered, overlap-weighted device-wide samples." in text
     assert "ALU Limiter: 80.00%; clean 90.00% (80.0% of sampled time)" in text
     assert "sampled pass median 80.00%; range 70.00–90.00% (2 passes)" in text
+    assert "clean sampled pass median 90.00%; p10–p90 90.00–90.00% (1 pass)" in text
 
 
 def test_utilization_only_report_has_no_empty_limiter_section(profile):
     profile["sampled_counter_means"].pop("ALU Limiter")
     profile["sampled_counter_means"].pop("Buffer Write Limiter")
     profile["sampled_per_pass_metric_distributions"].pop("ALU Limiter")
+    profile["sampled_per_pass_metric_distributions_without_observed_other_activity"].pop("ALU Limiter")
     profile["sampled_counter_means"]["F32 Utilization"] = {
         "value": 60, "unit": "%", "sampled_time_ns": 1000}
     text = MODULE.format_report(MODULE.report(profile))
@@ -84,6 +92,7 @@ def test_utilization_only_report_has_no_empty_limiter_section(profile):
 
 def test_report_accepts_profiles_without_per_pass_distributions(profile):
     profile.pop("sampled_per_pass_metric_distributions")
+    profile.pop("sampled_per_pass_metric_distributions_without_observed_other_activity")
     profile["capture"].pop("probe_process_verified")
     data = MODULE.report(profile)
     assert data["sampled_per_pass_metric_distributions"] == {}
@@ -118,6 +127,9 @@ def test_report_accepts_profiles_without_per_pass_distributions(profile):
     ({"sampled_per_pass_metric_distributions": {
         "Unknown Limiter": {"sampled_passes": 1, "unit": None, "minimum": 70, "p10": 72,
                             "median": 80, "p90": 88, "maximum": 90}}}, "per-pass distribution"),
+    ({"sampled_per_pass_metric_distributions_without_observed_other_activity": {
+        "ALU Limiter": {"sampled_passes": 3, "unit": "%", "minimum": 90, "p10": 90,
+                        "median": 90, "p90": 90, "maximum": 90}}}, "per-pass distribution"),
 ])
 def test_m1_report_rejects_invalid_provenance_or_sampled_values(profile, change, match):
     altered = deepcopy(profile)

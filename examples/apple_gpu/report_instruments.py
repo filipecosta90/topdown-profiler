@@ -63,20 +63,28 @@ def report(profile: dict) -> dict:
     if other is not None:
         other = _fraction(other, "observed other GPU activity fraction")
 
+    def check_distributions(distributions, metric_means, original=None):
+        if not isinstance(distributions, dict):
+            raise ValueError("Invalid M1 GPU per-pass metric distributions")
+        for name, stats in distributions.items():
+            metric = metric_means.get(name)
+            max_passes = original[name]["sampled_passes"] if original is not None and name in original else sampled
+            if (not isinstance(metric, dict) or not isinstance(stats, dict)
+                    or (original is not None and name not in original)
+                    or type(stats.get("sampled_passes")) is not int
+                    or not 1 <= stats["sampled_passes"] <= max_passes
+                    or stats.get("unit") != metric.get("unit")):
+                raise ValueError(f"Invalid M1 GPU per-pass distribution for {name}")
+            values = [stats.get(key) for key in ("minimum", "p10", "median", "p90", "maximum")]
+            if (any(type(value) not in (int, float) or not math.isfinite(value) for value in values)
+                    or values != sorted(values)):
+                raise ValueError(f"Invalid M1 GPU per-pass distribution for {name}")
+
     distributions = profile.get("sampled_per_pass_metric_distributions", {})
-    if not isinstance(distributions, dict):
-        raise ValueError("Invalid M1 GPU per-pass metric distributions")
-    for name, stats in distributions.items():
-        metric = means.get(name)
-        if (not isinstance(metric, dict) or not isinstance(stats, dict)
-                or type(stats.get("sampled_passes")) is not int
-                or not 1 <= stats["sampled_passes"] <= sampled
-                or stats.get("unit") != metric.get("unit")):
-            raise ValueError(f"Invalid M1 GPU per-pass distribution for {name}")
-        values = [stats.get(key) for key in ("minimum", "p10", "median", "p90", "maximum")]
-        if (any(type(value) not in (int, float) or not math.isfinite(value) for value in values)
-                or values != sorted(values)):
-            raise ValueError(f"Invalid M1 GPU per-pass distribution for {name}")
+    check_distributions(distributions, means)
+    clean_distributions = profile.get("sampled_per_pass_metric_distributions_without_observed_other_activity")
+    if clean_distributions is not None:
+        check_distributions(clean_distributions, clean, distributions)
 
     ranked = []
     for name, metric in means.items():
@@ -163,6 +171,7 @@ def report(profile: dict) -> dict:
         "ranked_sampled_percent_metrics": ranked,
         "sampled_bandwidth": bandwidth,
         "sampled_per_pass_metric_distributions": distributions,
+        "sampled_per_pass_metric_distributions_without_observed_other_activity": clean_distributions,
         "top_limiter_categories": categories,
         "top_limiter_unparsed_sampled_time_ns": unparsed,
     }
@@ -170,6 +179,11 @@ def report(profile: dict) -> dict:
 
 def format_report(data: dict) -> str:
     capture, coverage = data["capture"], data["coverage"]
+
+    def pass_count(stats):
+        count = stats["sampled_passes"]
+        return f"{count} {'pass' if count == 1 else 'passes'}"
+
     lines = [f"M1 sampled GPU: {capture['probe_source']} {capture['mode']}, "
              f"{capture['passes']} passes, {capture['counter_profile']}",
              "Counter scope: device-wide Instruments samples",
@@ -187,6 +201,10 @@ def format_report(data: dict) -> str:
         lines.append(f"Passes below 10% sampled: {coverage['passes_below_10_percent_sampled']}")
     if data["sampled_per_pass_metric_distributions"]:
         lines.append("Per-pass ranges use unfiltered, overlap-weighted device-wide samples.")
+    clean_passes = data["sampled_per_pass_metric_distributions_without_observed_other_activity"] or {}
+    if clean_passes:
+        lines.append("Clean pass summaries exclude intervals with observed other activity; "
+                     "individual pass coverage can be sparse and remains device-wide.")
     for suffix, heading in ((" Limiter", "Highest sampled limiter means"),
                             (" Utilization", "Highest sampled utilization means")):
         metrics = [row for row in data["ranked_sampled_percent_metrics"] if row["name"].endswith(suffix)]
@@ -202,7 +220,12 @@ def format_report(data: dict) -> str:
             if pass_stats:
                 lines.append(f"    sampled pass median {pass_stats['median']:.2f}%; "
                              f"range {pass_stats['minimum']:.2f}–{pass_stats['maximum']:.2f}% "
-                             f"({pass_stats['sampled_passes']} passes)")
+                             f"({pass_count(pass_stats)})")
+            clean_stats = clean_passes.get(metric["name"])
+            if clean_stats:
+                lines.append(f"    clean sampled pass median {clean_stats['median']:.2f}%; "
+                             f"p10–p90 {clean_stats['p10']:.2f}–{clean_stats['p90']:.2f}% "
+                             f"({pass_count(clean_stats)})")
     for name, metric in data["sampled_bandwidth"].items():
         clean = metric["mean_without_observed_other_activity_gb_s"]
         fraction = metric["clean_sampled_time_fraction"]
@@ -212,7 +235,12 @@ def format_report(data: dict) -> str:
         if pass_stats:
             lines.append(f"    sampled pass median {pass_stats['median']:.2f} GB/s; "
                          f"range {pass_stats['minimum']:.2f}–{pass_stats['maximum']:.2f} GB/s "
-                         f"({pass_stats['sampled_passes']} passes)")
+                         f"({pass_count(pass_stats)})")
+        clean_stats = clean_passes.get(name)
+        if clean_stats:
+            lines.append(f"    clean sampled pass median {clean_stats['median']:.2f} GB/s; "
+                         f"p10–p90 {clean_stats['p10']:.2f}–{clean_stats['p90']:.2f} GB/s "
+                         f"({pass_count(clean_stats)})")
     if data["top_limiter_categories"]:
         winner = data["top_limiter_categories"][0]
         lines.append(f"Most frequent parsed top-limiter label: {winner['name']} "
