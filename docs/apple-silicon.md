@@ -251,6 +251,10 @@ roots null. SQLite stored the profile unchanged, retained the recorded M1,
 kernel and Xcode labels, and created zero Linux metric samples. Its command,
 hashes, cycle-weighted shares and round-trip check are in
 [the post-sync M1 smoke](apple-m1-post-sync-smoke.json).
+The same binary also completed a fresh `apple stat` run through
+`RUSAGE_INFO_V6`: performance-core cycles were 99.83% of its process-lifetime
+total, the `other` remainder reconciled exactly, and Intel TMA remained null.
+That count and its source hash are in the same smoke artifact.
 After the user accepted Xcode's license, the guided probe returned
 `counters_present`; the earlier CLI rejected this Xcode version because it
 looked only for `cpu-pmc-value`. Controlled Xcode captures yielded:

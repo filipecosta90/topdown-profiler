@@ -67,5 +67,56 @@
       "measurement_kind": "apple-guided-bottleneck-intervals",
       "time_basis": "capture_metadata"
     }
+  },
+  "stat_capture": {
+    "command": [
+      "topdown",
+      "apple",
+      "stat",
+      "--output",
+      "<new-directory>",
+      "--",
+      "/tmp/apple-m1-controls-xcode271",
+      "alu_wide",
+      "6000000000"
+    ],
+    "stat_json_sha256": "037e98c0ac10f87fe6ec14b92f0c37a2ca7cf7991219895e39e8fe5ceeca577d",
+    "target_stdout_sha256": "63db49367a5ecbb466a9a41ed720c9cc0e9d4d76867eb819ab3818ca8e73ad67",
+    "target_stdout": "216000000036",
+    "status": "completed",
+    "source": "proc_pid_rusage",
+    "flavor": "RUSAGE_INFO_V6",
+    "scope": {
+      "pid": 47703,
+      "threads": "all",
+      "descendants": false,
+      "window": "process-lifetime",
+      "execution_levels": "user-and-kernel"
+    },
+    "counters": {
+      "instructions": 60025961835,
+      "cycles": 9038143893,
+      "performance_instructions": 59985581056,
+      "performance_cycles": 9022617402,
+      "other_instructions": 40380779,
+      "other_cycles": 15526491
+    },
+    "performance_plus_other_equals_total": true,
+    "performance_cycle_fraction": 0.9982821150909066,
+    "tma_available": false,
+    "tma": {
+      "Frontend_Bound": null,
+      "Bad_Speculation": null,
+      "Backend_Bound": null,
+      "Retiring": null
+    },
+    "environment": {
+      "system": "Darwin",
+      "arch": "arm64",
+      "os_version": "27.0.1",
+      "cpu": "Apple M1",
+      "os_build": "26A434",
+      "kernel_uuid": "1F15A5DA-11D6-39EE-88D2-153E2F90F066"
+    }
   }
 }
