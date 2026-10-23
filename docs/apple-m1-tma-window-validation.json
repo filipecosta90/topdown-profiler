@@ -516,7 +516,8 @@
           "cycle_aligned_windows": 2075,
           "windows_matching_exported_rounding": 2075
         }
-      }
+      },
+      "guided_core_kind_transitions_observed": 12
     }
   }
 }

@@ -124,6 +124,7 @@ def validate(counters: Path, metrics: Path, pid: int) -> dict:
     guided_by_kind = defaultdict(Counter)
     matched_by_kind = defaultdict(Counter)
     thread_kinds = defaultdict(set)
+    thread_samples = defaultdict(list)
     for row in guided["samples"]:
         if not 0 <= row["core"] <= 7:
             raise ValueError("Expected M1 guided core number 0 through 7")
@@ -131,6 +132,7 @@ def validate(counters: Path, metrics: Path, pid: int) -> dict:
         guided_by_kind[kind]["intervals"] += 1
         guided_by_kind[kind]["cycles"] += row["cycles"]
         thread_kinds[row["tid"]].add(kind)
+        thread_samples[row["tid"]].append((row["time_ns"], kind))
     maximum = dict.fromkeys(CATEGORIES, 0.0)
     for row in tables[0].findall("row"):
         if len(row) != len(columns):
@@ -199,6 +201,11 @@ def validate(counters: Path, metrics: Path, pid: int) -> dict:
             "guided_sampled_cycles": guided_cycles, "matched_guided_cycles": matched_cycles,
             "matched_guided_cycle_fraction": matched_cycles / guided_cycles,
             "guided_threads_observed_on_both_core_kinds": sum(len(kinds) == 2 for kinds in thread_kinds.values()),
+            "guided_core_kind_transitions_observed": sum(
+                first[1] != second[1]
+                for ordered in (sorted(samples) for samples in thread_samples.values())
+                for first, second in zip(ordered, ordered[1:])
+            ),
             "by_core_kind": {kind: {
                 "guided_intervals": counts["intervals"],
                 "guided_cycles": counts["cycles"],

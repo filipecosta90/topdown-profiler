@@ -719,7 +719,8 @@ in 3,362 cycle-aligned raw windows, including 819 with multiple guided
 intervals; every window matched export rounding with its own core width. Exact
 single-interval joins covered 81.67%. The mixed result and XML hashes are in
 [the window validation](apple-m1-tma-window-validation.json).
-Both worker threads had guided samples on both P and E cores. Split by core
+Both worker threads had guided samples on both P and E cores, with twelve
+observed transitions between core kinds. Split by core
 kind, exact joins covered 89.18% of P-core guided cycles and 50.31% of E-core
 guided cycles. Cycle-aligned windows raised that coverage to 96.48% and 89.77%;
 all 2,075 P windows and 1,287 E windows matched export rounding. The validator

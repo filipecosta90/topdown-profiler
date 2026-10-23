@@ -129,6 +129,7 @@ def test_calibration_uses_map_bubble_delivery_floor(tmp_path):
     assert result["unmatched_raw_samples"] == result["unmatched_guided_intervals"] == 0
     assert result["matched_guided_cycle_fraction"] == 1
     assert result["guided_threads_observed_on_both_core_kinds"] == 0
+    assert result["guided_core_kind_transitions_observed"] == 0
     assert result["by_core_kind"]["P"]["matched_guided_cycle_fraction"] == 1
     assert result["aggregated_raw_windows"]["by_core_kind"]["P"]["guided_cycles"] == 1000
     assert result["matches_exported_rounding"] is True
@@ -145,6 +146,7 @@ def test_calibration_uses_map_bubble_delivery_floor(tmp_path):
     counters.write_text(counter_text.replace("</node>", e_raw + "</node>"))
     migrated = validate(counters, metrics, 42)
     assert migrated["guided_threads_observed_on_both_core_kinds"] == 1
+    assert migrated["guided_core_kind_transitions_observed"] == 1
     assert {kind: row["matched_intervals"] for kind, row in migrated["by_core_kind"].items()} == {"E": 1, "P": 1}
     assert migrated["matches_exported_rounding"] is True
     metrics.write_text(metric_text)
