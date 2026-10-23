@@ -11,6 +11,7 @@ from pathlib import Path
 from topdown.collector.apple import (APPLE_BOTTLENECKS, FIXED_EVENTS, M1_EVENTS, M1_FETCH_EVENTS,
                                      M1_MAP_EVENTS, MODES, TMA_ROOTS, AppleProfileError)
 from topdown.storage.models import Run
+from topdown.collector.apple_files import read_regular_bytes
 
 PROFILE_SCHEMAS = {kind: schema for _, schema, kind in MODES.values()}
 PROFILE_SCHEMAS["apple-guided-bottleneck-intervals"] = "MetricTable"
@@ -339,7 +340,7 @@ def _json_float(value):
 
 def _read_json(path):
     try:
-        data = path.read_bytes()
+        data = read_regular_bytes(path)
         value = json.loads(data, object_pairs_hook=_json_object, parse_constant=_json_constant, parse_float=_json_float)
     except (OSError, ValueError) as exc:
         raise AppleProfileError(f"Cannot read Apple artifact {path}: {exc}") from exc
