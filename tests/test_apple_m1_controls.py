@@ -131,6 +131,9 @@ def test_calibration_uses_map_bubble_delivery_floor(tmp_path):
     assert result["guided_threads_observed_on_both_core_kinds"] == 0
     assert result["guided_core_kind_transitions_observed"] == 0
     assert result["by_core_kind"]["P"]["matched_guided_cycle_fraction"] == 1
+    assert result["alternative_width_useful_error_by_core_kind"]["P"]["assumed_width"] == 4
+    assert result["alternative_width_useful_error_by_core_kind"]["P"][
+        "median_absolute_difference_percentage_points"] == pytest.approx(50)
     assert result["aggregated_raw_windows"]["by_core_kind"]["P"]["guided_cycles"] == 1000
     assert result["matches_exported_rounding"] is True
     counter_text = counters.read_text()
@@ -148,6 +151,8 @@ def test_calibration_uses_map_bubble_delivery_floor(tmp_path):
     assert migrated["guided_threads_observed_on_both_core_kinds"] == 1
     assert migrated["guided_core_kind_transitions_observed"] == 1
     assert {kind: row["matched_intervals"] for kind, row in migrated["by_core_kind"].items()} == {"E": 1, "P": 1}
+    assert migrated["alternative_width_useful_error_by_core_kind"]["E"][
+        "median_absolute_difference_percentage_points"] == pytest.approx(25)
     assert migrated["matches_exported_rounding"] is True
     metrics.write_text(metric_text)
     counters.write_text(counter_text)

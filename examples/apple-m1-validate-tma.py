@@ -4,6 +4,7 @@ import argparse
 from bisect import bisect_right
 from collections import Counter, defaultdict
 import json
+from statistics import median
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -123,6 +124,7 @@ def validate(counters: Path, metrics: Path, pid: int) -> dict:
     matched_keys = set()
     guided_by_kind = defaultdict(Counter)
     matched_by_kind = defaultdict(Counter)
+    alternative_width_useful_errors = defaultdict(list)
     thread_kinds = defaultdict(set)
     thread_samples = defaultdict(list)
     for row in guided["samples"]:
@@ -176,6 +178,11 @@ def validate(counters: Path, metrics: Path, pid: int) -> dict:
         matched_by_kind[kind]["intervals"] += 1
         matched_by_kind[kind]["cycles"] += interval["cycles"]
         estimate = _candidate(values, core)
+        other_width = 8 if kind == "E" else 4
+        alternative_useful = values[7] / (other_width * active)
+        alternative_width_useful_errors[kind].append(
+            abs(alternative_useful - interval["shares"]["useful"]) * 100
+        )
         for category in CATEGORIES:
             difference = abs(estimate[category] - interval["shares"][category]) * 100
             maximum[category] = max(maximum[category], difference)
@@ -213,6 +220,13 @@ def validate(counters: Path, metrics: Path, pid: int) -> dict:
                 "matched_guided_cycles": matched_by_kind[kind]["cycles"],
                 "matched_guided_cycle_fraction": matched_by_kind[kind]["cycles"] / counts["cycles"],
             } for kind, counts in sorted(guided_by_kind.items())},
+            "alternative_width_useful_error_by_core_kind": {
+                kind: {"assumed_width": 8 if kind == "E" else 4,
+                       "matched_intervals": len(errors),
+                       "median_absolute_difference_percentage_points": median(errors),
+                       "minimum_absolute_difference_percentage_points": min(errors)}
+                for kind, errors in sorted(alternative_width_useful_errors.items())
+            },
             "unmatched_guided_intervals_by_reason": dict(sorted(unmatched_intervals.items())),
             "unmatched_guided_cycles_by_reason": dict(sorted(unmatched_cycles.items())),
             "aggregated_raw_windows": aggregated,

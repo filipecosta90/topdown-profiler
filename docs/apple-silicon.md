@@ -738,6 +738,11 @@ guided cycles. Cycle-aligned windows raised that coverage to 96.48% and 89.77%;
 all 2,075 P windows and 1,287 E windows matched export rounding. The validator
 now reports these per-kind counts so migration cannot mask weaker E-core join
 coverage in the combined number.
+As a negative control on the same exact joins, using an eight-wide denominator
+on E cores changed Useful by a median 7.13 percentage points; using a four-wide
+denominator on P cores changed it by a median 83.33 points. This tests the
+candidate formula's width choice against Xcode's exported ratios, but does not
+prove a physical slot width or Intel TMA equivalence.
 
 A new [dependent integer-division control](../examples/apple-m1-divide.c)
 adds an instruction class absent from the sixteen controls. The optimized

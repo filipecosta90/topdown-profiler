@@ -517,7 +517,21 @@
           "windows_matching_exported_rounding": 2075
         }
       },
-      "guided_core_kind_transitions_observed": 12
+      "guided_core_kind_transitions_observed": 12,
+      "alternative_width_useful_error_by_core_kind": {
+        "E": {
+          "assumed_width": 8,
+          "matched_intervals": 759,
+          "median_absolute_difference_percentage_points": 7.128459340662455,
+          "minimum_absolute_difference_percentage_points": 6.714119942841842
+        },
+        "P": {
+          "assumed_width": 4,
+          "matched_intervals": 1962,
+          "median_absolute_difference_percentage_points": 83.33230676454055,
+          "minimum_absolute_difference_percentage_points": 1.031976788372093
+        }
+      }
     }
   }
 }
