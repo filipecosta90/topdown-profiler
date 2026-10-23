@@ -19,7 +19,7 @@ def profile():
         "schema": "metal-gpu-counter-intervals", "counter_scope": "device-wide",
         "capture": {"mode": "compute", "probe_source": "packaged", "passes": 2, "items": 65536,
                     "counter_profile": "Performance Limiters", "checksum_verified": True,
-                    "target_exit_status": 0},
+                    "target_exit_status": 0, "probe_process_verified": True},
         "probe_coverage": {"status": "sampled", "passes_observed": 2,
                            "passes_with_counter_samples": 2, "sampled_gpu_work_fraction": 0.25,
                            "sampled_pass_fraction_min": 0.1, "passes_below_10_percent_sampled": 0,
@@ -58,6 +58,7 @@ def test_m1_report_preserves_scope_coverage_and_clean_counter_means(profile):
     assert report["sampled_per_pass_metric_distributions"]["ALU Limiter"]["median"] == 80
     text = MODULE.format_report(report)
     assert "device-wide Instruments samples" in text
+    assert "Probe process: verified against the compiled binary" in text
     assert "Sampled passes: 2/2; sampled GPU work: 25.00%; least-sampled pass: 10.00%" in text
     assert "Observed other GPU activity within sampled work: 20.00%" in text
     assert "Per-pass ranges use unfiltered, overlap-weighted device-wide samples." in text
@@ -78,14 +79,17 @@ def test_utilization_only_report_has_no_empty_limiter_section(profile):
 
 def test_report_accepts_profiles_without_per_pass_distributions(profile):
     profile.pop("sampled_per_pass_metric_distributions")
+    profile["capture"].pop("probe_process_verified")
     data = MODULE.report(profile)
     assert data["sampled_per_pass_metric_distributions"] == {}
     assert "Per-pass ranges" not in MODULE.format_report(data)
+    assert "Probe process: not independently verified in this profile" in MODULE.format_report(data)
 
 
 @pytest.mark.parametrize("change,match", [
     ({"counter_scope": "per-encoder"}, "device-wide"),
     ({"capture": {"checksum_verified": False}}, "checksum-verified"),
+    ({"capture": {"probe_process_verified": "yes"}}, "probe process verification"),
     ({"probe_coverage": {"passes_with_counter_samples": 3}}, "pass coverage"),
     ({"probe_coverage": {"passes_below_10_percent_sampled": 3}}, "sparse-pass"),
     ({"probe_coverage": {"sampled_gpu_work_fraction": float("nan")}}, "sampled GPU work fraction"),

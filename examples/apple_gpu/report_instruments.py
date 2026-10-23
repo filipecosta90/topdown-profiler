@@ -31,6 +31,9 @@ def report(profile: dict) -> dict:
             or not means or not isinstance(clean, dict) or capture.get("checksum_verified") is not True
             or capture.get("target_exit_status") != 0 or coverage.get("status") != "sampled"):
         raise ValueError("M1 GPU profile lacks a completed, sampled, checksum-verified capture")
+    process_verified = capture.get("probe_process_verified")
+    if process_verified is not None and type(process_verified) is not bool:
+        raise ValueError("Invalid M1 GPU probe process verification")
     passes = capture.get("passes")
     observed = coverage.get("passes_observed")
     sampled = coverage.get("passes_with_counter_samples")
@@ -130,7 +133,7 @@ def report(profile: dict) -> dict:
     return {
         "measurement_kind": "m1-instruments-device-wide-sampled-gpu",
         "capture": {key: capture.get(key) for key in
-                    ("mode", "probe_source", "passes", "items", "counter_profile")},
+                    ("mode", "probe_source", "passes", "items", "counter_profile", "probe_process_verified")},
         "coverage": {"passes_observed": observed, "passes_with_counter_samples": sampled,
                      "sampled_gpu_work_fraction": sampled_fraction,
                      "sampled_pass_fraction_min": minimum,
@@ -152,6 +155,8 @@ def format_report(data: dict) -> str:
              f"Sampled passes: {coverage['passes_with_counter_samples']}/{capture['passes']}; "
              f"sampled GPU work: {coverage['sampled_gpu_work_fraction']:.2%}; "
              f"least-sampled pass: {coverage['sampled_pass_fraction_min']:.2%}"]
+    lines.append("Probe process: " + ("verified against the compiled binary" if capture["probe_process_verified"]
+                                      else "not independently verified in this profile"))
     other = coverage["observed_other_activity_fraction_of_sampled_gpu_work"]
     if other is not None:
         lines.append(f"Observed other GPU activity within sampled work: {other:.2%}")

@@ -794,6 +794,15 @@
         "p90": 44.250451,
         "maximum": 47.67758
       },
+      "Buffer Write Limiter": {
+        "sampled_passes": 100,
+        "unit": "%",
+        "minimum": 0.098298,
+        "p10": 0.110177,
+        "median": 0.117023,
+        "p90": 0.11703,
+        "maximum": 0.117354
+      },
       "F32 Utilization": {
         "sampled_passes": 100,
         "unit": "%",
