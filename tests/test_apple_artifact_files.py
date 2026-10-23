@@ -121,3 +121,33 @@ def test_hotspot_reports_continue_to_accept_normal_native_json(tmp_path):
     path = tmp_path / "profile.json"
     path.write_text(json.dumps(profile))
     assert load_hotspots(path)["sample_count"] == 2
+
+
+@pytest.mark.parametrize('payload,reason', [
+    (b'{"scope":{},"scope":{}}', 'Duplicate'),
+    (b'{"nested":{"value":0,"value":1}}', 'Duplicate'),
+    (b'{"metadata":NaN}', 'Non-finite'), (b'{"metadata":Infinity}', 'Non-finite'),
+    (b'{"metadata":1e999}', 'Non-finite'), (b'[]', 'JSON object'),
+    (b'{"nested":'+b'['*20000+b'0'+b']'*20000+b'}', 'nesting'),
+], ids=['duplicate-root','duplicate-nested','nan','infinity','overflowing-float','nonobject','nesting'])
+def test_import_and_local_reports_share_strict_native_json(tmp_path,sqlite_backend,payload,reason):
+    from topdown.apple_storage import _read_json
+    from topdown.collector.apple_files import decode_json_object
+
+    path=tmp_path/'profile.json'
+    path.write_bytes(payload)
+    with pytest.raises(ValueError,match=reason):
+        decode_json_object(payload)
+    for reader in [_read_json,load_hotspots]:
+        with pytest.raises(AppleProfileError,match=reason):
+            reader(path)
+    with pytest.raises(AppleProfileError,match=reason):
+        store_apple_result(sqlite_backend,path)
+    assert sqlite_backend.list_runs()==[]
+
+
+def test_strict_native_json_preserves_large_integers_unicode_and_decimals():
+    from topdown.collector.apple_files import decode_json_object
+
+    payload='{"counter":18446744073709551615,"name":"µs","ratio":0.25}'
+    assert decode_json_object(payload.encode())=={'counter':2**64-1,'name':'µs','ratio':.25}
