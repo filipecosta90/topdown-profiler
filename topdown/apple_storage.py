@@ -454,12 +454,14 @@ def stored_apple_hotspots(backend, run_id: str, limit: int = 20) -> dict:
 def collect_apple_result(output: Path, mode: str, command: list[str] | None, pid: int | None,
                          duration_seconds: float) -> Path:
     """Reuse bounded native collectors; retain artifacts even when capture or DB storage fails."""
-    if type(duration_seconds) not in (int, float) or not math.isfinite(duration_seconds) or not 0 < duration_seconds <= 300:
+    if type(duration_seconds) not in (int, float) or not 0 < duration_seconds <= 300 or not math.isfinite(duration_seconds):
         raise AppleProfileError("Require a finite duration greater than zero and at most 300 seconds")
     if command is not None and (not isinstance(command, list) or not command or not all(isinstance(c, str) for c in command)):
         raise AppleProfileError("Command must be a nonempty executable argv list")
-    if pid is not None and (type(pid) is not int or pid <= 0):
-        raise AppleProfileError("Require a positive PID")
+    if pid is not None:
+        from topdown.collector.apple_stat import _validate_pid
+
+        _validate_pid(pid)
     if mode == "soc":
         if command is not None or pid is not None:
             raise AppleProfileError("SoC observations cover the system/cluster and do not accept a command or PID")

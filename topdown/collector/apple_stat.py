@@ -2,16 +2,21 @@
 
 import ctypes
 import errno
-import math
 import os
 import platform
 import signal
 import subprocess
+import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 
 from topdown.collector.apple import AppleProfileError, TMA_ROOTS, _sha256, _write_json
+
+
+def _validate_pid(pid):
+    if type(pid) is not int or not 1 <= pid <= 2**31 - 1:
+        raise AppleProfileError("Require a positive PID (integer 1–2147483647; native signed pid_t)")
 
 
 class _RusageInfoV4(ctypes.Structure):
@@ -66,6 +71,7 @@ class _UsageReader:
         self.flavor_id = 6
 
     def read(self, pid):
+        _validate_pid(pid)
         info = _RusageInfoV6() if self.flavor_id == 6 else _RusageInfoV4()
         ctypes.set_errno(0)
         status = self.libproc.proc_pid_rusage(pid, self.flavor_id, ctypes.byref(info))
@@ -177,8 +183,9 @@ def _require_host():
 
 def stat_pid(output: Path, pid: int, duration: float = 5) -> dict:
     """Read a bounded interval of one existing PID without controlling its lifetime."""
+    _validate_pid(pid)
     _require_host()
-    if pid <= 0 or not math.isfinite(duration) or duration <= 0:
+    if type(duration) not in (int, float) or not 0 < duration <= threading.TIMEOUT_MAX:
         raise AppleProfileError("Require a positive PID and a positive, finite duration")
     reader = _UsageReader()
     output = output.resolve()
@@ -236,7 +243,7 @@ def stat_process(output: Path, command: list[str], timeout: float = 30) -> dict:
     and include executable startup/shutdown. No programmable events are enabled.
     """
     _require_host()
-    if not math.isfinite(timeout) or timeout <= 0:
+    if type(timeout) not in (int, float) or not 0 < timeout <= threading.TIMEOUT_MAX:
         raise AppleProfileError("Require a positive, finite timeout")
     if not command or not Path(command[0]).is_file() or not os.access(command[0], os.X_OK):
         raise AppleProfileError("Supply an executable path after '--'")
