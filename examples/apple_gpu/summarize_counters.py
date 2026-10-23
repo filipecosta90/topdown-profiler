@@ -230,6 +230,8 @@ def summarize(source: bytes, gpu_intervals: bytes | None = None, pid: int | None
     sampled = _merge([sample for sample in samples if _overlap(*sample, windows)])
     other_windows = _merge(other_active)
     sampled_probe = _intersection(sampled, windows)
+    gpu_work_time = sum(end - start for start, end in windows)
+    sampled_gpu_time = sum(end - start for start, end in sampled_probe)
     sampled_other_time = sum(end - start for start, end in _intersection(sampled_probe, other_windows))
     covered = sum(any(_overlap(*sample, pieces) for sample in sampled) for pieces in pass_windows.values())
     result["probe_coverage"] = {
@@ -238,13 +240,17 @@ def summarize(source: bytes, gpu_intervals: bytes | None = None, pid: int | None
         "workloads_observed": sorted({workload for workload, _ in passes}),
         "passes_observed": len(passes),
         "passes_with_counter_samples": covered,
-        "gpu_work_time_ns": sum(end - start for start, end in windows),
-        "sampled_gpu_work_time_ns": sum(end - start for start, end in sampled_probe),
+        "gpu_work_time_ns": gpu_work_time,
+        "sampled_gpu_work_time_ns": sampled_gpu_time,
+        "sampled_gpu_work_fraction": sampled_gpu_time / gpu_work_time if gpu_work_time else None,
         "counter_sample_intervals_overlapping": sum(bool(_overlap(*sample, windows)) for sample in samples),
         "other_active_gpu_time_overlapping_ns": (
             sum(end - start for start, end in _intersection(other_windows, windows)) if state_available else None
         ),
         "other_active_gpu_time_in_counter_samples_ns": sampled_other_time if state_available else None,
+        "observed_other_activity_fraction_of_sampled_gpu_work": (
+            sampled_other_time / sampled_gpu_time if state_available and sampled_gpu_time else None
+        ),
         "last_counter_end_minus_last_probe_end_ns": (
             max(end for _, end in samples) - max(end for _, end in windows) if samples and windows else None
         ),

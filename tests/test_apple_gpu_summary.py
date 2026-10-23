@@ -94,9 +94,11 @@ def test_summary_checks_probe_counter_overlap():
         "passes_with_counter_samples": 1,
         "gpu_work_time_ns": 40,
         "sampled_gpu_work_time_ns": 10,
+        "sampled_gpu_work_fraction": 0.25,
         "counter_sample_intervals_overlapping": 1,
         "other_active_gpu_time_overlapping_ns": None,
         "other_active_gpu_time_in_counter_samples_ns": None,
+        "observed_other_activity_fraction_of_sampled_gpu_work": None,
         "last_counter_end_minus_last_probe_end_ns": -65,
     }
 
@@ -117,6 +119,8 @@ def test_summary_reports_counter_rows_without_probe_coverage():
     assert result["passes_with_counter_samples"] == 0
     assert result["status"] == "no_counter_overlap"
     assert result["sampled_gpu_work_time_ns"] == 0
+    assert result["sampled_gpu_work_fraction"] == 0
+    assert result["observed_other_activity_fraction_of_sampled_gpu_work"] is None
 
 
 def test_idle_counter_rows_do_not_claim_probe_work():
@@ -263,6 +267,7 @@ def test_summary_identifies_other_activity_during_sampled_probe_time():
     assert coverage["other_active_gpu_time_overlapping_ns"] == 10
     assert coverage["sampled_gpu_work_time_ns"] == 10
     assert coverage["other_active_gpu_time_in_counter_samples_ns"] == 5
+    assert coverage["observed_other_activity_fraction_of_sampled_gpu_work"] == 0.5
 
 
 def test_summary_keeps_separate_means_without_observed_other_activity():

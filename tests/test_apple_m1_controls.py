@@ -16,6 +16,7 @@ ICACHE_SOURCE = Path(__file__).resolve().parents[1] / "examples/apple-m1-icache.
 PLANNER = Path(__file__).resolve().parents[1] / "examples/apple-m1-kpep-plan.py"
 BRANCH_NOP_SOURCE = Path(__file__).resolve().parents[1] / "examples/apple-m1-branch-nop.c"
 SIMD_SOURCE = Path(__file__).resolve().parents[1] / "examples/apple-m1-simd.c"
+DIVIDE_SOURCE = Path(__file__).resolve().parents[1] / "examples/apple-m1-divide.c"
 MIXED_CORE_SOURCE = Path(__file__).resolve().parents[1] / "examples/apple-m1-mixed-core.c"
 
 
@@ -66,6 +67,19 @@ def test_simd_control_compiles_and_completes(tmp_path):
     subprocess.run(["clang", "-O3", str(SIMD_SOURCE), "-o", str(output)], check=True, timeout=30)
     result = subprocess.run([str(output), "1000"], capture_output=True, text=True, timeout=5, check=True)
     assert result.stdout.strip() == "1000"
+
+
+def test_divide_control_executes_udiv_with_a_stable_result(tmp_path):
+    if (platform.system() != "Darwin" or platform.machine() != "arm64"
+            or not shutil.which("clang") or not shutil.which("otool")):
+        pytest.skip("M1 divide control requires Apple silicon compiler tools")
+    output = tmp_path / "divide"
+    subprocess.run(["clang", "-O3", str(DIVIDE_SOURCE), "-o", str(output)], check=True, timeout=30)
+    instruction_text = subprocess.check_output(["otool", "-tvV", str(output)], text=True, timeout=30)
+    assert "udiv" in instruction_text
+    result = subprocess.run([str(output), "1000"], capture_output=True, text=True, timeout=5, check=True)
+    assert result.stdout.strip() == "7561112086505667263"
+    assert subprocess.run([str(output), "0"], capture_output=True, timeout=5).returncode == 2
 
 
 def test_mixed_core_control_compiles_and_completes(tmp_path):
