@@ -328,6 +328,23 @@ labeled probe interval. This confirms why row count cannot establish a
 workload-specific bottleneck; the idle control and its XML hashes are retained
 in the replication evidence.
 
+A concurrent control launched checksummed ALU (500 requested passes) and stream
+(100 passes) probes in one capture. The summarizer rejected the trace without
+`--pid`, then selected each probe from the same device-wide counter export.
+The export contained 495 labeled ALU passes and all 100 stream passes, each
+with counter overlap. The five missing ALU labels are excluded from its
+coverage; the probe itself completed and verified all 500 passes. During
+observed overlap, the unfiltered ALU Buffer Write Limiter rose to 39.73% and
+GPU Read Bandwidth to 23.66 GB/s. On counter intervals without *observed*
+other active GPU work, they were 1.15% and 0.77 GB/s. The stream's unfiltered
+ALU Limiter was 18.57%, versus 1.96% on that clean subset. This directly
+demonstrates that PID selection identifies probe windows but cannot make
+device-wide counter values process-specific. The raw XML hashes, sampled
+coverage, and both summaries are in [the concurrent evidence](apple-gpu-m1-concurrent.json).
+Only 3.53 ms of the ALU's 36.48 ms sampled time remained in the clean subset,
+so its cleaned values are a small sample and should not be treated as an
+isolated full-run measurement.
+
 ## Reproduce the Instruments comparison
 
 For a checked M1 capture in one command, set the full Xcode developer directory
