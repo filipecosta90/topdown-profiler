@@ -44,7 +44,7 @@ def _validate_frames(frames):
 
 def _validate_observation(row, scope, time_field):
     if (not isinstance(row, dict) or type(row.get("pid")) is not int or row["pid"] != scope["pid"]
-            or not _nonnegative(row.get("tid")) or not _nonnegative(row.get(time_field))
+            or not _uint(row.get("tid")) or not _uint(row.get(time_field))
             or row[time_field] < scope["start_ns"]
             or (scope["end_ns"] is not None and row[time_field] >= scope["end_ns"])):
         raise AppleProfileError("Native observation disagrees with profile PID/time scope")
@@ -220,7 +220,7 @@ def _validate_trace_context(result):
 
 def _validate_profile(result, rows):
     scope = result.get("scope")
-    if (not isinstance(scope, dict) or not _nonnegative(scope.get("pid")) or not scope["pid"]
+    if (not isinstance(scope, dict) or not _uint(scope.get("pid")) or not scope["pid"]
             or not _nonnegative(scope.get("start_ns")) or "end_ns" not in scope
             or (scope["end_ns"] is not None and (not _nonnegative(scope["end_ns"]) or scope["end_ns"] <= scope["start_ns"]))):
         raise AppleProfileError("Require an explicit positive PID and nonempty native time scope")
@@ -245,18 +245,18 @@ def _validate_profile(result, rows):
                 raise AppleProfileError("Require complete native trace intervals and unsigned self counters")
             _validate_frames(row.get("frames"))
         elif schema == "MetricTable":
-            if (not _nonnegative(row.get("core")) or not _uint(row.get("duration_ns")) or not row["duration_ns"]
+            if (not _uint(row.get("core")) or not _uint(row.get("duration_ns")) or not row["duration_ns"]
                     or not _uint(row.get("cycles")) or not row["cycles"] or not _shares_valid(row.get("shares"))):
                 raise AppleProfileError("Require native guided intervals, cycles and four bottleneck shares")
         else:
-            if not _nonnegative(row.get("core")):
+            if not _uint(row.get("core")):
                 raise AppleProfileError("Require a native core identity")
             if schema == "cpu-pmc-value":
                 if (not isinstance(row.get("event"), str) or not row["event"].strip()
-                        or not _uint(row.get("value")) or not _nonnegative(row.get("sample_index"))):
+                        or not _uint(row.get("value")) or not _uint(row.get("sample_index"))):
                     raise AppleProfileError("Require native event names, unsigned PMC values and sample indices")
             else:
-                if not _nonnegative(row.get("weight")):
+                if not _uint(row.get("weight")):
                     raise AppleProfileError("Require a native integer sample weight")
                 _validate_frames(row.get("frames"))
                 if schema == "counters-profile":

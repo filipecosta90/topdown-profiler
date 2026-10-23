@@ -96,7 +96,8 @@ The source SHA-256 and import timestamp are retained. Imports verify that
 performance/other-core counts add up to aggregate counts and that PID interval
 counts agree with their before/after snapshots. SoC channel/state identities,
 units, totals and any reported shares must agree; zero observations retain null
-shares. Trace gap counts must match the markers for each thread and interval.
+shares. XML exports require known native column/cell types and unsigned integer
+values; PID and nanosecond-window arguments must be integers. Trace gap counts must match the markers for each thread and interval.
 Scheduling coverage, Running spans and core assignments must agree with each
 other; missing core attribution never becomes an assumed core. Duplicate JSON
 fields, non-finite numbers and invalid supplied timestamps
