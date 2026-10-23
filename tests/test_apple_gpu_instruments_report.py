@@ -121,6 +121,14 @@ def test_report_accepts_profiles_without_per_pass_distributions(profile):
     ({"top_limiter_categories": [{"name": "ALU Limiter", "sampled_time_ns": 950,
                                   "share_of_top_limiter_samples_percent": 105}]}, "top-limiter category"),
     ({"top_limiter_unparsed_sampled_time_ns": 1}, "top-limiter sample time"),
+    ({"top_limiter_categories": [
+        {"name": "ALU Limiter", "sampled_time_ns": 950, "share_of_top_limiter_samples_percent": 50},
+        {"name": "Other Limiter", "sampled_time_ns": 50, "share_of_top_limiter_samples_percent": 50}]},
+     "category shares or ordering"),
+    ({"top_limiter_categories": [
+        {"name": "Other Limiter", "sampled_time_ns": 50, "share_of_top_limiter_samples_percent": 5},
+        {"name": "ALU Limiter", "sampled_time_ns": 950, "share_of_top_limiter_samples_percent": 95}]},
+     "category shares or ordering"),
     ({"sampled_per_pass_metric_distributions": {
         "ALU Limiter": {"sampled_passes": 3, "unit": "%", "minimum": 70, "p10": 72,
                         "median": 80, "p90": 88, "maximum": 90}}}, "per-pass distribution"),

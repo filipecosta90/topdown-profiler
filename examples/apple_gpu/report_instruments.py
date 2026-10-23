@@ -157,6 +157,14 @@ def report(profile: dict) -> dict:
                 or sum(category["sampled_time_ns"] for category in categories) + unparsed
                 != _sampled_time(top_metric, "Top Performance Limiter"))):
         raise ValueError("M1 GPU top-limiter sample time does not match its categories")
+    parsed_time = sum(category["sampled_time_ns"] for category in categories)
+    if (categories != sorted(categories, key=lambda row: (-row["sampled_time_ns"], row["name"]))
+            or len({category["name"] for category in categories}) != len(categories)
+            or any(category["sampled_time_ns"] <= 0
+                   or category["share_of_top_limiter_samples_percent"]
+                   != round(100 * category["sampled_time_ns"] / parsed_time, 4)
+                   for category in categories)):
+        raise ValueError("M1 GPU top-limiter category shares or ordering disagree with sampled time")
 
     return {
         "measurement_kind": "m1-instruments-device-wide-sampled-gpu",
