@@ -326,3 +326,12 @@ def test_mcp_methodology_separates_native_gpu_replay_and_sampled_counter_scopes(
     assert "get_apple_gpu_report" in text and "query_apple_result" in text
     assert "Limiter percentages overlap, can exceed 100%" in text
     assert "different denominators" in text and "not interchangeable with replay costs" in text
+
+
+def test_gpu_report_retains_recorded_environment_for_comparison():
+    profile = native_profile()
+    profile["environment"] = {"cpu": "Apple M6", "arch": "arm64", "os_build": "26A434",
+                              "kernel_uuid": "RECORDED-KERNEL"}
+    report = apple_gpu_report.summarize(profile)
+    assert report["environment"] == profile["environment"]
+    assert "environment" not in apple_gpu_report.summarize(native_profile())

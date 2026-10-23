@@ -66,11 +66,14 @@ def summarize(profile, limit=None, offset=0):
                      "cost_percent": percent(counters.get("Cost")), "duration": counters.get("Duration"),
                      "limiters": limiters, "native_counters": counters})
     rows.sort(key=lambda row: (-row["cost_percent"], row["id"]))
-    return {"measurement_kind": "apple-gpu-replay-bottleneck-report", "device": profile.get("device"),
+    report = {"measurement_kind": "apple-gpu-replay-bottleneck-report", "device": profile.get("device"),
             "settings": profile.get("settings"), "scope": profile.get("scope"), "timeline": profile["timeline"],
             "encoders": rows[offset:offset + limit] if limit is not None else rows[offset:],
             "total_encoders": len(rows), "offset": offset, "limit": limit,
             "tma_available": False, "limitations": profile.get("limitations", [])}
+    if isinstance(profile.get("environment"), dict):
+        report["environment"] = profile["environment"]
+    return report
 
 
 def render(report):
