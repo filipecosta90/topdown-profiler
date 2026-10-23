@@ -627,6 +627,17 @@ retain per-control counts, sampled cycles, and verified source XML hashes.
 These categories describe what the two Instruments exports can join; they do
 not establish why samples differ or how many hardware events were lost. The
 equations are validated only on the matched intervals, especially on E cores.
+A paired E-core ALU control then requested 500 µs instead of 1,000 µs in the
+custom instrument package. Xcode warned that the requested 500,000 ns differed
+from its configured 1,000,000 ns sampling period. Both captures still had a
+1,000,083 ns median gap between raw vectors on the same thread and core.
+The exact-match guided-cycle coverage was 45.77% at the 500 µs request and
+46.35% at 1,000 µs; all matched equations remained within export rounding.
+One capture per setting supports no broader rate claim, but changing this
+custom package setting did not recover the missing E-core joins in this test.
+The [sampling-rate control](apple-m1-sampling-rate-control.json) includes the
+source and XML hashes, effective gap distribution, Xcode warning and validator
+output.
 The controls included P/E ALU, branch, pointer chase, SIMD, compact and large
 executed NOP streams, and random branches mixed with 8, 16, or 64 NOPs per
 iteration. Another 17,757 active raw samples had no complete matching guided
