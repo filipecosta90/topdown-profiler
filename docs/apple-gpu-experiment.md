@@ -312,6 +312,14 @@ overlap that activity; it is still a sampled, device-wide measurement. Unseen
 activity, boundary contamination, frequency and thermal changes are not ruled
 out by these six runs.
 
+An idle control using the packaged Metal probe submitted **zero** GPU commands
+and verified its checksum. The same M1 Instruments profile nevertheless
+exported 162,631 counter rows across 5,178 sample intervals, alongside 4,298
+active GPU intervals attributed to at least three other processes. It had no
+labeled probe interval. This confirms why row count cannot establish a
+workload-specific bottleneck; the idle control and its XML hashes are retained
+in the replication evidence.
+
 ## Reproduce the Instruments comparison
 
 Use Xcode's developer directory; Command Line Tools alone do not include

@@ -90,6 +90,23 @@ def test_summary_reports_counter_rows_without_probe_coverage():
     assert result["sampled_gpu_work_time_ns"] == 0
 
 
+def test_idle_counter_rows_do_not_claim_probe_work():
+    counters = b"""<trace-query-result><node><schema name="metal-gpu-counter-intervals"/>
+    <row><start-time>100</start-time><duration>20</duration><uint32>0</uint32>
+    <gpu-counter-name>ALU Limiter</gpu-counter-name></row></node></trace-query-result>"""
+    gpu = b"""<trace-query-result><node><schema name="metal-gpu-intervals">
+    <col><mnemonic>start</mnemonic></col><col><mnemonic>duration</mnemonic></col>
+    <col><mnemonic>event-label</mnemonic></col><col><mnemonic>state</mnemonic></col></schema>
+    <row><start-time>100</start-time><duration>20</duration>
+    <formatted-label fmt="other process"/><gpu-state fmt="Active"/></row>
+    </node></trace-query-result>"""
+    result = MODULE.summarize(counters, gpu)
+    assert result["counter_rows"] == 1
+    assert result["probe_coverage"]["status"] == "no_probe_intervals"
+    assert result["probe_coverage"]["passes_observed"] == 0
+    assert result["sampled_counter_means"] == {}
+
+
 def test_summary_counts_other_active_gpu_overlap():
     counters = b'<trace-query-result><schema name="metal-gpu-counter-intervals"/></trace-query-result>'
     gpu = b"""<trace-query-result><node><schema name="metal-gpu-intervals">
