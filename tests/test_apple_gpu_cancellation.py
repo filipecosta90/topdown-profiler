@@ -171,3 +171,34 @@ def test_local_gpu_reports_reject_ambiguous_json_consistently(tmp_path, field, r
     standalone = subprocess.run([sys.executable, "-m", "topdown.apple_gpu_report", str(path)],
                                 text=True, capture_output=True, timeout=5)
     assert standalone.returncode == 2 and reason in standalone.stderr
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("authenticated", [False, True])
+@pytest.mark.parametrize("tool,arguments", [
+    ("collect_apple_gpu_profile", {"passes": True}),
+    ("collect_apple_gpu_profile", {"passes": 4.0}),
+    ("collect_apple_gpu_profile", {"items": "128"}),
+    ("collect_apple_gpu_profile", {"items": True}),
+    ("get_apple_gpu_report", {"run_id": "unused", "limit": True}),
+    ("get_apple_gpu_report", {"run_id": "unused", "offset": "1"}),
+])
+async def test_gpu_mcp_rejects_coerced_parameters_before_host_or_database_access(
+        monkeypatch, authenticated, tool, arguments):
+    from mcp.server.fastmcp.exceptions import ToolError
+    from unittest.mock import Mock
+
+    config = Mock(side_effect=AssertionError("configuration read for invalid GPU input"))
+    backend = Mock(side_effect=AssertionError("database opened for invalid GPU input"))
+    capture = Mock(side_effect=AssertionError("GPU capture started with coerced input"))
+    monkeypatch.setattr(mcp_server, "get_config", config)
+    monkeypatch.setattr(mcp_server, "_get_backend", backend)
+    monkeypatch.setattr(apple_gpu, "record", capture)
+    server = FastMCP("strict-gpu-arguments") if authenticated else mcp_server.mcp
+    if authenticated:
+        mcp_server._register_tools_and_resources(server)
+    with pytest.raises(ToolError, match="validation"):
+        await server.call_tool(tool, arguments)
+    config.assert_not_called()
+    backend.assert_not_called()
+    capture.assert_not_called()

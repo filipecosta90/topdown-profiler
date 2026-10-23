@@ -215,7 +215,7 @@ def _collect_gpu(trace, mode, passes, items, execution, process_name, labels):
 
 @_apple_tool(capture=True)
 def collect_apple_gpu_profile(
-    mode: str = "compute", passes: int = 4, items: int = 16384, execution: str = "overlapping",
+    mode: str = "compute", passes: StrictInt = 4, items: StrictInt = 16384, execution: str = "overlapping",
     process_name: str | None = None, labels: dict[str, str] | None = None,
 ) -> dict:
     """Capture a checksum-verified packaged Metal control, replay it, and store native GPU counters.
@@ -242,7 +242,7 @@ def profile_apple_gpu_trace(
 
 
 @_apple_tool()
-def get_apple_gpu_report(run_id: str, limit: int = 20, offset: int = 0) -> dict:
+def get_apple_gpu_report(run_id: str, limit: StrictInt = 20, offset: StrictInt = 0) -> dict:
     """Rank stored Apple GPU encoders by replay cost with native limiter values and sampling coverage.
 
     Works on any server OS. Pages up to 1000 encoders without renormalizing their original cost shares.
