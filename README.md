@@ -382,6 +382,19 @@ cores. Timeline hardware counters can include concurrent GPU activity.
 Use `apple gpu profile` for an existing `.gputrace`. The guide also preserves the
 M1 Instruments counter experiment, including sampled ALU versus Buffer Write
 limiter contrasts; replay profiling is unavailable on M1.
+From a source checkout on M1, use the checked Instruments path and its saved
+sampled-counter report:
+
+```sh
+export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+python3 examples/apple_gpu/record_instruments.py --probe-source packaged \
+  --mode compute --output /tmp/m1-gpu-compute-001
+python3 examples/apple_gpu/report_instruments.py \
+  /tmp/m1-gpu-compute-001/profile.json
+```
+
+This experimental path reports device-wide samples with pass coverage and
+observed other GPU activity; it does not produce M6 replay encoder costs.
 
 ## Microarchitecture Analysis Example (Linux)
 

@@ -245,6 +245,16 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 
 The tested host still has Command Line Tools selected, so these commands set
 `DEVELOPER_DIR` for one process without changing the system-wide selection.
+After the shared M6 GPU and host-provenance changes, a fresh M1 wide-ALU CLI
+capture still exported 4,062 valid guided intervals and left all Intel `tma`
+roots null. SQLite stored the profile unchanged, retained the recorded M1,
+kernel and Xcode labels, and created zero Linux metric samples. Its command,
+hashes, cycle-weighted shares and round-trip check are in
+[the post-sync M1 smoke](apple-m1-post-sync-smoke.json).
+The same binary also completed a fresh `apple stat` run through
+`RUSAGE_INFO_V6`: performance-core cycles were 99.83% of its process-lifetime
+total, the `other` remainder reconciled exactly, and Intel TMA remained null.
+That count and its source hash are in the same smoke artifact.
 After the user accepted Xcode's license, the guided probe returned
 `counters_present`; the earlier CLI rejected this Xcode version because it
 looked only for `cpu-pmc-value`. Controlled Xcode captures yielded:
@@ -761,6 +771,11 @@ and 975 windows with multiple guided intervals. Those aligned windows covered
 84.49% and 75.00% of its guided sampled cycles, respectively; the other
 windows remain outside that comparison. The results and source XML hashes are
 included in [the window validation](apple-m1-tma-window-validation.json).
+On the division control's exact joins, swapping the width denominator changed
+Useful by a median 9.39 percentage points on the intended P capture and 5.04
+points on the intended E capture. This independently checks the width choice
+for another instruction class; the [division artifact](apple-m1-divide-control.json)
+records its match counts and XML hashes.
 
 The nonnegative clamp matters: a plain `M - RETIRE_UOP` term produces a
 strongly negative Discarded value for eliminated NOPs. In the 16-NOP mixed
