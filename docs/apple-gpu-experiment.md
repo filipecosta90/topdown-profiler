@@ -362,6 +362,19 @@ concurrency, but the missing ALU counter overlap means the checked runner
 would reject the capture. The launch script, XML hashes, coverage, and
 summaries are in [the sequential evidence](apple-gpu-m1-sequential.json).
 
+Reversing the order in a second trace (stream first, then ALU) preserved the
+clean sampled contrast: ALU Limiter was 72.18% for ALU and 1.26% for stream;
+Buffer Write Limiter was 0.11% and 99.44%; GPU Read Bandwidth was 0.04 and
+28.38 GB/s. All 500 ALU and 100 stream passes overlapped every required
+metric. Still, the least-sampled ALU pass had only 5.93% coverage, which the
+nonzero-overlap check accepts and the per-pass fraction exposes. Overall
+sampled work fractions were 15.74% and 50.75%; observed other GPU activity
+overlapped 4.93% and 7.60% of that sampled time. The script, XML hashes,
+per-pass coverage and native summaries are in
+[the reversed-order evidence](apple-gpu-m1-reversed-sequential.json). These
+two same-trace orderings support a repeatable workload contrast, within the
+limits of sampled, device-wide counters.
+
 ## Reproduce the Instruments comparison
 
 For a checked M1 capture in one command, set the full Xcode developer directory
