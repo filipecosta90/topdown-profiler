@@ -181,7 +181,9 @@ Apple describes these in [Addressing CPU bottlenecks](https://developer.apple.co
 `topdown apple record --mode counters` reads Xcode's `MetricTable` intervals,
 checks that each has all four ratios plus a cycle count, and reports shares
 weighted by the cycles in valid intervals. The JSON includes per-core breakdowns
-and the count of incomplete or inconsistent intervals. A legacy `cpu-pmc-value`
+and the count of incomplete or inconsistent intervals. It also reports the
+valid fraction of scoped sampled cycles when every invalid interval has a cycle
+count; otherwise that fraction is `null`. A legacy `cpu-pmc-value`
 table remains supported where Xcode exports one. This is an Apple-native
 four-category analysis; the `tma` object remains null because the Intel slot
 classification and Apple's formulas have not been shown equivalent.
@@ -630,7 +632,14 @@ Export the trace's `counters-profile` and `MetricTable` tables with
 `xcrun xctrace export --xpath`, then pass both XML files and the launched PID
 to [apple-m1-validate-tma.py](../examples/apple-m1-validate-tma.py). The
 validator joins interval end times to PMU samples and fails if any matched
-category differs beyond Xcode's export rounding.
+category differs beyond Xcode's export rounding. It rejects duplicate raw
+match keys and reports unmatched raw samples, unmatched guided intervals, and
+the fraction of guided sampled cycles represented by matched intervals. A
+successful formula check applies only to that matched fraction.
+In a fresh M1 branch control on 2026-10-23, 2,875 of 4,855 guided intervals
+matched 3,086 active raw samples and represented 84.55% of guided sampled
+cycles. The equations matched Xcode's export rounding on those joined
+intervals; 1,980 guided intervals remained outside the formula check.
 
 ### What Intel slot-TMA still needs
 

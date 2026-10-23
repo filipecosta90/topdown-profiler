@@ -111,7 +111,25 @@ def test_calibration_uses_map_bubble_delivery_floor(tmp_path):
                         '</row></node></trace-query-result>')
     result = validate(counters, metrics, 42)
     assert result["matched_intervals"] == 1
+    assert result["guided_intervals"] == 1
+    assert result["unmatched_raw_samples"] == result["unmatched_guided_intervals"] == 0
+    assert result["matched_guided_cycle_fraction"] == 1
     assert result["matches_exported_rounding"] is True
+    counter_text = counters.read_text()
+    duplicate = "<row>" + counter_text.split("<row>", 1)[1].split("</row>", 1)[0] + "</row>"
+    counters.write_text(counter_text.replace("</node>", duplicate + "</node>"))
+    with pytest.raises(ValueError, match="duplicate end-time"):
+        validate(counters, metrics, 42)
+    counters.write_text(counter_text)
+    metric_text = metrics.read_text()
+    extra_rows = metric_text.split("</schema>", 1)[1].split("</node>", 1)[0]
+    metrics.write_text(metric_text.replace("</node>", extra_rows.replace("<start-time>100</start-time>",
+                                                            "<start-time>200</start-time>") + "</node>"))
+    partial = validate(counters, metrics, 42)
+    assert partial["guided_intervals"] == 2
+    assert partial["unmatched_guided_intervals"] == 1
+    assert partial["matched_guided_cycle_fraction"] == 0.5
+    metrics.write_text(metric_text)
     metrics.write_text(metrics.read_text().replace("<fixed-decimal>0.105</fixed-decimal>",
                                                    "<fixed-decimal>0.1</fixed-decimal>"))
     assert validate(counters, metrics, 42)["matches_exported_rounding"] is False

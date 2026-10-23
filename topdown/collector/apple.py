@@ -396,13 +396,20 @@ def parse_apple_bottlenecks(path: Path, pid: int, start_ns: int = 0, end_ns: int
         entry[event] = int(value) if event == "cycle" else float(value)
     samples = []
     skipped = 0
+    invalid_cycles = 0
+    invalid_intervals_without_cycle_count = 0
     for entry in groups.values():
         if not all(event in entry for event in ("cycle", *APPLE_BOTTLENECKS)):
             skipped += 1
+            if "cycle" in entry:
+                invalid_cycles += entry["cycle"]
+            else:
+                invalid_intervals_without_cycle_count += 1
             continue
         total = sum(entry[event] for event in APPLE_BOTTLENECKS)
         if entry["cycle"] == 0 or abs(total - 1) > 0.01:
             skipped += 1
+            invalid_cycles += entry["cycle"]
             continue
         entry["shares"] = {event: entry.pop(event) for event in APPLE_BOTTLENECKS}
         entry["cycles"] = entry.pop("cycle")
@@ -419,10 +426,17 @@ def parse_apple_bottlenecks(path: Path, pid: int, start_ns: int = 0, end_ns: int
     by_core = {}
     for row in samples:
         by_core.setdefault(row["core"], []).append(row)
+    valid_cycles = sum(row["cycles"] for row in samples)
     return {
         "schema": "MetricTable", "column_types": types,
         "scope": {"pid": pid, "start_ns": start_ns, "end_ns": end_ns},
         "sample_count": len(samples), "excluded_rows": excluded, "invalid_intervals": skipped,
+        "invalid_cycles_with_known_count": invalid_cycles,
+        "invalid_intervals_without_cycle_count": invalid_intervals_without_cycle_count,
+        "valid_cycle_fraction_of_scoped_intervals": (
+            valid_cycles / (valid_cycles + invalid_cycles)
+            if not invalid_intervals_without_cycle_count else None
+        ),
         "apple_bottlenecks_available": True,
         "apple_bottlenecks": summary(samples),
         "apple_bottlenecks_by_core": [
