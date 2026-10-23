@@ -335,3 +335,41 @@ def test_gpu_report_retains_recorded_environment_for_comparison():
     report = apple_gpu_report.summarize(profile)
     assert report["environment"] == profile["environment"]
     assert "environment" not in apple_gpu_report.summarize(native_profile())
+
+
+@pytest.mark.parametrize("command", ["record", "profile"])
+def test_gpu_cli_cancellation_retains_artifacts_and_skips_storage(tmp_path, monkeypatch, command):
+    from unittest.mock import Mock
+
+    output = tmp_path / "cancelled"
+    def interrupted(path, *args):
+        path.mkdir()
+        (path / "native.command.json").write_text('[]')
+        raise KeyboardInterrupt
+    store = Mock(side_effect=AssertionError("stored a cancelled GPU capture"))
+    monkeypatch.setattr(apple_gpu, "record", interrupted)
+    monkeypatch.setattr(apple_gpu, "collect", lambda trace, output, execution: interrupted(output))
+    monkeypatch.setattr("topdown.apple_cli._store_capture", store)
+    args = ["apple", "gpu", command]
+    if command == "profile":
+        trace = tmp_path / "input.gputrace"
+        trace.mkdir()
+        args.append(str(trace))
+    result = CliRunner().invoke(app, args + ["--output", str(output), "--store", "--db", str(tmp_path / "unused.db")])
+    assert result.exit_code == 130 and "artifacts retained" in result.stderr
+    assert (output / "native.command.json").exists()
+    store.assert_not_called()
+
+
+def test_standalone_gpu_replay_cancellation_exits_with_artifact_path(tmp_path, monkeypatch, capsys):
+    trace = tmp_path / "input.gputrace"
+    trace.mkdir()
+    output = tmp_path / "cancelled"
+    def interrupted(*args):
+        output.mkdir()
+        raise KeyboardInterrupt
+    monkeypatch.setattr(apple_gpu, "collect", interrupted)
+    monkeypatch.setattr("sys.argv", ["apple-gpu", str(trace), "--output", str(output)])
+    with pytest.raises(SystemExit) as error:
+        apple_gpu.main()
+    assert error.value.code == 130 and str(output) in capsys.readouterr().err

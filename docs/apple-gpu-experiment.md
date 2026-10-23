@@ -140,6 +140,8 @@ startup did not return an ID retains its 180-second idle timeout. Cancellation
 during a debugger command is deferred because killing its client can leave an
 XPC profiling operation running after the session disappears. Other MCP tools
 remain responsive while that command finishes.
+CLI Ctrl-C during replay also waits for the current bounded debugger command,
+closes its owned session, retains artifacts and exits with status 130.
 
 | Tool | Purpose |
 |---|---|

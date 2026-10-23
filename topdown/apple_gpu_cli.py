@@ -18,6 +18,9 @@ def _capture(output, store, label, db, collector):
         _check_storage_options(store, label, db)
         result = collector()
         run_id = _store_capture(output, label, db) if store else None
+    except KeyboardInterrupt as exc:
+        typer.echo(f"GPU collection cancelled; artifacts retained at {output}", err=True)
+        raise typer.Exit(130) from exc
     except (AppleProfileError, OSError, ValueError) as exc:
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(1) from exc

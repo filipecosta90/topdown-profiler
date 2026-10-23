@@ -1,6 +1,7 @@
 """Collect native GPU replay counters with gpudebug; keep capture resources local."""
 
 import argparse
+from contextlib import contextmanager
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -8,8 +9,10 @@ import os
 from pathlib import Path
 import platform
 import re
+import signal
 import subprocess
 import sys
+import threading
 import time
 
 from topdown.collector.apple import AppleProfileError, TMA_ROOTS
@@ -19,6 +22,30 @@ from topdown.collector.apple_environment import capture_environment
 
 GPU_KIND = "apple-gpu-replay-profile"
 GPU_MODES = {"compute", "alu", "memory", "stream"}
+
+
+@contextmanager
+def _defer_keyboard_interrupt():
+    if threading.current_thread() is not threading.main_thread():
+        yield
+        return
+    previous = signal.getsignal(signal.SIGINT)
+    if not callable(previous):
+        yield
+        return
+    pending = None
+
+    def remember(signum, frame):
+        nonlocal pending
+        pending = signum, frame
+
+    signal.signal(signal.SIGINT, remember)
+    try:
+        yield
+    finally:
+        signal.signal(signal.SIGINT, previous)
+        if pending is not None and sys.exc_info()[0] is None:
+            previous(*pending)
 
 
 def validate_options(mode="compute", passes=4, items=16384, execution="overlapping"):
@@ -111,32 +138,33 @@ def collect(trace: Path, output: Path, execution: str = "overlapping") -> dict:
         sequence += 1
         command = ["xcrun", "gpudebug", *arguments]
         (output / f"{sequence:03d}.command.json").write_text(json.dumps(command))
-        try:
-            # Killing a replay client can strand its XPC profiling operation after session removal.
-            with apple_runtime.uncancellable():
-                result = apple_runtime.run(command, timeout=timeout)
-        except (subprocess.TimeoutExpired, AppleProfileError) as exc:
-            stdout = getattr(exc, "stdout", None) or b""
-            stderr = getattr(exc, "stderr", None) or b""
-            (output / f"{sequence:03d}.stdout").write_bytes(stdout)
-            (output / f"{sequence:03d}.stderr").write_bytes(stderr)
+        with _defer_keyboard_interrupt():
+            try:
+                # Killing a replay client can strand its XPC profiling operation after session removal.
+                with apple_runtime.uncancellable():
+                    result = apple_runtime.run(command, timeout=timeout, start_new_session=True)
+            except (subprocess.TimeoutExpired, AppleProfileError) as exc:
+                stdout = getattr(exc, "stdout", None) or b""
+                stderr = getattr(exc, "stderr", None) or b""
+                (output / f"{sequence:03d}.stdout").write_bytes(stdout)
+                (output / f"{sequence:03d}.stderr").write_bytes(stderr)
+                if "-t" in arguments:
+                    match = re.search(rb"Session (\d+) created\.", stdout)
+                    if match:
+                        session = match.group(1).decode()
+                if isinstance(exc, AppleProfileError):
+                    raise
+                raise ValueError(f"gpudebug timed out; partial artifacts: {output}") from exc
+            (output / f"{sequence:03d}.stdout").write_text(result.stdout)
+            (output / f"{sequence:03d}.stderr").write_text(result.stderr)
             if "-t" in arguments:
-                match = re.search(rb"Session (\d+) created\.", stdout)
+                match = re.search(r"Session (\d+) created\.", result.stdout)
                 if match:
-                    session = match.group(1).decode()
-            if isinstance(exc, AppleProfileError):
-                raise
-            raise ValueError(f"gpudebug timed out; partial artifacts: {output}") from exc
-        (output / f"{sequence:03d}.stdout").write_text(result.stdout)
-        (output / f"{sequence:03d}.stderr").write_text(result.stderr)
-        if "-t" in arguments:
-            match = re.search(r"Session (\d+) created\.", result.stdout)
-            if match:
-                session = match.group(1)
-        apple_runtime.check_cancelled()
-        if result.returncode:
-            raise ValueError(f"gpudebug failed: {result.stderr.strip() or result.stdout.strip()}; artifacts: {output}")
-        return result.stdout
+                    session = match.group(1)
+            apple_runtime.check_cancelled()
+            if result.returncode:
+                raise ValueError(f"gpudebug failed: {result.stderr.strip() or result.stdout.strip()}; artifacts: {output}")
+            return result.stdout
 
     def query(command):
         response = run(["-s", session, "--json", "-c", command])
@@ -217,6 +245,8 @@ def main():
     args = parser.parse_args()
     try:
         result = collect(args.trace, args.output, args.execution)
+    except KeyboardInterrupt:
+        parser.exit(130, f"GPU replay cancelled; artifacts retained at {args.output}\n")
     except (AppleProfileError, ValueError, OSError) as exc:
         parser.error(str(exc))
     print(json.dumps({"profile": str(args.output / "profile.json"), "device": result["device"],
