@@ -129,6 +129,20 @@ def test_calibration_uses_map_bubble_delivery_floor(tmp_path):
     assert partial["guided_intervals"] == 2
     assert partial["unmatched_guided_intervals"] == 1
     assert partial["matched_guided_cycle_fraction"] == 0.5
+    assert partial["unmatched_guided_intervals_by_reason"] == {"no_raw_counter_sample_at_end_time": 1}
+    assert partial["unmatched_guided_cycles_by_reason"] == {"no_raw_counter_sample_at_end_time": 1000}
+    mismatch = duplicate.replace("<sample-time>1100</sample-time>", "<sample-time>1200</sample-time>")
+    mismatch = mismatch.replace("1000 4000 1000 100 200", "1000 4000 900 100 200")
+    counters.write_text(counter_text.replace("</node>", mismatch + "</node>"))
+    partial = validate(counters, metrics, 42)
+    assert partial["unmatched_guided_intervals_by_reason"] == {"active_cycle_count_mismatch": 1}
+    assert partial["unmatched_guided_cycles_by_reason"] == {"active_cycle_count_mismatch": 1000}
+    wrong_core = duplicate.replace("<sample-time>1100</sample-time>", "<sample-time>1200</sample-time>")
+    wrong_core = wrong_core.replace('<core>7</core>', '<core>6</core>')
+    counters.write_text(counter_text.replace("</node>", wrong_core + "</node>"))
+    partial = validate(counters, metrics, 42)
+    assert partial["unmatched_guided_intervals_by_reason"] == {"raw_counter_scope_mismatch": 1}
+    counters.write_text(counter_text)
     metrics.write_text(metric_text)
     metrics.write_text(metrics.read_text().replace("<fixed-decimal>0.105</fixed-decimal>",
                                                    "<fixed-decimal>0.1</fixed-decimal>"))

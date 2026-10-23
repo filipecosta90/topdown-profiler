@@ -617,6 +617,16 @@ Matching by end time, thread, core, and active-cycle count joined 40,234
 intervals across sixteen same-trace controls. All four equations reproduced
 every matched Xcode ratio to its nine-decimal fractional export precision;
 the largest absolute difference was below 0.0000001 percentage points.
+Those matches covered 89.0–89.8% of valid guided sampled cycles in nine
+P-core controls and 49.1–50.6% in seven E-core controls. Across all sixteen,
+27,783 valid guided intervals had no raw counter vector at the exact interval
+end time, and 17,506 had a vector for the same time, thread, and core but a
+different active-cycle count. None failed only because of a thread/core
+disagreement at the same time. The [join-coverage diagnostics](apple-m1-tma-match-coverage.json)
+retain per-control counts, sampled cycles, and verified source XML hashes.
+These categories describe what the two Instruments exports can join; they do
+not establish why samples differ or how many hardware events were lost. The
+equations are validated only on the matched intervals, especially on E cores.
 The controls included P/E ALU, branch, pointer chase, SIMD, compact and large
 executed NOP streams, and random branches mixed with 8, 16, or 64 NOPs per
 iteration. Another 17,757 active raw samples had no complete matching guided
@@ -674,8 +684,10 @@ to [apple-m1-validate-tma.py](../examples/apple-m1-validate-tma.py). The
 validator joins interval end times to PMU samples and fails if any matched
 category differs beyond Xcode's export rounding. It rejects duplicate raw
 match keys and reports unmatched raw samples, unmatched guided intervals, and
-the fraction of guided sampled cycles represented by matched intervals. A
-successful formula check applies only to that matched fraction.
+the fraction of guided sampled cycles represented by matched intervals, plus
+whether unmatched guided intervals lacked an exact-time vector or disagreed
+on active-cycle count. A successful formula check applies only to that
+matched fraction.
 In a fresh M1 branch control on 2026-10-23, 2,875 of 4,855 guided intervals
 matched 3,086 active raw samples and represented 84.55% of guided sampled
 cycles. The equations matched Xcode's export rounding on those joined

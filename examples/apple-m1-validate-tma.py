@@ -1,6 +1,7 @@
 """Compare an M1 calibration trace's raw counters with Xcode guided ratios."""
 
 import argparse
+from collections import Counter
 import json
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -29,6 +30,9 @@ def validate(counters: Path, metrics: Path, pid: int) -> dict:
     resolve = _resolve_ids(root)
     raw_count = matched_count = matched_cycles = 0
     seen_raw = set()
+    raw_times = set()
+    raw_scopes = set()
+    matched_keys = set()
     maximum = dict.fromkeys(CATEGORIES, 0.0)
     for row in tables[0].findall("row"):
         if len(row) != len(columns):
@@ -43,20 +47,25 @@ def validate(counters: Path, metrics: Path, pid: int) -> dict:
         values = [int(value) for value in vector.text.split()]
         if len(values) != 12 or values[10:] != [0, 0]:
             raise ValueError("Unexpected combined guided/custom vector layout")
+        core = int(cells["core"].text)
+        if not 0 <= core <= 7:
+            raise ValueError("Expected M1 core number 0 through 7")
+        time = int(cells["time"].text)
+        tid = int(resolve(cells["thread"].find("tid")).text)
+        raw_times.add(time)
+        raw_scopes.add((time, tid, core))
         active = values[2]
         if active == 0:
             continue
         raw_count += 1
-        core = int(cells["core"].text)
-        if not 0 <= core <= 7:
-            raise ValueError("Expected M1 core number 0 through 7")
-        key = (int(cells["time"].text), int(resolve(cells["thread"].find("tid")).text), core, active)
+        key = (time, tid, core, active)
         if key in seen_raw:
             raise ValueError("Raw counter samples have duplicate end-time, thread, core, and cycle keys")
         seen_raw.add(key)
         interval = by_end.get(key)
         if interval is None:
             continue
+        matched_keys.add(key)
         matched_count += 1
         matched_cycles += interval["cycles"]
         width = 4 if core < 4 else 8
@@ -74,11 +83,25 @@ def validate(counters: Path, metrics: Path, pid: int) -> dict:
     if not matched_count:
         raise ValueError("No guided interval matches a raw counter sample")
     guided_cycles = sum(row["cycles"] for row in guided["samples"])
+    unmatched_intervals = Counter()
+    unmatched_cycles = Counter()
+    for row in guided["samples"]:
+        time = row["time_ns"] + row["duration_ns"]
+        if (time, row["tid"], row["core"], row["cycles"]) in matched_keys:
+            continue
+        reason = ("active_cycle_count_mismatch" if (time, row["tid"], row["core"]) in raw_scopes
+                  else "raw_counter_scope_mismatch" if time in raw_times
+                  else "no_raw_counter_sample_at_end_time")
+        unmatched_intervals[reason] += 1
+        unmatched_cycles[reason] += row["cycles"]
     return {"raw_samples_with_active_cycles": raw_count, "matched_intervals": matched_count,
             "unmatched_raw_samples": raw_count - matched_count,
             "guided_intervals": len(guided["samples"]),
             "unmatched_guided_intervals": len(guided["samples"]) - matched_count,
+            "guided_sampled_cycles": guided_cycles, "matched_guided_cycles": matched_cycles,
             "matched_guided_cycle_fraction": matched_cycles / guided_cycles,
+            "unmatched_guided_intervals_by_reason": dict(sorted(unmatched_intervals.items())),
+            "unmatched_guided_cycles_by_reason": dict(sorted(unmatched_cycles.items())),
             "max_absolute_difference_percentage_points": maximum,
             "matches_exported_rounding": max(maximum.values()) < 1e-7}
 
