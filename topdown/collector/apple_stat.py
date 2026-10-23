@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from topdown.collector.apple import AppleProfileError, TMA_ROOTS, _sha256, _write_json
+from topdown.collector.apple_runtime import check_cancelled, sleep, uncancellable
 
 
 class _RusageInfoV4(ctypes.Structure):
@@ -119,6 +120,7 @@ def _peek_exit(pid):
 
 def _wait_for_exit(pid, deadline):
     while True:
+        check_cancelled()
         # Keep the child as a zombie until libproc reads its final counters; wait()/poll() would reap it.
         observed = _peek_exit(pid)
         if observed is not None:
@@ -129,6 +131,7 @@ def _wait_for_exit(pid, deadline):
         time.sleep(min(0.01, remaining))
 
 
+@uncancellable()
 def _terminate(process):
     try:
         if _wait_for_exit(process.pid, time.monotonic()) is not None:
@@ -194,7 +197,11 @@ def stat_pid(output: Path, pid: int, duration: float = 5) -> dict:
         started = time.monotonic_ns()
         interrupted = False
         try:
-            time.sleep(duration)
+            sleep(duration)
+        except AppleProfileError as exc:
+            if exc.code != "interrupted":
+                raise
+            interrupted = True
         except KeyboardInterrupt:
             interrupted = True
         after = reader.read(pid)
@@ -259,6 +266,10 @@ def stat_process(output: Path, command: list[str], timeout: float = 30) -> dict:
             interrupted, timed_out = False, False
             try:
                 timed_out = _wait_for_exit(process.pid, time.monotonic() + timeout) is None
+            except AppleProfileError as exc:
+                if exc.code != "interrupted":
+                    raise
+                interrupted = True
             except KeyboardInterrupt:
                 interrupted = True
             if timed_out or interrupted:

@@ -82,9 +82,11 @@ def _validate_scope(pid, start_ns, end_ns):
 
 
 def _run(cmd: list[str], output: Path, name: str, timeout: int):
+    from topdown.collector.apple_runtime import run
+
     _write_json(output / f"{name}.command.json", cmd)
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=False)
+        result = run(cmd, timeout=timeout)
     except subprocess.TimeoutExpired as exc:
         for suffix, value in (("stdout", exc.stdout), ("stderr", exc.stderr)):
             if isinstance(value, bytes):
@@ -92,6 +94,15 @@ def _run(cmd: list[str], output: Path, name: str, timeout: int):
             (output / f"{name}.{suffix}").write_text(value or "")
         raise AppleProfileError(f"{name} timed out after {timeout}s; retained partial artifacts in {output}",
                                 code="timeout") from exc
+    except AppleProfileError as exc:
+        for suffix in ["stdout", "stderr"]:
+            value = getattr(exc, suffix, "")
+            if isinstance(value, bytes):
+                value = value.decode(errors="replace")
+            (output / f"{name}.{suffix}").write_text(value or "")
+        if getattr(exc, "cleanup_error", None):
+            (output / f"{name}.cleanup.stderr").write_text(exc.cleanup_error)
+        raise
     except OSError as exc:
         code = "tool_unavailable" if isinstance(exc, FileNotFoundError) else "tool_error"
         raise AppleProfileError(f"Cannot execute {cmd[0]}: {exc}", code=code) from exc
@@ -120,6 +131,8 @@ def doctor() -> dict:
     if result["system"] != "Darwin" or result["arch"] != "arm64":
         result["error"] = "Native Apple collection requires macOS on Apple silicon (arm64)."
         return result
+    from topdown.collector.apple_runtime import run
+
     commands = {
         "cpu": ["sysctl", "-n", "machdep.cpu.brand_string"],
         "os_build": ["sysctl", "-n", "kern.osversion"],
@@ -130,7 +143,7 @@ def doctor() -> dict:
     }
     for key, cmd in commands.items():
         try:
-            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=10, check=False)
+            proc = run(cmd, timeout=10)
             if proc.returncode:
                 result[key] = None
                 result.setdefault("errors", {})[key] = proc.stderr.strip() or proc.stdout.strip()
@@ -555,9 +568,10 @@ def _build_fixed_instrument(output: Path) -> Path:
 def _require_m1_host():
     if platform.system() != "Darwin" or platform.machine() != "arm64":
         raise AppleProfileError("M1 event mode requires an Apple M1 host")
+    from topdown.collector.apple_runtime import run
+
     try:
-        family = int(subprocess.run(["sysctl", "-n", "hw.cpufamily"], capture_output=True, text=True,
-                                    timeout=10, check=True).stdout.strip())
+        family = int(run(["sysctl", "-n", "hw.cpufamily"], timeout=10, check=True).stdout.strip())
     except (OSError, ValueError, subprocess.SubprocessError) as exc:
         raise AppleProfileError(f"Cannot verify M1 CPU family: {exc}") from exc
     if family != M1_CPU_FAMILY:
@@ -609,7 +623,8 @@ def record_profile(output: Path, command: list[str], duration: int = 5, mode: st
         metadata["status"] = "exported"
         return profile
     except (AppleProfileError, OSError) as exc:
-        metadata.update(status="failed", error=str(exc))
+        metadata.update(status="interrupted" if isinstance(exc, AppleProfileError) and exc.code == "interrupted" else "failed",
+                        error=str(exc))
         raise
     except KeyboardInterrupt:
         metadata.update(status="interrupted", error="Recording interrupted; target exit is unverified.")

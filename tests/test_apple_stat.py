@@ -571,3 +571,31 @@ def test_native_zombie_read_includes_short_target_and_keeps_target_output(tmp_pa
     assert result["counters"]["process_exit_mach"] > result["counters"]["process_start_mach"]
     assert (tmp_path / "stat/target.stdout").read_text() == "owned-target\n"
     assert (tmp_path / "stat/target.stderr").read_text() == "stderr\n"
+
+
+@pytest.mark.parametrize("code,expected", [("interrupted", "interrupted"), ("tool_error", "failed")])
+def test_worker_cancellation_is_distinct_from_other_wait_failures(tmp_path, capture, code, expected):
+    capture.wait.side_effect = AppleProfileError("worker stopped", code=code)
+    with patch("topdown.collector.apple_stat._terminate") as terminate:
+        result = stat_process(tmp_path / "stat", [sys.executable])
+    assert result["status"] == expected
+    terminate.assert_called_once_with(capture.process)
+    if code == "interrupted":
+        assert result["exit_code"] == 130 and result["counters"] is not None
+    else:
+        assert result["counters"] is None and "worker stopped" in result["error"]
+
+
+@pytest.mark.parametrize("code,expected", [("interrupted", "interrupted"), ("tool_error", "failed")])
+def test_pid_worker_cancellation_retains_partial_data_without_signaling(tmp_path, capture, code, expected):
+    interval_snapshots(capture)
+    with patch("topdown.collector.apple_stat.sleep", side_effect=AppleProfileError("worker stopped", code=code)), \
+         patch("topdown.collector.apple_stat._terminate") as terminate:
+        result = stat_pid(tmp_path / "stat", 42, 30)
+    assert result["status"] == expected
+    terminate.assert_not_called()
+    capture.launch.assert_not_called()
+    if code == "interrupted":
+        assert result["exit_code"] == 130 and result["counters"]["instructions"] == 200
+    else:
+        assert result["counters"] is None

@@ -69,10 +69,19 @@ def _apple_run_guidance(*runs):
     return None
 
 
+def _apple_tool(*, capture=False):
+    from topdown.collector.apple_runtime import worker
+
+    def register(function):
+        mcp.tool()(worker(function, capture=capture))
+        return function
+    return register
+
+
 # ──────────────────────────── Tools ────────────────────────────
 
 
-@mcp.tool()
+@_apple_tool()
 def apple_doctor() -> dict:
     """Inspect Apple profiling capabilities on the MCP server host without recording a workload."""
     from topdown.collector.apple import doctor
@@ -80,7 +89,7 @@ def apple_doctor() -> dict:
     return doctor()
 
 
-@mcp.tool()
+@_apple_tool()
 def import_apple_result(path: str, process_name: str | None = None, labels: dict[str, str] | None = None) -> dict:
     """Store a native Apple profile.json/stat.json/soc.json file or capture directory from the server host.
 
@@ -101,7 +110,7 @@ def import_apple_result(path: str, process_name: str | None = None, labels: dict
         backend.close()
 
 
-@mcp.tool()
+@_apple_tool(capture=True)
 def collect_apple_profile(
     mode: str = "stat", command: list[str] | None = None, pid: int | None = None,
     duration_seconds: float = 5, process_name: str | None = None, labels: dict[str, str] | None = None,
@@ -124,6 +133,9 @@ def collect_apple_profile(
         validate_run_options(process_name, labels)
         root.mkdir(parents=True, exist_ok=True)
         path = collect_apple_result(output, mode, command, pid, duration_seconds)
+        from topdown.collector.apple_runtime import check_cancelled
+
+        check_cancelled()
         backend = _get_backend()
         try:
             run = store_apple_result(backend, path, process_name, labels)
@@ -134,7 +146,7 @@ def collect_apple_profile(
         return {"error": str(exc), "artifacts": str(output)}
 
 
-@mcp.tool()
+@_apple_tool()
 def query_apple_result(run_id: str, section: str = "summary", offset: int = 0, limit: int = 100) -> dict:
     """Read a stored native Apple result by run ID, on any server OS.
 
@@ -154,7 +166,7 @@ def query_apple_result(run_id: str, section: str = "summary", offset: int = 0, l
         backend.close()
 
 
-@mcp.tool()
+@_apple_tool()
 def get_apple_hotspots(run_id: str, limit: int = 20) -> dict:
     """Rank stored Apple stack samples by function frequency; shares are sample fractions, not CPU-time/TMA percentages."""
     from topdown.apple_storage import stored_apple_hotspots
@@ -704,13 +716,15 @@ def methodology() -> str:
 
 def _register_tools_and_resources(target: FastMCP):
     """Re-register all tools and resources on a new FastMCP instance."""
+    from topdown.collector.apple_runtime import worker
+
     # Tools
     target.tool()(collect_topdown)
-    target.tool()(apple_doctor)
-    target.tool()(import_apple_result)
-    target.tool()(collect_apple_profile)
-    target.tool()(query_apple_result)
-    target.tool()(get_apple_hotspots)
+    target.tool()(worker(apple_doctor))
+    target.tool()(worker(import_apple_result))
+    target.tool()(worker(collect_apple_profile, capture=True))
+    target.tool()(worker(query_apple_result))
+    target.tool()(worker(get_apple_hotspots))
     target.tool()(query_bottlenecks)
     target.tool()(query_by_bottleneck)
     target.tool()(get_funnel)
