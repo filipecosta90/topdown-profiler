@@ -469,9 +469,14 @@ top-limiter labels for profile 3. It saves the trace, XML, command logs and
 `profile.json`. `--profile 4` selects Performance Utilizations.
 For the packaged probe, it also validates the saved `probe.json` checksum,
 mode, item count, and ordered command labels. It requires the observed pass
-indices to run from zero through the requested last pass. The packaged default
+indices to run from zero through the requested last pass. For either probe it
+binds the selected counter PID to the compiled probe path in Xcode's trace
+table of contents, and saves the compiled binary hash. The packaged default
 is 100 passes and 65,536 items for compute/ALU, or 8 passes and 16,777,216
 items for memory/stream; the original M1 probe keeps its existing defaults.
+Native checks passed for both the original four-pass M1 ALU probe and the
+packaged 100-pass compute probe with this PID binding. Their hashes and TOC
+process matches are in [the PID-binding evidence](apple-gpu-m1-pid-binding.json).
 Very short packaged ALU commands can miss individual counter samples, causing
 the checked runner to reject an otherwise completed probe.
 Failed checks leave the artifacts for inspection in the new output directory.

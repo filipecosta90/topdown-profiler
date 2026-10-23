@@ -103,6 +103,21 @@ def test_runner_verifies_packaged_probe_result_and_command_labels(tmp_path, runn
         runner["_verify"](toc, stdout, 3, "alu", 2, "packaged", 65536, probe)
 
 
+def test_runner_binds_counter_pid_to_compiled_probe_in_trace(tmp_path, runner):
+    binary = tmp_path / "probe"
+    toc = tmp_path / "toc.xml"
+    toc.write_text(f'<trace-toc><run><data><processes><process pid="42" path="{binary}"/>'
+                   '</processes></data></run></trace-toc>')
+    runner["_verify_probe_process"](toc, binary, 42)
+    with pytest.raises(ValueError, match="does not match"):
+        runner["_verify_probe_process"](toc, binary, 43)
+    with pytest.raises(ValueError, match="does not match"):
+        runner["_verify_probe_process"](toc, binary, None)
+    toc.write_text(toc.read_text().replace('</processes>', f'<process pid="42" path="{binary}"/></processes>'))
+    with pytest.raises(ValueError, match="does not match"):
+        runner["_verify_probe_process"](toc, binary, 42)
+
+
 def test_runner_requires_full_xcode_template_before_creating_artifacts(tmp_path, runner, monkeypatch):
     monkeypatch.setenv("DEVELOPER_DIR", str(tmp_path / "CommandLineTools/Developer"))
     output = tmp_path / "capture"
