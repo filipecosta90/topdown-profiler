@@ -11,7 +11,7 @@ from pathlib import Path
 from topdown.collector.apple import (APPLE_BOTTLENECKS, FIXED_EVENTS, M1_EVENTS, M1_FETCH_EVENTS,
                                      M1_MAP_EVENTS, MODES, TMA_ROOTS, AppleProfileError)
 from topdown.storage.models import Run
-from topdown.collector.apple_files import read_regular_bytes
+from topdown.collector.apple_files import decode_json_object, read_regular_bytes
 
 PROFILE_SCHEMAS = {kind: schema for _, schema, kind in MODES.values()}
 PROFILE_SCHEMAS["apple-guided-bottleneck-intervals"] = "MetricTable"
@@ -348,38 +348,16 @@ def validate_result(result: dict) -> None:
         raise AppleProfileError(f"Unsupported Apple measurement kind: {kind}")
     try:
         json.dumps(result, allow_nan=False)
-    except (ValueError, TypeError) as exc:
+    except (ValueError, TypeError, RecursionError) as exc:
         raise AppleProfileError(f"Invalid native Apple JSON: {exc}") from exc
-
-
-def _json_object(pairs):
-    result = {}
-    for key, value in pairs:
-        if key in result:
-            raise ValueError(f"Duplicate Apple JSON field: {key}")
-        result[key] = value
-    return result
-
-
-def _json_constant(value):
-    raise ValueError(f"Non-finite Apple JSON number: {value}")
-
-
-def _json_float(value):
-    number = float(value)
-    if not math.isfinite(number):
-        _json_constant(value)
-    return number
 
 
 def _read_json(path):
     try:
         data = read_regular_bytes(path)
-        value = json.loads(data, object_pairs_hook=_json_object, parse_constant=_json_constant, parse_float=_json_float)
+        value = decode_json_object(data)
     except (OSError, ValueError) as exc:
         raise AppleProfileError(f"Cannot read Apple artifact {path}: {exc}") from exc
-    if not isinstance(value, dict):
-        raise AppleProfileError(f"Require a JSON object in {path}")
     return value, hashlib.sha256(data).hexdigest()
 
 
