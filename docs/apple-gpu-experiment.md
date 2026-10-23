@@ -678,6 +678,11 @@ of sampled probe work. The clean ALU Limiter pass median was 89.30% with
 p10–p90 of 86.47–92.47%; clean GPU Read Bandwidth had a 0.33 GB/s median and
 0.24–0.47 GB/s p10–p90. Capture and XML hashes, means and both pass
 distributions are in [the fresh M1 validation](apple-gpu-m1-clean-pass-validation.json).
+The same runner completed a fresh Performance Utilizations capture with all
+100 passes sampled and a verified probe PID. Its clean F32 Utilization pass
+median was 14.20%, with p10–p90 of 13.71–14.73%; 5.72% of sampled work
+overlapped observed other GPU activity. The same evidence file includes its
+separate capture and XML hashes.
 On this M1, a four-pass profile-3 ALU smoke check sampled all four passes;
 a fresh four-pass check covered 16.28% of GPU work time with counter samples.
 A 100-pass profile-4 stream capture sampled all 100 and reported 1.77% ALU
