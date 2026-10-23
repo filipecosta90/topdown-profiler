@@ -66,3 +66,13 @@ def test_runner_requires_full_xcode_template_before_creating_artifacts(tmp_path,
     with pytest.raises(ValueError, match="Full Xcode Metal System Trace template"):
         runner["record"](output)
     assert not output.exists()
+
+
+def test_runner_rejects_partial_counter_coverage(tmp_path, runner):
+    result = {"probe_coverage": {"workloads_observed": ["burn"], "passes_observed": 4,
+                                 "passes_with_counter_samples": 3},
+              "sampled_counter_means": {"ALU Limiter": {"value": 70}}}
+    with pytest.raises(ValueError, match="Incomplete M1 probe counter coverage"):
+        runner["_verify_coverage"](result, "alu", 4, tmp_path)
+    result["probe_coverage"]["passes_with_counter_samples"] = 4
+    runner["_verify_coverage"](result, "alu", 4, tmp_path)

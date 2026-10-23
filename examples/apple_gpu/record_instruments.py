@@ -64,6 +64,14 @@ def _verify(toc: Path, stdout: Path, profile: int, mode: str, passes: int) -> No
             raise ValueError(f"Instruments did not export exactly one {schema} table")
 
 
+def _verify_coverage(result: dict, mode: str, passes: int, output: Path) -> None:
+    coverage = result["probe_coverage"]
+    expected_workload = "burn" if mode == "alu" else "stream"
+    if (coverage["workloads_observed"] != [expected_workload] or coverage["passes_observed"] != passes
+            or coverage["passes_with_counter_samples"] != passes or not result["sampled_counter_means"]):
+        raise ValueError(f"Incomplete M1 probe counter coverage; artifacts: {output}")
+
+
 def record(output: Path, mode: str = "alu", passes: int = 100, profile: int = 3,
            tail: float = 1.0, time_limit: int = 8) -> dict:
     if (mode not in ("alu", "stream") or type(passes) is not int or not 1 <= passes <= 500
@@ -99,11 +107,7 @@ def record(output: Path, mode: str = "alu", passes: int = 100, profile: int = 3,
                                          "--xpath", xpath, "--output", str(path)], 120)
         paths[name] = path
     result = summarize(paths["counters"], paths["gpu-intervals"])
-    coverage = result["probe_coverage"]
-    expected_workload = "burn" if mode == "alu" else "stream"
-    if (coverage["workloads_observed"] != [expected_workload] or coverage["passes_observed"] != passes
-            or coverage["passes_with_counter_samples"] == 0 or not result["sampled_counter_means"]):
-        raise ValueError(f"No verified counter samples for the M1 probe; artifacts: {output}")
+    _verify_coverage(result, mode, passes, output)
     result["capture"] = {
         "mode": mode, "passes": passes, "counter_profile": PROFILE_NAMES[profile],
         "checksum_verified": True, "target_exit_status": 0,
