@@ -311,3 +311,11 @@ def test_nested_programmatic_native_json_fails_with_an_artifact_error(native_sta
         nested=child
     with pytest.raises(AppleProfileError,match='Invalid native Apple JSON'):
         validate_result(native_stat)
+
+
+@pytest.mark.parametrize("pid", [2**31, 2**32 + 42, 2**64 - 1])
+def test_import_rejects_impossible_native_process_identities(sqlite_backend, tmp_path, native_stat, pid):
+    native_stat["scope"]["pid"] = pid
+    with pytest.raises(AppleProfileError, match="native signed pid_t"):
+        store_apple_result(sqlite_backend, write(tmp_path, native_stat))
+    assert sqlite_backend.list_runs() == []
