@@ -55,6 +55,12 @@
           "delivery": 9.99583659851628e-08
         },
         "matches_exported_rounding": true
+      },
+      "alternative_width_negative_control": {
+        "assumed_width": 4,
+        "matched_intervals": 697,
+        "median_absolute_difference_percentage_points": 9.38854659746389,
+        "minimum_absolute_difference_percentage_points": 9.285484913744382
       }
     },
     "e": {
@@ -101,6 +107,12 @@
           "delivery": 9.978644514735932e-08
         },
         "matches_exported_rounding": true
+      },
+      "alternative_width_negative_control": {
+        "assumed_width": 8,
+        "matched_intervals": 1610,
+        "median_absolute_difference_percentage_points": 5.043417076745564,
+        "minimum_absolute_difference_percentage_points": 2.8399311468158346
       }
     }
   },

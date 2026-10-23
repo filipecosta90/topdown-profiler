@@ -761,6 +761,11 @@ and 975 windows with multiple guided intervals. Those aligned windows covered
 84.49% and 75.00% of its guided sampled cycles, respectively; the other
 windows remain outside that comparison. The results and source XML hashes are
 included in [the window validation](apple-m1-tma-window-validation.json).
+On the division control's exact joins, swapping the width denominator changed
+Useful by a median 9.39 percentage points on the intended P capture and 5.04
+points on the intended E capture. This independently checks the width choice
+for another instruction class; the [division artifact](apple-m1-divide-control.json)
+records its match counts and XML hashes.
 
 The nonnegative clamp matters: a plain `M - RETIRE_UOP` term produces a
 strongly negative Discarded value for eliminated NOPs. In the 16-NOP mixed
