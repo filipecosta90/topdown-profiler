@@ -125,6 +125,11 @@ and pass the run ID to `get_apple_hotspots`. `stat` accepts either an existing
 PID or a command; Instruments modes launch a command and require whole seconds.
 `soc` has system/cluster scope and accepts neither PID nor command. MCP capture
 duration is capped at 300 seconds; launched `stat` commands use it as a timeout.
+Native captures run in one worker so profiling sessions remain serialized, while
+read-only Apple tools use a separate worker pool to keep the server responsive.
+Cancelling a queued capture prevents it from starting. Cancelling an active
+capture stops its owned work, retains partial artifacts and skips automatic
+storage; PID observation never signals the observed process.
 
 The MCP server must run on macOS to collect, and resolves executable/file paths
 on that host. Imports, database queries, and reports can run on other supported

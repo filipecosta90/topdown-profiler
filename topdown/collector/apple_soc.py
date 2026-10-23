@@ -286,8 +286,11 @@ def sample_soc(output: Path, duration: float = 1) -> dict:
                       status="completed", exit_code=0)
     except (AppleProfileError, OSError, ValueError, KeyError, TypeError) as exc:
         result["error"] = str(exc)
-        if isinstance(exc, AppleProfileError) and exc.code == "timeout":
-            result.update(status="timeout", exit_code=5)
+        if isinstance(exc, AppleProfileError):
+            if exc.code == "timeout":
+                result.update(status="timeout", exit_code=5)
+            elif exc.code == "interrupted":
+                result.update(status="interrupted", exit_code=130)
     except KeyboardInterrupt:
         result.update(status="interrupted", exit_code=130)
     finally:
