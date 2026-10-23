@@ -655,7 +655,9 @@ much sampled time remains for each metric; they do not make device-wide
 counters process-specific. New captures also report median and range of sampled
 per-pass means for key metrics. Those pass distributions overlap-weight the
 native counter intervals and remain unfiltered device-wide observations; they
-are not a complete census of each pass. When GPU activity intervals are present,
+are not a complete census of each pass. Each sampled pass contributes one mean
+to the reported quantiles, regardless of its duration or number of samples.
+When GPU activity intervals are present,
 the report also gives a separate per-pass summary after excluding entire counter
 intervals that overlap observed other activity. Filtered pass coverage can be
 sparse, so its text report uses the median and p10–p90 rather than extremes.
