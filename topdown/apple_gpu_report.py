@@ -6,6 +6,8 @@ import math
 from pathlib import Path
 import re
 
+from topdown.collector.apple_files import read_regular_bytes
+
 
 def percent(value, allow_above_100=False):
     if not isinstance(value, str) or not re.fullmatch(r"\d+(?:[.,]\d+)?%", value):
@@ -96,7 +98,7 @@ def main():
     parser.add_argument("--json", action="store_true", dest="as_json")
     args = parser.parse_args()
     try:
-        report = summarize(json.loads(args.profile.read_text()))
+        report = summarize(json.loads(read_regular_bytes(args.profile)))
     except (ValueError, OSError) as exc:
         parser.error(str(exc))
     print(json.dumps(report, indent=2, allow_nan=False) if args.as_json else render(report))

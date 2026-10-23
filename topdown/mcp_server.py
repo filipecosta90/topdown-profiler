@@ -199,6 +199,9 @@ def _collect_gpu(trace, mode, passes, items, execution, process_name, labels):
             record(output, mode, passes, items, execution)
         else:
             collect(Path(trace), output, execution)
+        from topdown.collector.apple_runtime import check_cancelled
+
+        check_cancelled()
         backend = _get_backend()
         try:
             run = store_apple_result(backend, output / "profile.json", process_name, labels)
@@ -209,7 +212,7 @@ def _collect_gpu(trace, mode, passes, items, execution, process_name, labels):
         return {"error": str(exc), "artifacts": str(output)}
 
 
-@mcp.tool()
+@_apple_tool(capture=True)
 def collect_apple_gpu_profile(
     mode: str = "compute", passes: int = 4, items: int = 16384, execution: str = "overlapping",
     process_name: str | None = None, labels: dict[str, str] | None = None,
@@ -225,7 +228,7 @@ def collect_apple_gpu_profile(
     return _collect_gpu(None, mode, passes, items, execution, process_name, labels)
 
 
-@mcp.tool()
+@_apple_tool(capture=True)
 def profile_apple_gpu_trace(
     path: str, execution: str = "overlapping", process_name: str | None = None, labels: dict[str, str] | None = None,
 ) -> dict:
@@ -237,7 +240,7 @@ def profile_apple_gpu_trace(
     return _collect_gpu(path, None, None, None, execution, process_name, labels)
 
 
-@mcp.tool()
+@_apple_tool()
 def get_apple_gpu_report(run_id: str, limit: int = 20, offset: int = 0) -> dict:
     """Rank stored Apple GPU encoders by replay cost with native limiter values and sampling coverage.
 
@@ -800,9 +803,9 @@ def _register_tools_and_resources(target: FastMCP):
     target.tool()(worker(collect_apple_profile, capture=True))
     target.tool()(worker(query_apple_result))
     target.tool()(worker(get_apple_hotspots))
-    target.tool()(collect_apple_gpu_profile)
-    target.tool()(profile_apple_gpu_trace)
-    target.tool()(get_apple_gpu_report)
+    target.tool()(worker(collect_apple_gpu_profile, capture=True))
+    target.tool()(worker(profile_apple_gpu_trace, capture=True))
+    target.tool()(worker(get_apple_gpu_report))
     target.tool()(query_bottlenecks)
     target.tool()(query_by_bottleneck)
     target.tool()(get_funnel)

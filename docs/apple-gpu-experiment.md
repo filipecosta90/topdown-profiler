@@ -98,6 +98,13 @@ Imports without timestamps are explicitly labeled with an import-time basis.
 
 The MCP server exposes:
 
+GPU captures share the serialized native capture worker with CPU captures;
+read/query tools use separate workers and remain responsive during replay.
+Cancelling a queued capture prevents it from starting. Cancelling active work
+retains partial logs, skips automatic database storage, and terminates only the
+debugger session created by that capture when its ID is known. A session whose
+startup did not return an ID retains its 180-second idle timeout.
+
 | Tool | Purpose |
 |---|---|
 | `collect_apple_gpu_profile(mode, passes, items, execution, process_name, labels)` | Capture the packaged Metal control and store its replay profile |

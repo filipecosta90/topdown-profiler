@@ -12,7 +12,9 @@ import subprocess
 import sys
 import time
 
-from topdown.collector.apple import TMA_ROOTS
+from topdown.collector.apple import AppleProfileError, TMA_ROOTS
+from topdown.collector import apple_runtime
+from topdown.collector.apple_files import read_regular_bytes
 
 GPU_KIND = "apple-gpu-replay-profile"
 GPU_MODES = {"compute", "alu", "memory", "stream"}
@@ -43,10 +45,12 @@ def record(output: Path, mode="compute", passes=4, items=16384, execution="overl
     def run(name, command, timeout, env=None):
         (output / f"{name}.command.json").write_text(json.dumps(command))
         try:
-            result = subprocess.run(command, text=True, capture_output=True, timeout=timeout, env=env)
-        except subprocess.TimeoutExpired as exc:
-            (output / f"{name}.stdout").write_bytes(exc.stdout or b"")
-            (output / f"{name}.stderr").write_bytes(exc.stderr or b"")
+            result = apple_runtime.run(command, timeout=timeout, env=env)
+        except (subprocess.TimeoutExpired, AppleProfileError) as exc:
+            (output / f"{name}.stdout").write_bytes(getattr(exc, "stdout", None) or b"")
+            (output / f"{name}.stderr").write_bytes(getattr(exc, "stderr", None) or b"")
+            if isinstance(exc, AppleProfileError):
+                raise
             raise ValueError(f"GPU {name} timed out; artifacts: {output}") from exc
         (output / f"{name}.stdout").write_text(result.stdout)
         (output / f"{name}.stderr").write_text(result.stderr)
@@ -58,7 +62,7 @@ def record(output: Path, mode="compute", passes=4, items=16384, execution="overl
     run("capture", [str(binary), str(passes), "--mode", mode, "--items", str(items),
                     "--capture", str(trace), "--result", str(output / "probe.json")], 60,
         {**os.environ, "MTL_CAPTURE_ENABLED": "1"})
-    probe = json.loads((output / "probe.json").read_text())
+    probe = json.loads(read_regular_bytes(output / "probe.json"))
     if (not isinstance(probe, dict) or probe.get("checksum_verified") is not True
             or probe.get("mode") != mode or probe.get("passes") != passes or probe.get("items") != items):
         raise ValueError(f"GPU control failed checksum/configuration verification; artifacts: {output}")
@@ -105,14 +109,18 @@ def collect(trace: Path, output: Path, execution: str = "overlapping") -> dict:
         command = ["xcrun", "gpudebug", *arguments]
         (output / f"{sequence:03d}.command.json").write_text(json.dumps(command))
         try:
-            result = subprocess.run(command, text=True, capture_output=True, timeout=timeout)
-        except subprocess.TimeoutExpired as exc:
-            (output / f"{sequence:03d}.stdout").write_bytes(exc.stdout or b"")
-            (output / f"{sequence:03d}.stderr").write_bytes(exc.stderr or b"")
+            result = apple_runtime.run(command, timeout=timeout)
+        except (subprocess.TimeoutExpired, AppleProfileError) as exc:
+            stdout = getattr(exc, "stdout", None) or b""
+            stderr = getattr(exc, "stderr", None) or b""
+            (output / f"{sequence:03d}.stdout").write_bytes(stdout)
+            (output / f"{sequence:03d}.stderr").write_bytes(stderr)
             if "-t" in arguments:
-                match = re.search(rb"Session (\d+) created\.", exc.stdout or b"")
+                match = re.search(rb"Session (\d+) created\.", stdout)
                 if match:
                     session = match.group(1).decode()
+            if isinstance(exc, AppleProfileError):
+                raise
             raise ValueError(f"gpudebug timed out; partial artifacts: {output}") from exc
         (output / f"{sequence:03d}.stdout").write_text(result.stdout)
         (output / f"{sequence:03d}.stderr").write_text(result.stderr)
@@ -155,7 +163,7 @@ def collect(trace: Path, output: Path, execution: str = "overlapping") -> dict:
                     raise
             if time.monotonic() >= deadline:
                 raise ValueError(f"GPU performance tables did not become ready; artifacts: {output}")
-            time.sleep(0.25)
+            apple_runtime.sleep(0.25)
         children = listing.get("children")
         if (not isinstance(children, list) or not children or listing.get("totalCount") != len(children)
                 or any(not isinstance(row, dict) or not re.fullmatch(r"[a-z]+\d+", str(row.get("name", ""))) for row in children)):
@@ -187,7 +195,8 @@ def collect(trace: Path, output: Path, execution: str = "overlapping") -> dict:
         if session is not None:
             failing = sys.exc_info()[0] is not None
             try:
-                run(["--terminate", session], timeout=15)
+                with apple_runtime.uncancellable():
+                    run(["--terminate", session], timeout=15)
             except (OSError, ValueError):
                 if not failing:
                     raise
@@ -201,7 +210,7 @@ def main():
     args = parser.parse_args()
     try:
         result = collect(args.trace, args.output, args.execution)
-    except (ValueError, OSError) as exc:
+    except (AppleProfileError, ValueError, OSError) as exc:
         parser.error(str(exc))
     print(json.dumps({"profile": str(args.output / "profile.json"), "device": result["device"],
                       "encoder_count": len(result["encoders"]), "timeline": result["timeline"]}, indent=2))
