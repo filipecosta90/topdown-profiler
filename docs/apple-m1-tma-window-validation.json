@@ -462,5 +462,26 @@
       "matches_exported_rounding": true,
       "windows_with_overlapping_guided_intervals": 0
     }
+  },
+  "mixed_core_control": {
+    "counter_xml_sha256": "43e86387390677cccc89fde15e459b47d9a3bbe1fef08bd923bdcca9e0daa176",
+    "metric_xml_sha256": "315d6e9da2dee0272886f095808c8b915bfe1eaafaf9b23e9b88cd42050c99ad",
+    "exact_join_guided_cycle_fraction": 0.816719065482323,
+    "windows_with_guided_intervals": 3545,
+    "windows_with_boundary_straddle": 0,
+    "windows_with_overlapping_guided_intervals": 0,
+    "windows_with_cycle_mismatch": 183,
+    "cycle_aligned_windows": 3362,
+    "cycle_aligned_multi_interval_windows": 819,
+    "windows_matching_exported_rounding": 3362,
+    "guided_cycles_in_cycle_aligned_windows": 8075483015,
+    "guided_cycle_fraction_in_cycle_aligned_windows": 0.9518501503952568,
+    "max_absolute_difference_percentage_points": {
+      "useful": 9.999694405848913e-08,
+      "processing": 9.998741556938029e-08,
+      "discarded": 9.999325726965918e-08,
+      "delivery": 9.998790684306869e-08
+    },
+    "matches_exported_rounding": true
   }
 }

@@ -678,6 +678,11 @@ Its guided cycles split 80.7% P and 19.3% E. Applying the width for each
 matched interval's actual core reproduced all four shares for another 2,721
 intervals to export precision. This supports keeping P/E denominators
 separate within one process; the overall CLI summary remains cycle-weighted.
+The window check covered 95.19% of this mixed process's guided sampled cycles
+in 3,362 cycle-aligned raw windows, including 819 with multiple guided
+intervals; every window matched export rounding with its own core width. Exact
+single-interval joins covered 81.67%. The mixed result and XML hashes are in
+[the window validation](apple-m1-tma-window-validation.json).
 
 A new [dependent integer-division control](../examples/apple-m1-divide.c)
 adds an instruction class absent from the sixteen controls. The optimized
