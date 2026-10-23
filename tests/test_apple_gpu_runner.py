@@ -58,3 +58,11 @@ def test_runner_rejects_invalid_options_before_creating_artifacts(tmp_path, runn
     with pytest.raises(ValueError, match="Choose alu/stream"):
         runner["record"](output, **options)
     assert not output.exists()
+
+
+def test_runner_requires_full_xcode_template_before_creating_artifacts(tmp_path, runner, monkeypatch):
+    monkeypatch.setenv("DEVELOPER_DIR", str(tmp_path / "CommandLineTools/Developer"))
+    output = tmp_path / "capture"
+    with pytest.raises(ValueError, match="Full Xcode Metal System Trace template"):
+        runner["record"](output)
+    assert not output.exists()
