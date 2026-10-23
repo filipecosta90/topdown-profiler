@@ -149,3 +149,9 @@ def test_trace_context_validation_has_the_same_jsonb_contract(postgres_backend, 
     with pytest.raises(AppleProfileError):
         store_apple_result(postgres_backend, path)
     assert len(postgres_backend.list_runs()) == 1
+
+
+def test_jsonb_preserves_capture_host_labels_across_imports(postgres_backend, tmp_path, monkeypatch):
+    from tests.test_apple_environment import check_import_environment
+
+    check_import_environment(postgres_backend, tmp_path, monkeypatch)

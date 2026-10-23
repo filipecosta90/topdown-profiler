@@ -426,7 +426,7 @@ def store_apple_result(backend, path: Path, process_name: str | None = None, lab
     if isinstance(environment, dict):
         for key in ["cpu", "arch", "os_version", "os_build", "kernel_uuid", "xctrace"]:
             if isinstance(environment.get(key), str):
-                all_labels.setdefault(key, environment[key])
+                all_labels[key] = environment[key]
     all_labels.update(collector="apple", measurement_kind=result["measurement_kind"], time_basis=time_basis)
     if result["measurement_kind"] == "apple-gpu-replay-profile":
         all_labels.update(processor="gpu", device=result["device"])

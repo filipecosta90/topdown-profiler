@@ -84,6 +84,18 @@ topdown list --label test_name=apple-fixed
 Each import creates a new run. Apple runs appear in the common run list and
 support the same label filters, with `collector=apple` and `measurement_kind`
 labels. SQLite stores the native document as JSON text; PostgreSQL uses JSONB.
+
+New `stat` and `soc` captures include the native chip model, OS build and kernel
+UUID, so stored M1 and M6 runs can be selected by their recorded `cpu` labels.
+These fields come from the capture host's `sysctlbyname` API without launching
+another process or requiring Instruments. Unavailable metadata is recorded as
+an error alongside the fields that were read successfully; it does not prevent
+counter collection.
+
+Imports retain the recorded host identity, including when imported on Linux or
+a different Mac. Recorded hardware/tool fields take precedence over conflicting
+user labels. User labels can fill fields absent from older artifacts; import
+never fills missing provenance from the current host.
 Unsigned counters, including values above 2^53, remain integers through storage
 and Python/MCP serialization. Clients must also handle large JSON integers
 without converting them to floating point.
