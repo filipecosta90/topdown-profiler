@@ -115,9 +115,11 @@ def record(output: Path, mode: str = "alu", passes: int | None = None, profile: 
            items: int | None = None) -> dict:
     if probe_source not in ("m1", "packaged"):
         raise ValueError("Choose m1 or packaged probe source")
-    passes = passes if passes is not None else 8 if probe_source == "packaged" and mode in ("memory", "stream") else 100
+    if passes is None:
+        passes = 8 if probe_source == "packaged" and mode in ("memory", "stream") else 100
     if probe_source == "packaged":
-        items = items if items is not None else 16777216 if mode in ("memory", "stream") else 65536
+        if items is None:
+            items = 16777216 if mode in ("memory", "stream") else 65536
     valid_mode = mode in (("alu", "stream") if probe_source == "m1" else ("compute", "alu", "memory", "stream"))
     valid_passes = type(passes) is int and 1 <= passes <= 500
     valid_items = (items is None if probe_source == "m1" else

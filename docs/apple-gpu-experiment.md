@@ -446,6 +446,9 @@ python3 examples/apple_gpu/record_instruments.py \
 python3 examples/apple_gpu/record_instruments.py \
   --probe-source packaged --mode memory --passes 8 --items 16777216 \
   --output /tmp/m1-gpu-packaged-memory-001
+python3 examples/apple_gpu/report_instruments.py \
+  /tmp/m1-gpu-packaged-compute-001/profile.json
+# Use --json for a compact machine-readable report.
 ```
 
 The runner verifies the M1 probe checksum and target exit, checks that Xcode
@@ -464,6 +467,11 @@ the checked runner to reject an otherwise completed probe.
 Failed checks leave the artifacts for inspection in the new output directory.
 This experimental M1 summary is separate from the packaged GPU replay profile
 format used by the database and MCP commands above.
+The saved-profile report ranks the sampled limiter and utilization means within
+each counter type, shows bandwidth separately, and prints the sampled fraction,
+sparse-pass count, and overlap with observed other GPU activity. Its clean means
+exclude counter intervals that overlap observed other activity; they do not
+make device-wide counters process-specific.
 On this M1, a four-pass profile-3 ALU smoke check sampled all four passes;
 a fresh four-pass check covered 16.28% of GPU work time with counter samples.
 A 100-pass profile-4 stream capture sampled all 100 and reported 1.77% ALU
