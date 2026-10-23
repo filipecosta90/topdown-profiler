@@ -34,8 +34,19 @@ def report(profile: dict) -> dict:
     clean = profile.get("sampled_counter_means_without_observed_other_activity")
     if (not isinstance(capture, dict) or not isinstance(coverage, dict) or not isinstance(means, dict)
             or not means or not isinstance(clean, dict) or capture.get("checksum_verified") is not True
-            or capture.get("target_exit_status") != 0 or coverage.get("status") != "sampled"):
+            or type(capture.get("target_exit_status")) is not int or capture["target_exit_status"] != 0
+            or coverage.get("status") != "sampled"):
         raise ValueError("M1 GPU profile lacks a completed, sampled, checksum-verified capture")
+    source = capture.get("probe_source")
+    mode = capture.get("mode")
+    items = capture.get("items")
+    if (source not in ("m1", "packaged")
+            or mode not in (("alu", "stream") if source == "m1" else ("compute", "alu", "memory", "stream"))
+            or capture.get("counter_profile") not in ("Performance Limiters", "Performance Utilizations")
+            or (source == "m1" and items is not None)
+            or (source == "packaged" and (type(items) is not int or not 1 <= items <= 16777216
+                or (mode == "stream" and items % 64)))):
+        raise ValueError("Invalid M1 GPU capture configuration")
     process_verified = capture.get("probe_process_verified")
     if process_verified is not None and type(process_verified) is not bool:
         raise ValueError("Invalid M1 GPU probe process verification")
@@ -54,6 +65,8 @@ def report(profile: dict) -> dict:
     if (type(passes) is not int or passes <= 0 or type(observed) is not int
             or type(sampled) is not int or not 0 <= sampled <= observed <= passes):
         raise ValueError("Invalid M1 GPU pass coverage")
+    if passes > 500 or (source == "packaged" and passes * items > 268435456):
+        raise ValueError("Invalid M1 GPU capture configuration")
     sparse = coverage.get("passes_below_10_percent_sampled")
     if type(sparse) is not int or not 0 <= sparse <= observed:
         raise ValueError("Invalid M1 GPU sparse-pass count")

@@ -103,6 +103,10 @@ def test_report_accepts_profiles_without_per_pass_distributions(profile):
 @pytest.mark.parametrize("change,match", [
     ({"counter_scope": "per-encoder"}, "device-wide"),
     ({"capture": {"checksum_verified": False}}, "checksum-verified"),
+    ({"capture": {"target_exit_status": False}}, "checksum-verified"),
+    ({"capture": {"mode": "unknown"}}, "capture configuration"),
+    ({"capture": {"counter_profile": "unknown"}}, "capture configuration"),
+    ({"capture": {"items": 16777217}}, "capture configuration"),
     ({"capture": {"probe_process_verified": "yes"}}, "probe process verification"),
     ({"capture": {"binary_sha256": "wrong"}}, "capture hash"),
     ({"probe_coverage": {"selected_pid": None}}, "lacks a selected PID"),
