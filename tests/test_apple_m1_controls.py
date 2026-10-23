@@ -197,3 +197,26 @@ def test_m1_kpep_plan_uses_distinct_hardware_counters(group, expected_events):
     assert set(mapping) == {"FIXED_CYCLES", "FIXED_INSTRUCTIONS", *expected_events}
     assert set(mapping.values()) == set(range(10))
     assert data["hardware_access_verified"] is False
+
+
+def test_m1_kpep_plan_rejects_invalid_event_swap_before_hardware_access():
+    plan = run_path(str(PLANNER))["plan"]
+    with pytest.raises(ValueError, match="distinct programmable events"):
+        plan("calibration", ("FIXED_CYCLES", "RETIRE_UOP"))
+    with pytest.raises(ValueError, match="distinct programmable events"):
+        plan("calibration", ("RETIRE_UOP", "RETIRE_UOP"))
+
+
+def test_m1_kpep_plan_checks_swapped_calibration_order():
+    if platform.system() != "Darwin" or platform.machine() != "arm64":
+        pytest.skip("KPEP requires Apple silicon")
+    family = subprocess.check_output(["sysctl", "-n", "hw.cpufamily"], text=True).strip()
+    if int(family) != 0x1B588BB3:
+        pytest.skip("This event plan is for M1")
+    result = subprocess.run([sys.executable, str(PLANNER), "--group", "calibration",
+                             "--swap", "RETIRE_UOP", "MAP_DISPATCH_BUBBLE"],
+                            capture_output=True, text=True, timeout=10, check=True)
+    data = json.loads(result.stdout)
+    assert data["requested_events"][2:4] == ["MAP_DISPATCH_BUBBLE", "RETIRE_UOP"]
+    assert data["event_to_counter"]["RETIRE_UOP"] == 7
+    assert set(data["event_to_counter"].values()) == set(range(10))

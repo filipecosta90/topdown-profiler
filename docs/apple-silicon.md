@@ -578,6 +578,27 @@ retains raw positions without assigning unverified event names. Run
 `python3 examples/apple-m1-kpep-plan.py --group calibration` to check that
 the eight programmable events fit distinct hardware counters; that KPEP
 assignment is not the combined trace's raw vector order.
+Use `python3 examples/apple-m1-kpep-plan.py --group calibration --swap RETIRE_UOP MAP_DISPATCH_BUBBLE`
+to check one proposed pairwise event-order change without enabling counters.
+
+An [M1 event-order experiment](apple-m1-event-order-experiment.json) tested the
+TOC metadata directly. Swapping requested `RETIRE_UOP` and
+`MAP_DISPATCH_BUBBLE` exchanged the normalized signatures at vector positions
+2 and 3 in a standalone custom capture (611/300 million to 301/611 million
+per billion fixed cycles). With the guided CPU Counters template added, the
+TOC requested order changed, but the positions corresponding to those
+signatures stayed at 7 and 9 (611/301 million versus 611/300 million).
+The unchanged position equations still matched 2,859 guided intervals to
+export rounding, covering 84.24% of guided sampled cycles. One capture per
+configuration cannot certify every selector, but it directly shows that the
+combined trace's `pmc-events` list does not label the exported vector order.
+A second feasible guided permutation swapped requested `CORE_ACTIVE_CYCLE` and
+`MAP_INT_UOP`; the corresponding normalized vector positions 2 and 5 again
+stayed near 998 million and 2.11 billion per billion fixed cycles, and 2,882
+matched intervals reproduced the guided ratios. Reversing all eight requested
+programmable events failed KPEP planning and Xcode capture with a conflicting
+`RETIRE_UOP` assignment. Event-order experiments therefore need a feasibility
+check before recording; the artifact preserves this failed case too.
 
 Let `A` be active cycles, `W` an assumed peak width of eight P-core or four
 E-core uops per cycle, and `M` the sum of `MAP_INT_UOP`, `MAP_LDST_UOP`, and
