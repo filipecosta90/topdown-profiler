@@ -347,6 +347,19 @@ of its sampled time. These fractions are now explicit summary fields. The
 cleaned ALU values are a small sample and should not be treated as an isolated
 full-run measurement.
 
+A sequential control ran checksummed ALU (500 passes) and stream (100 passes)
+processes in a single trace, with a pause between them. All passes had labeled
+GPU work, but counter samples overlapped 499 ALU passes and all 100 stream
+passes. On sampled intervals without *observed* other GPU activity, ALU Limiter
+was 72.16% for ALU versus 1.28% for stream; Buffer Write Limiter was 0.11%
+versus 99.37%; GPU Read Bandwidth was 0.04 versus 28.09 GB/s. The sampled
+fractions of probe GPU work were 15.86% and 49.11%, respectively, and 3.99%
+and 7.72% of that sampled time overlapped observed other activity. This
+within-trace control preserves the workload contrast without deliberate
+concurrency, but the missing ALU counter overlap means the checked runner
+would reject the capture. The launch script, XML hashes, coverage, and
+summaries are in [the sequential evidence](apple-gpu-m1-sequential.json).
+
 ## Reproduce the Instruments comparison
 
 For a checked M1 capture in one command, set the full Xcode developer directory
