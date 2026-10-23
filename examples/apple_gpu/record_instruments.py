@@ -110,6 +110,13 @@ def _verify_coverage(result: dict, mode: str, passes: int, profile: int, output:
         raise ValueError(f"Unrecognized M1 top-limiter labels; artifacts: {output}")
 
 
+def _verify_probe_process(toc: Path, binary: Path, pid: int | None) -> None:
+    matches = [process for process in ET.parse(toc).getroot().iter("process")
+               if process.get("path") == str(binary)]
+    if len(matches) != 1 or pid is None or matches[0].get("pid") != str(pid):
+        raise ValueError("M1 GPU counter PID does not match the compiled probe process in the trace")
+
+
 def record(output: Path, mode: str = "alu", passes: int | None = None, profile: int = 3,
            tail: float = 1.0, time_limit: int = 8, probe_source: str = "m1",
            items: int | None = None) -> dict:
@@ -165,11 +172,13 @@ def record(output: Path, mode: str = "alu", passes: int | None = None, profile: 
         paths[name] = path
     result = summarize(paths["counters"], paths["gpu-intervals"])
     _verify_coverage(result, mode, passes, profile, output, probe_source)
+    _verify_probe_process(toc, binary, result["probe_coverage"]["selected_pid"])
     result["capture"] = {
         "mode": mode, "passes": passes, "items": items, "probe_source": probe_source,
         "counter_profile": PROFILE_NAMES[profile],
-        "checksum_verified": True, "target_exit_status": 0,
-        "source_sha256": _sha256(source_probe), "template_sha256": _sha256(template),
+        "checksum_verified": True, "target_exit_status": 0, "probe_process_verified": True,
+        "source_sha256": _sha256(source_probe), "binary_sha256": _sha256(binary),
+        "template_sha256": _sha256(template),
         "toc_sha256": _sha256(toc), "counter_xml_sha256": _sha256(paths["counters"]),
         "gpu_xml_sha256": _sha256(paths["gpu-intervals"]),
     }
