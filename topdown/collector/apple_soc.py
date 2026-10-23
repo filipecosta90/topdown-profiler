@@ -244,7 +244,7 @@ def sample_soc(output: Path, duration: float = 1) -> dict:
     """Read cluster/system firmware context in a bounded native worker."""
     if platform.system() != "Darwin" or platform.machine() != "arm64":
         raise AppleProfileError("Native SoC firmware observations require macOS on Apple silicon")
-    if not math.isfinite(duration) or not 0 < duration <= 300:
+    if type(duration) not in (int, float) or not 0 < duration <= 300:
         raise AppleProfileError("Require a finite duration greater than zero and at most 300 seconds")
     output = output.resolve()
     output.mkdir(parents=True, exist_ok=False)
