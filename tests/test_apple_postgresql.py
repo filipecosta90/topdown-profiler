@@ -101,6 +101,12 @@ def test_jsonb_measured_m6_profiles_keep_counters_and_coverage(postgres_backend,
     check_measured_profiles(postgres_backend, tmp_path)
 
 
+def test_jsonb_measured_m6_mixed_encoder_profile(postgres_backend, tmp_path):
+    from tests.test_apple_gpu_integration import check_mixed_profile
+
+    check_mixed_profile(postgres_backend, tmp_path)
+
+
 @pytest.mark.parametrize("failure", ["components", "duplicate-fields", "metadata", "timestamps"])
 def test_inconsistent_apple_imports_fail_before_jsonb_insert(postgres_backend, tmp_path, failure):
     from topdown.collector.apple import AppleProfileError

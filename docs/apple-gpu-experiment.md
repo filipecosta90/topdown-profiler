@@ -62,6 +62,30 @@ coverage also varies: the memory captures report 10/12 and 5/12 sampled cores,
 while the compute, ALU and stream captures report 12/12. The report prints this
 coverage and preserves all exported counters as native strings.
 
+### Mixed compute, blit and render capture
+
+The [mixed probe](../examples/apple_gpu/mixed_probe.swift) increments a buffer,
+copies it with a blit encoder, and draws a red triangle to an offscreen texture.
+It verifies every copied value and the output pixel before reporting success.
+It needs no window or display surface:
+
+```sh
+mkdir /tmp/m6-gpu-mixed-001
+xcrun swiftc -O -framework Metal examples/apple_gpu/mixed_probe.swift \
+  -o /tmp/m6-gpu-mixed-001/probe
+MTL_CAPTURE_ENABLED=1 /tmp/m6-gpu-mixed-001/probe /tmp/m6-gpu-mixed-001
+topdown apple gpu profile /tmp/m6-gpu-mixed-001/capture.gputrace \
+  --output /tmp/m6-gpu-mixed-replay-001 --store --label test_name=m6-mixed
+topdown apple gpu report /tmp/m6-gpu-mixed-replay-001
+```
+
+The [M6 mixed validation](apple-gpu-m6-mixed-validation.json) retains all three
+native encoder types and counters, plus the exact source hash. Collection,
+storage, encoder paging and reports were also exercised through MCP. This tiny
+correctness workload is not a bottleneck calibration. Native cost attribution
+can rank encoders differently from their measured durations; the report retains
+both values and does not derive cost from duration.
+
 ### CLI, database and MCP
 
 Install the project and use full Xcode. Replay profiling requires M3/A17 Pro or

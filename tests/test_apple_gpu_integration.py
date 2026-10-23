@@ -285,3 +285,26 @@ def check_measured_profiles(backend, tmp_path):
 
 def test_sqlite_measured_m6_profiles_keep_counters_and_coverage(sqlite_backend, tmp_path):
     check_measured_profiles(sqlite_backend, tmp_path)
+
+
+def check_mixed_profile(backend, tmp_path):
+    import hashlib
+
+    root = Path(__file__).resolve().parents[1]
+    evidence = json.loads((root / "docs/apple-gpu-m6-mixed-validation.json").read_text())
+    assert hashlib.sha256((root / evidence["source"]).read_bytes()).hexdigest() == evidence["source_sha256"]
+    assert evidence["probe"]["buffer_verified"] and evidence["probe"]["pixel"] == [255, 0, 0, 255]
+    profile = evidence["profile"]
+    path = tmp_path / "mixed-profile.json"
+    path.write_text(json.dumps(profile))
+    run = store_apple_result(backend, path)
+    assert backend.get_apple_result(run.run_id)["result"] == profile
+    assert query_apple_result(backend, run.run_id, "encoders", 1, 1)["rows"] == profile["encoders"][1:2]
+    report = stored_apple_gpu_report(backend, run.run_id)
+    assert report == {**evidence["report"], "run_id": run.run_id}
+    assert {row["native_counters"]["Encoder type"] for row in report["encoders"]} == {"Compute", "Blit", "Render"}
+    assert not backend.get_samples(run.run_id)
+
+
+def test_sqlite_measured_m6_mixed_encoder_profile(sqlite_backend, tmp_path):
+    check_mixed_profile(sqlite_backend, tmp_path)
