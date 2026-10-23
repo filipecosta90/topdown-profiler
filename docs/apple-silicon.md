@@ -253,6 +253,17 @@ results. The same control exposed a false counter-decrease error caused by
 rounding a derived remainder; the raw-time conversion above fixes it without
 discarding the valid interval.
 
+The [M1 paired check](apple-m1-fixed-instruction-validation.json) repeats the
+same control after that fix. Three default-QoS 100-million-iteration runs minus
+zero-loop baselines yielded 299,951,004–300,105,777 instructions against the
+300-million planned loop instructions; three background-QoS pairs yielded
+300,790,586–301,529,498. Every native V6 capture completed with exact
+performance/other instruction, cycle and raw Mach-time partitions, and null
+Intel TMA. Default runs were performance-core dominant; background runs were
+other-core dominant. Separate-run startup variation can make a small
+per-core-kind *difference* negative without any cumulative counter decrease.
+The result checks process accounting within startup variation, not slot-TMA.
+
 ## Xcode's four-category M1 bottlenecks
 
 On the tested M1, Xcode 27.1's standard CPU Counters template records four
