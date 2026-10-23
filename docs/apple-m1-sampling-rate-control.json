@@ -92,5 +92,97 @@
     }
   },
   "capture_500us_issue": "Warning while binding kdebug-counters-with-time-sample table: requested sampling period (500000ns) differs from configured (1000000ns)",
-  "interpretation": "Both exports have a median raw vector gap of about 1 ms. The 500 us package request produced an Xcode binding warning and did not improve E-core exact-join coverage in this pair (45.77% versus 46.35% guided sampled cycles). One capture per setting does not establish a broader sampling-rate or formula guarantee."
+  "interpretation": "Both exports have a median raw vector gap of about 1 ms. The 500 us package request produced an Xcode binding warning and did not improve E-core exact-join coverage in this pair (45.77% versus 46.35% guided sampled cycles). One capture per setting does not establish a broader sampling-rate or formula guarantee.",
+  "guided_high_frequency_control": {
+    "method": "Same E-core ALU control at 500,000,000 iterations, one capture each. CPU Counters useHighFrequencyForGuidedMode was false by default or true in a supplied recording-options JSON; the custom package retained its 1,000 us request.",
+    "default_options_sha256": "5cc9b5417f41e6ff2936a56e581f54c4923974ff4f329e18031c8d19c0276bdb",
+    "high_options_sha256": "cc5cc294d73f7456155e6e610d4e34cdd6c8dbe682b6a01331067797bebb74e3",
+    "high_options_transform": "Set only CPU Counters.useHighFrequencyForGuidedMode to true in xctrace --show-recording-options JSON.",
+    "captures": {
+      "high": {
+        "high_frequency_option": true,
+        "target_pid": 27340,
+        "target_exit_status": 0,
+        "target_stdout": "18000000036",
+        "e_core_guided_cycle_fraction": 0.9987830557856129,
+        "raw_counter_end_time_gap_ns": {
+          "p10": 999709,
+          "median": 1000042,
+          "p90": 12001291
+        },
+        "guided_interval_median_duration_ns": 443792,
+        "toc_sha256": "0bc6115450227f3ca154425b1e2a172eda4da5321c70cb0e999d2fa8cc86a6fe",
+        "counter_xml_sha256": "ead71115ea4b6a42269db82586687351cdd0f7f73794992a0eb390e111d9141d",
+        "metric_xml_sha256": "163563f5861dff0b35b03cb71ead4810efb250041e53bd75a93cdca2f4f4a305",
+        "validation": {
+          "raw_samples_with_active_cycles": 910,
+          "matched_intervals": 551,
+          "unmatched_raw_samples": 359,
+          "guided_intervals": 1873,
+          "unmatched_guided_intervals": 1322,
+          "guided_sampled_cycles": 1505740344,
+          "matched_guided_cycles": 718177695,
+          "matched_guided_cycle_fraction": 0.47695985424164206,
+          "unmatched_guided_intervals_by_reason": {
+            "active_cycle_count_mismatch": 358,
+            "no_raw_counter_sample_at_end_time": 964
+          },
+          "unmatched_guided_cycles_by_reason": {
+            "active_cycle_count_mismatch": 260600170,
+            "no_raw_counter_sample_at_end_time": 526962479
+          },
+          "max_absolute_difference_percentage_points": {
+            "useful": 9.995461125456018e-08,
+            "processing": 9.986521082875005e-08,
+            "discarded": 9.961949737347098e-08,
+            "delivery": 9.998724348481147e-08
+          },
+          "matches_exported_rounding": true
+        }
+      },
+      "default": {
+        "high_frequency_option": false,
+        "target_pid": 27384,
+        "target_exit_status": 0,
+        "target_stdout": "18000000036",
+        "e_core_guided_cycle_fraction": 0.9987785020707002,
+        "raw_counter_end_time_gap_ns": {
+          "p10": 998917,
+          "median": 1000042,
+          "p90": 11000500
+        },
+        "guided_interval_median_duration_ns": 447459,
+        "toc_sha256": "2a7c9acaa7b9b91d868e907523dca959f805e4ad83da4c72171f755321f0fb64",
+        "counter_xml_sha256": "1c8abf15aa6c78f27172a76fbfdc0bebbb66b4c89ed742751403d61c989a5c5c",
+        "metric_xml_sha256": "0ff56563c4367db7bf879e45669909215959424d38861aee38394a9654e78c73",
+        "validation": {
+          "raw_samples_with_active_cycles": 890,
+          "matched_intervals": 541,
+          "unmatched_raw_samples": 349,
+          "guided_intervals": 1776,
+          "unmatched_guided_intervals": 1235,
+          "guided_sampled_cycles": 1506024657,
+          "matched_guided_cycles": 712664058,
+          "matched_guided_cycle_fraction": 0.47320875836098614,
+          "unmatched_guided_intervals_by_reason": {
+            "active_cycle_count_mismatch": 344,
+            "no_raw_counter_sample_at_end_time": 891
+          },
+          "unmatched_guided_cycles_by_reason": {
+            "active_cycle_count_mismatch": 248618301,
+            "no_raw_counter_sample_at_end_time": 544742298
+          },
+          "max_absolute_difference_percentage_points": {
+            "useful": 9.991109051199487e-08,
+            "processing": 9.95631000512881e-08,
+            "discarded": 9.994551191977626e-08,
+            "delivery": 9.995242411520167e-08
+          },
+          "matches_exported_rounding": true
+        }
+      }
+    },
+    "high_frequency_issue": "Warning while binding kdebug-counters-with-time-sample table: requested sampling period (100000ns) differs from configured (1000000ns)",
+    "interpretation": "The high-frequency guided setting requested 100 us and produced a binding warning against the configured 1 ms period. Both exports retained about 1 ms median raw vector spacing. Exact guided-cycle join coverage was similar (47.70% with high frequency, 47.32% with default) in these two short controls; a single pair cannot establish a general rate effect."
+  }
 }

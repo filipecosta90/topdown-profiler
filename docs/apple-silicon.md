@@ -638,6 +638,13 @@ custom package setting did not recover the missing E-core joins in this test.
 The [sampling-rate control](apple-m1-sampling-rate-control.json) includes the
 source and XML hashes, effective gap distribution, Xcode warning and validator
 output.
+Turning on Xcode's `useHighFrequencyForGuidedMode` option in a second short
+E-core ALU pair requested a 100,000 ns period and produced the same binding
+warning against a configured 1,000,000 ns period. Both option settings had
+a 1,000,042 ns median raw-vector gap; exact-join coverage was 47.70% with the
+option and 47.32% without it. This pair also did not recover the missing joins.
+The recording-options JSON hashes, output checksums, XML hashes and validator
+results are in the same control artifact.
 The controls included P/E ALU, branch, pointer chase, SIMD, compact and large
 executed NOP streams, and random branches mixed with 8, 16, or 64 NOPs per
 iteration. Another 17,757 active raw samples had no complete matching guided
@@ -653,6 +660,18 @@ Its guided cycles split 80.7% P and 19.3% E. Applying the width for each
 matched interval's actual core reproduced all four shares for another 2,721
 intervals to export precision. This supports keeping P/E denominators
 separate within one process; the overall CLI summary remains cycle-weighted.
+
+A new [dependent integer-division control](../examples/apple-m1-divide.c)
+adds an instruction class absent from the sixteen controls. The optimized
+binary contains `udiv`, and separate intended P/E captures returned the same
+checksum. Xcode classified 90.54% of sampled P-core cycles and 89.82% of
+sampled E-core cycles as Processing, compared with 16.67% and 0.013% in the
+earlier wide-ALU controls. The candidate equations reproduced every category
+to export rounding on 699 P-core and 1,612 E-core exact joins, covering
+83.79% and 48.08% of guided sampled cycles. [The divide evidence](apple-m1-divide-control.json)
+contains the source/binary and XML hashes, core fractions, native shares and
+join diagnostics. This expands the empirical workload range but leaves the
+event labels and Intel slot classification unproved.
 
 The nonnegative clamp matters: a plain `M - RETIRE_UOP` term produces a
 strongly negative Discarded value for eliminated NOPs. In the 16-NOP mixed
