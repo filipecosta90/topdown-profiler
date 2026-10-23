@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from topdown.collector.apple import AppleProfileError, TMA_ROOTS, _sha256, _write_json
+from topdown.collector.apple_environment import capture_environment
 
 
 class _RusageInfoV4(ctypes.Structure):
@@ -156,7 +157,7 @@ def _report(reader):
         "schema_version": 1, "measurement_kind": "process-accounted-fixed-counters",
         "started_at": datetime.now(timezone.utc).isoformat(),
         "collector_sha256": _sha256(Path(__file__)),
-        "environment": {"system": platform.system(), "arch": platform.machine(), "os_version": platform.mac_ver()[0]},
+        "environment": capture_environment(),
         "source": {"api": "proc_pid_rusage", "flavor": f"RUSAGE_INFO_V{flavor_id}", "flavor_id": flavor_id,
                    "mach_timebase": {"numer": reader.timebase.numer, "denom": reader.timebase.denom}},
         "status": "failed", "exit_code": 1, "counters": None,

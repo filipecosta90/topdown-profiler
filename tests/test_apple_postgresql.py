@@ -86,3 +86,9 @@ def test_additive_schema_keeps_existing_linux_samples(postgres_backend, tmp_path
     native = store_apple_result(backend, path)
     assert backend.get_apple_result(native.run_id)
     assert backend.get_samples(linux.run_id)[0].value == 42
+
+
+def test_jsonb_preserves_capture_host_labels_across_imports(postgres_backend, tmp_path, monkeypatch):
+    from tests.test_apple_environment import check_import_environment
+
+    check_import_environment(postgres_backend, tmp_path, monkeypatch)

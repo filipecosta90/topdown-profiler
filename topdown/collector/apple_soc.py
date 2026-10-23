@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from topdown.collector.apple import AppleProfileError, TMA_ROOTS, _run, _sha256, _write_json
+from topdown.collector.apple_environment import capture_environment
 
 STALL_NAMES = {"Core Block Slot", "M$ Stall", "DRAM Stall"}
 
@@ -251,7 +252,7 @@ def sample_soc(output: Path, duration: float = 1) -> dict:
     result = {
         "schema_version": 1, "measurement_kind": "native-soc-firmware-state-observations",
         "started_at": datetime.now(timezone.utc).isoformat(), "collector_sha256": _sha256(Path(__file__)),
-        "environment": {"system": platform.system(), "arch": platform.machine(), "os_version": platform.mac_ver()[0]},
+        "environment": capture_environment(),
         "scope": "system-and-cluster; all processes, no PID attribution", "duration_seconds": duration,
         "source": "IOReport native state channels; value=IOReportStateGetResidency; units retained per channel",
         "clock": time.get_clock_info("monotonic").implementation,
