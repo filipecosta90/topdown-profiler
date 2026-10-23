@@ -153,3 +153,21 @@ def test_gpu_local_report_supports_regular_symlink(tmp_path):
     result = CliRunner().invoke(app, ["apple", "gpu", "report", str(link), "--json"])
     assert result.exit_code == 0, result.output
     assert json.loads(result.stdout)["device"] == "Apple M6"
+
+
+@pytest.mark.parametrize("field,reason", [
+    (b'"device":"Apple M1"', "Duplicate"),
+    (b'"metadata":1e999', "Non-finite"),
+    (b'"metadata":NaN', "Non-finite"),
+])
+def test_local_gpu_reports_reject_ambiguous_json_consistently(tmp_path, field, reason):
+    from tests.test_apple_gpu_replay import native_profile
+
+    path = tmp_path / "profile.json"
+    original = json.dumps(native_profile()).encode()
+    path.write_bytes(original[:-1] + b"," + field + b"}")
+    result = CliRunner().invoke(app, ["apple", "gpu", "report", str(path)])
+    assert result.exit_code == 1 and reason in result.stderr
+    standalone = subprocess.run([sys.executable, "-m", "topdown.apple_gpu_report", str(path)],
+                                text=True, capture_output=True, timeout=5)
+    assert standalone.returncode == 2 and reason in standalone.stderr

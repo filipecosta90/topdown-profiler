@@ -14,7 +14,7 @@ import time
 
 from topdown.collector.apple import AppleProfileError, TMA_ROOTS
 from topdown.collector import apple_runtime
-from topdown.collector.apple_files import read_regular_bytes
+from topdown.collector.apple_files import decode_json_object, read_regular_bytes
 
 GPU_KIND = "apple-gpu-replay-profile"
 GPU_MODES = {"compute", "alu", "memory", "stream"}
@@ -62,7 +62,7 @@ def record(output: Path, mode="compute", passes=4, items=16384, execution="overl
     run("capture", [str(binary), str(passes), "--mode", mode, "--items", str(items),
                     "--capture", str(trace), "--result", str(output / "probe.json")], 60,
         {**os.environ, "MTL_CAPTURE_ENABLED": "1"})
-    probe = json.loads(read_regular_bytes(output / "probe.json"))
+    probe = decode_json_object(read_regular_bytes(output / "probe.json"))
     if (not isinstance(probe, dict) or probe.get("checksum_verified") is not True
             or probe.get("mode") != mode or probe.get("passes") != passes or probe.get("items") != items):
         raise ValueError(f"GPU control failed checksum/configuration verification; artifacts: {output}")

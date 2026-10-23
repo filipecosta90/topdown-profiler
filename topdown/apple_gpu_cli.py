@@ -74,10 +74,10 @@ def report(
         if (profile is None) == (run_id is None) or (db is not None and run_id is None):
             raise ValueError("Choose a local GPU profile or --run-id; --db requires --run-id")
         if profile is not None:
-            from topdown.collector.apple_files import read_regular_bytes
+            from topdown.collector.apple_files import decode_json_object, read_regular_bytes
 
             path = profile / "profile.json" if profile.is_dir() else profile
-            result = summarize(json.loads(read_regular_bytes(path)), limit, offset)
+            result = summarize(decode_json_object(read_regular_bytes(path)), limit, offset)
         else:
             from topdown.apple_storage import stored_apple_gpu_report
             from topdown.config import get_config
