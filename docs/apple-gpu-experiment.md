@@ -671,6 +671,13 @@ passes for GPU Read Bandwidth: the median is 0.26 GB/s and p10–p90 is
 0.18–0.33 GB/s, versus a 0.27 GB/s pooled clean mean. This narrower upper tail
 is consistent with contamination from observed other activity; it does not
 establish process-exclusive bandwidth.
+A fresh checked capture with this reporting code sampled all 100 packaged
+compute passes, verified the compiled-probe PID, and retained clean samples
+for all 100 passes of the key metrics. Observed other activity overlapped 6.60%
+of sampled probe work. The clean ALU Limiter pass median was 89.30% with
+p10–p90 of 86.47–92.47%; clean GPU Read Bandwidth had a 0.33 GB/s median and
+0.24–0.47 GB/s p10–p90. Capture and XML hashes, means and both pass
+distributions are in [the fresh M1 validation](apple-gpu-m1-clean-pass-validation.json).
 On this M1, a four-pass profile-3 ALU smoke check sampled all four passes;
 a fresh four-pass check covered 16.28% of GPU work time with counter samples.
 A 100-pass profile-4 stream capture sampled all 100 and reported 1.77% ALU
