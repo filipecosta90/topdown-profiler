@@ -117,6 +117,19 @@ Availability depends on the chip, kernel and toolchain. Installed templates do n
 verify counter access. Unknown coverage remains unavailable rather than becoming \
 zero measured work. Apple records keep Intel TMA roots null and create no Linux \
 TMA samples; use their native tools instead of Linux funnels and metric comparisons.
+
+### Apple GPU Replay
+
+Use ``collect_apple_gpu_profile`` for the packaged Metal control or \
+``profile_apple_gpu_trace`` for an existing capture, then ``get_apple_gpu_report`` \
+to rank measured encoders. Query raw ``encoders`` pages with ``query_apple_result``.
+These measurements describe replay of a captured Metal workload, not original \
+application wall time. Native encoder cost is profiler attribution, not duration \
+divided by total GPU time. Limiter percentages overlap, can exceed 100%, and must \
+not be normalized into pipeline-slot shares. Preserve sampled-core coverage, \
+native units, replay settings and recorded host/tool provenance when comparing.
+The separate M1 Instruments sampled-counter experiment has a device-wide scope \
+and different denominators; it is not interchangeable with replay costs.
 """
 
 

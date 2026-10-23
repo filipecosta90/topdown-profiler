@@ -784,7 +784,7 @@ def all_metrics() -> str:
 
 @mcp.resource("topdown://methodology")
 def methodology() -> str:
-    """CPU profiling methodology, including native Apple scopes and measurement limits."""
+    """CPU/GPU profiling methodology, including native Apple scopes and measurement limits."""
     from topdown.knowledge.methodology import get_methodology
     return get_methodology()
 

@@ -319,3 +319,10 @@ def test_packaged_record_preserves_replay_host_identity(tmp_path, fake_capture, 
     monkeypatch.setattr(apple_gpu, "collect", replay)
     result = apple_gpu.record(tmp_path / "capture")
     assert result["environment"] == environment
+
+
+def test_mcp_methodology_separates_native_gpu_replay_and_sampled_counter_scopes():
+    text = mcp_server.methodology()
+    assert "get_apple_gpu_report" in text and "query_apple_result" in text
+    assert "Limiter percentages overlap, can exceed 100%" in text
+    assert "different denominators" in text and "not interchangeable with replay costs" in text
