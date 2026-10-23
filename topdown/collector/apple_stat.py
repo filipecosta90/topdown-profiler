@@ -66,7 +66,7 @@ class _UsageReader:
         libsystem.mach_timebase_info.argtypes = [ctypes.POINTER(_Timebase)]
         libsystem.mach_timebase_info.restype = ctypes.c_int
         self.timebase = _Timebase()
-        if libsystem.mach_timebase_info(ctypes.byref(self.timebase)) or not self.timebase.denom:
+        if libsystem.mach_timebase_info(ctypes.byref(self.timebase)) or not self.timebase.numer or not self.timebase.denom:
             raise AppleProfileError("Cannot determine Mach timebase")
         self.flavor_id = 6
 
@@ -89,6 +89,8 @@ class _UsageReader:
             "cycles": info.ri_cycles,
             "user_time_ns": info.ri_user_time * numer // denom,
             "system_time_ns": info.ri_system_time * numer // denom,
+            "user_time_mach": info.ri_user_time,
+            "system_time_mach": info.ri_system_time,
             "process_start_mach": info.ri_proc_start_abstime,
             "process_exit_mach": info.ri_proc_exit_abstime,
         }
@@ -101,8 +103,13 @@ class _UsageReader:
                           other_cycles=info.ri_cycles - info.ri_pcycles,
                           performance_user_time_ns=info.ri_user_ptime * numer // denom,
                           performance_system_time_ns=info.ri_system_ptime * numer // denom,
-                          other_user_time_ns=result["user_time_ns"] - info.ri_user_ptime * numer // denom,
-                          other_system_time_ns=result["system_time_ns"] - info.ri_system_ptime * numer // denom)
+                          performance_user_time_mach=info.ri_user_ptime,
+                          performance_system_time_mach=info.ri_system_ptime,
+                          other_user_time_mach=info.ri_user_time - info.ri_user_ptime,
+                          other_system_time_mach=info.ri_system_time - info.ri_system_ptime,
+                          # Scaling each native remainder keeps an idle core group monotonic across snapshots.
+                          other_user_time_ns=(info.ri_user_time - info.ri_user_ptime) * numer // denom,
+                          other_system_time_ns=(info.ri_system_time - info.ri_system_ptime) * numer // denom)
         return result
 
 
@@ -172,6 +179,7 @@ def _report(reader):
             "V6 separates performance-core usage from the remainder; per-core slots and measurement bias remain unvalidated.",
             "When V6 is available, 'other' core counts are aggregate totals minus performance-core-only totals.",
             "Fixed cycles/instructions do not provide programmable events, stacks or a TMA decomposition.",
+            "Each native Mach CPU-time counter is floored to nanoseconds independently; split sums can differ by 1 ns.",
         ],
     }
 
@@ -211,11 +219,7 @@ def stat_pid(output: Path, pid: int, duration: float = 5) -> dict:
             raise AppleProfileError("Process identity changed or could not be established; no interval counters reported")
         if set(before) != set(after):
             raise AppleProfileError("Counter flavor changed during observation; no interval counters reported")
-        fields = ("instructions", "cycles", "user_time_ns", "system_time_ns")
-        if "performance_instructions" in before:
-            fields += ("performance_instructions", "performance_cycles", "other_instructions", "other_cycles",
-                       "performance_user_time_ns", "performance_system_time_ns",
-                       "other_user_time_ns", "other_system_time_ns")
+        fields = tuple(key for key in before if key not in ("process_start_mach", "process_exit_mach"))
         if any(after[field] < before[field] for field in fields):
             raise AppleProfileError("Process counters decreased; no interval counters reported")
         result["counters"] = {field: after[field] - before[field] for field in fields}

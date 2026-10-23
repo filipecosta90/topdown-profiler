@@ -312,9 +312,11 @@ def test_ffi_retains_integer_precision_and_converts_mach_time():
     assert result["performance_cycles"] == 7
     assert result["other_cycles"] == 2
     assert result["performance_user_time_ns"] == 83
-    assert result["other_user_time_ns"] == 42
+    assert result["other_user_time_ns"] == 41
     assert result["performance_system_time_ns"] == 166
-    assert result["other_system_time_ns"] == 84
+    assert result["other_system_time_ns"] == 83
+    assert result["user_time_mach"] == 3 and result["performance_user_time_mach"] == 2
+    assert result["other_user_time_mach"] == 1 and result["other_system_time_mach"] == 2
 
 
 def test_ffi_falls_back_to_v4_when_v6_is_unavailable():

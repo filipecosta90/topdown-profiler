@@ -89,21 +89,44 @@ def _validate_guided_coverage(result, rows):
         raise AppleProfileError("Guided cycle coverage must match native cycles; unknown cycle counts require null coverage")
 
 
-def _validate_stat_counters(counters):
+def _validate_stat_counters(counters, timebase=None, interval=False):
     if (not isinstance(counters, dict) or not {"instructions", "cycles"}.issubset(counters)
             or not all(_uint(value) for value in counters.values())):
         raise AppleProfileError("Require observed unsigned process counters")
-    for total in ["instructions", "cycles", "user_time_ns", "system_time_ns"]:
+    for total in ["instructions", "cycles", "user_time_ns", "system_time_ns", "user_time_mach", "system_time_mach"]:
         performance, other = "performance_" + total, "other_" + total
         if performance in counters or other in counters:
-            if (performance not in counters or other not in counters or total not in counters
-                    or counters[performance] + counters[other] != counters[total]):
+            if performance not in counters or other not in counters or total not in counters:
+                raise AppleProfileError("Performance/other core pairs require their complete aggregate total")
+            difference = counters[total] - counters[performance] - counters[other]
+            quantized = (total.endswith("_ns") and total[:-3] + "_mach" in counters
+                         and (-1 if interval else 0) <= difference <= 1)
+            if difference and not quantized:
                 raise AppleProfileError("Performance/other core pairs must sum exactly to their aggregate total")
+    for stem in ("user_time", "system_time"):
+        if not any(prefix + stem + "_mach" in counters for prefix in ("", "performance_", "other_")):
+            continue
+        if (not isinstance(timebase, dict)
+                or any(type(timebase.get(key)) is not int or not 1 <= timebase[key] < 2**32 for key in ("numer", "denom"))):
+            raise AppleProfileError("Native Mach CPU times require a positive uint32 timebase")
+        for prefix in ("", "performance_", "other_"):
+            raw, ns = prefix + stem + "_mach", prefix + stem + "_ns"
+            if raw not in counters and ns not in counters:
+                continue
+            if raw not in counters or ns not in counters:
+                raise AppleProfileError("Require matching native Mach and converted nanosecond CPU times")
+            scaled = counters[raw] * timebase["numer"]
+            floor, remainder = divmod(scaled, timebase["denom"])
+            if not floor <= counters[ns] <= floor + (1 if interval and remainder else 0):
+                raise AppleProfileError("Converted CPU times must match native Mach counters and their rounding")
 
 
 def _validate_stat(result):
     counters, scope = result.get("counters"), result.get("scope")
-    _validate_stat_counters(counters)
+    source = result.get("source")
+    timebase = source.get("mach_timebase") if isinstance(source, dict) else None
+    interval = isinstance(scope, dict) and scope.get("window") == "observed-interval"
+    _validate_stat_counters(counters, timebase, interval)
     if not isinstance(scope, dict):
         raise AppleProfileError("Process counters require an explicit positive PID")
     from topdown.collector.apple_stat import _validate_pid
@@ -119,8 +142,8 @@ def _validate_stat(result):
         if scope.get("window") != "observed-interval":
             raise AppleProfileError("Process snapshots require observed-interval scope")
         before, after = result.get("snapshot_before"), result.get("snapshot_after")
-        _validate_stat_counters(before)
-        _validate_stat_counters(after)
+        _validate_stat_counters(before, timebase)
+        _validate_stat_counters(after, timebase)
         if (set(before) != set(after) or not before.get("process_start_mach")
                 or before["process_start_mach"] != after.get("process_start_mach")
                 or before.get("process_exit_mach") != 0 or "process_exit_mach" not in after):
