@@ -247,3 +247,54 @@ def test_cli_and_mcp_imports_share_the_same_accounting_checks(tmp_path, native_s
     result = mcp_server.import_apple_result(str(path))
     assert "aggregate total" in result["error"]
     assert mcp_server.list_profiling_runs() == "No runs found."
+
+
+@pytest.fixture
+def guided_result(tmp_path):
+    from tests.test_apple_bottlenecks import metric_xml
+    from topdown.apple_storage import PROFILE_SCHEMAS
+    from topdown.collector.apple import parse_apple_bottlenecks
+
+    path = tmp_path / 'guided.xml'
+    path.write_text(metric_xml())
+    result = parse_apple_bottlenecks(path, 42)
+    result.update(measurement_kind=next(k for k,v in PROFILE_SCHEMAS.items() if v=='MetricTable'),
+                  invalid_cycles_with_known_count=0, invalid_intervals_without_cycle_count=0,
+                  valid_cycle_fraction_of_scoped_intervals=1.0)
+    return result
+
+
+@pytest.mark.parametrize('change', [
+    {'apple_bottlenecks_available':False}, {'apple_bottlenecks_available':1},
+    {'invalid_cycles_with_known_count':-1}, {'invalid_cycles_with_known_count':True},
+    {'invalid_intervals_without_cycle_count':1}, {'invalid_intervals_without_cycle_count':False},
+    {'invalid_intervals':1,'invalid_cycles_with_known_count':100},
+    {'valid_cycle_fraction_of_scoped_intervals':.5}, {'valid_cycle_fraction_of_scoped_intervals':True},
+    {'valid_cycle_fraction_of_scoped_intervals':None},
+    {'invalid_intervals':1,'invalid_intervals_without_cycle_count':1,'valid_cycle_fraction_of_scoped_intervals':1},
+])
+def test_guided_coverage_claims_must_follow_native_interval_accounting(sqlite_backend,tmp_path,guided_result,change):
+    guided_result.update(change)
+    with pytest.raises(AppleProfileError,match='coverage|availability'):
+        store_apple_result(sqlite_backend,write(tmp_path,guided_result,'profile.json'))
+    assert sqlite_backend.list_runs()==[]
+
+
+@pytest.mark.parametrize('missing', ['invalid_cycles_with_known_count','invalid_intervals_without_cycle_count',
+                                     'valid_cycle_fraction_of_scoped_intervals'])
+def test_incomplete_guided_coverage_is_rejected(guided_result,missing):
+    del guided_result[missing]
+    with pytest.raises(AppleProfileError,match='coverage'):
+        validate_result(guided_result)
+
+
+def test_guided_known_unknown_and_legacy_coverage_remain_distinct(guided_result):
+    guided_result.update(invalid_intervals=2,invalid_cycles_with_known_count=100,
+                         valid_cycle_fraction_of_scoped_intervals=.8)
+    validate_result(guided_result)
+    guided_result.update(invalid_intervals_without_cycle_count=1,valid_cycle_fraction_of_scoped_intervals=None)
+    validate_result(guided_result)
+    for key in ['invalid_cycles_with_known_count','invalid_intervals_without_cycle_count',
+                'valid_cycle_fraction_of_scoped_intervals']:
+        del guided_result[key]
+    validate_result(guided_result)

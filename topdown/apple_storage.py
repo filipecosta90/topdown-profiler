@@ -64,6 +64,31 @@ def _validate_guided_summary(summary, rows):
             raise AppleProfileError("Guided bottleneck shares must match their cycle-weighted samples")
 
 
+def _validate_guided_coverage(result, rows):
+    if "apple_bottlenecks_available" in result and result["apple_bottlenecks_available"] is not True:
+        raise AppleProfileError("Guided bottleneck availability must agree with its valid native samples")
+    fields = {"invalid_cycles_with_known_count", "invalid_intervals_without_cycle_count",
+              "valid_cycle_fraction_of_scoped_intervals"}
+    if not fields.intersection(result):
+        return
+    if not fields.issubset(result):
+        raise AppleProfileError("Guided cycle coverage requires complete native invalid-interval accounting")
+    invalid_cycles, unknown = result["invalid_cycles_with_known_count"], result["invalid_intervals_without_cycle_count"]
+    invalid = result.get("invalid_intervals", 0)
+    if (not _nonnegative(invalid_cycles) or not _nonnegative(unknown) or unknown > invalid
+            or (invalid_cycles and invalid <= unknown)):
+        raise AppleProfileError("Guided cycle coverage disagrees with its invalid native intervals")
+    fraction = result["valid_cycle_fraction_of_scoped_intervals"]
+    if unknown:
+        valid = fraction is None
+    else:
+        cycles = sum(row["cycles"] for row in rows)
+        valid = (type(fraction) in (int, float) and 0 <= fraction <= 1
+                 and math.isclose(fraction, cycles / (cycles + invalid_cycles), rel_tol=1e-12, abs_tol=1e-12))
+    if not valid:
+        raise AppleProfileError("Guided cycle coverage must match native cycles; unknown cycle counts require null coverage")
+
+
 def _validate_stat_counters(counters):
     if (not isinstance(counters, dict) or not {"instructions", "cycles"}.issubset(counters)
             or not all(_uint(value) for value in counters.values())):
@@ -276,6 +301,7 @@ def _validate_profile(result, rows):
                 raise AppleProfileError("Require native trace gap identities and descriptions")
         _validate_trace_context(result)
     if schema == "MetricTable":
+        _validate_guided_coverage(result, rows)
         _validate_guided_summary(result.get("apple_bottlenecks"), rows)
         by_core = result.get("apple_bottlenecks_by_core")
         if (not isinstance(by_core, list) or not all(isinstance(entry, dict) and _nonnegative(entry.get("core")) for entry in by_core)
