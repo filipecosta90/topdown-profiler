@@ -96,7 +96,10 @@ The source SHA-256 and import timestamp are retained. Imports verify that
 performance/other-core counts add up to aggregate counts and that PID interval
 counts agree with their before/after snapshots. SoC channel/state identities,
 units, totals and any reported shares must agree; zero observations retain null
-shares. Duplicate JSON fields, non-finite numbers and invalid supplied timestamps
+shares. Trace gap counts must match the markers for each thread and interval.
+Scheduling coverage, Running spans and core assignments must agree with each
+other; missing core attribution never becomes an assumed core. Duplicate JSON
+fields, non-finite numbers and invalid supplied timestamps
 are rejected before insertion, including in capture metadata. UTC timestamps
 ending in `Z` are supported across Python 3.10–3.13. A failed automatic capture
 is not stored; database errors leave capture artifacts available for retry with

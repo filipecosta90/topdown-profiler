@@ -3,6 +3,7 @@
 import json
 import os
 import uuid
+from pathlib import Path
 
 import pytest
 
@@ -110,3 +111,23 @@ def test_inconsistent_apple_imports_fail_before_jsonb_insert(postgres_backend, t
     valid, original = native_file(tmp_path)
     run = store_apple_result(postgres_backend, valid)
     assert postgres_backend.get_apple_result(run.run_id)["result"] == original
+
+
+def test_trace_context_validation_has_the_same_jsonb_contract(postgres_backend, tmp_path):
+    from topdown.collector.apple import AppleProfileError
+    from topdown.collector.apple_schedule import annotate_scheduling
+    from topdown.collector.apple_trace import parse_trace_profile
+
+    data = Path(__file__).parent / "test_data"
+    result = parse_trace_profile(data / "apple_processor_intervals_m6.xml", data / "apple_processor_gaps_m6.xml", 42)
+    result["measurement_kind"] = "hardware-traced-execution-intervals"
+    annotate_scheduling(result, data / "apple_thread_states_m6.xml")
+    path = tmp_path / "profile.json"
+    path.write_text(json.dumps(result))
+    run = store_apple_result(postgres_backend, path)
+    assert postgres_backend.get_apple_result(run.run_id)["result"] == result
+    result["intervals"][2]["scheduling"]["single_running_core"]["core"] = 99
+    path.write_text(json.dumps(result))
+    with pytest.raises(AppleProfileError):
+        store_apple_result(postgres_backend, path)
+    assert len(postgres_backend.list_runs()) == 1

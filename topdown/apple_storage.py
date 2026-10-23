@@ -3,6 +3,8 @@
 import hashlib
 import json
 import math
+from bisect import bisect_left
+from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -155,6 +157,67 @@ def _validate_soc(result):
         raise AppleProfileError("SoC observation availability must match its native channels")
 
 
+def _validate_scheduling(interval):
+    scheduling = interval.get("scheduling")
+    if not isinstance(scheduling, dict):
+        raise AppleProfileError("Require native scheduling annotations for every decoded interval")
+    duration = interval["duration_ns"]
+    covered, uncovered, states = scheduling.get("covered_ns"), scheduling.get("uncovered_ns"), scheduling.get("states_ns")
+    if (not _uint(covered) or not _uint(uncovered) or covered + uncovered != duration
+            or not isinstance(states, dict) or not all(isinstance(k, str) and k and _uint(v) for k, v in states.items())
+            or sum(states.values()) != covered):
+        raise AppleProfileError("Scheduling states and coverage must agree with their decoded interval duration")
+    complete = duration > 0 and covered == duration
+    if scheduling.get("coverage_complete") is not complete:
+        raise AppleProfileError("Scheduling completeness must agree with its observed time coverage")
+    cores = scheduling.get("running_cores")
+    if (not isinstance(cores, list) or not all(isinstance(core, dict) and _uint(core.get("core"))
+            and (core.get("core_label") is None or isinstance(core["core_label"], str))
+            and _uint(core.get("duration_ns")) and core["duration_ns"] > 0 for core in cores)):
+        raise AppleProfileError("Require native running-core identities and positive observed durations")
+    identities = {(core["core"], core.get("core_label")) for core in cores}
+    if len(identities) != len(cores) or sum(core["duration_ns"] for core in cores) > states.get("Running", 0):
+        raise AppleProfileError("Running-core durations must not duplicate or exceed observed Running time")
+    expected = None
+    if complete and len(cores) == 1 and cores[0]["duration_ns"] == duration:
+        expected = {"core": cores[0]["core"], "core_label": cores[0].get("core_label")}
+    single = scheduling.get("single_running_core")
+    if single is not None and (not isinstance(single, dict) or not _uint(single.get("core"))):
+        raise AppleProfileError("Require a native single-running-core identity")
+    if single != expected:
+        raise AppleProfileError("A single running core requires complete observed Running coverage on that core")
+    return expected is not None
+
+
+def _validate_trace_context(result):
+    gaps_by_thread = defaultdict(list)
+    for gap in result["gaps"]:
+        gaps_by_thread[gap["tid"]].append(gap["time_ns"])
+    for times in gaps_by_thread.values():
+        times.sort()
+    if ("target_gap_count_in_run" in result and (not _nonnegative(result["target_gap_count_in_run"])
+            or result["target_gap_count_in_run"] < len(result["gaps"]))):
+        raise AppleProfileError("Total native trace gap count cannot be less than the gaps in scope")
+    annotated = any("scheduling" in interval for interval in result["intervals"])
+    available = result.get("scheduling_available", annotated)
+    if type(available) is not bool or (annotated and not available):
+        raise AppleProfileError("Scheduling availability disagrees with its native interval annotations")
+    singles = 0
+    for interval in result["intervals"]:
+        start, end = interval["start_ns"], interval["start_ns"] + interval["duration_ns"]
+        times = gaps_by_thread[interval["tid"]]
+        if interval["gap_markers_inside"] != bisect_left(times, end) - bisect_left(times, start):
+            raise AppleProfileError("Trace interval gap counts must match native markers for that thread and time span")
+        if available:
+            singles += _validate_scheduling(interval)
+    if "single_running_core_intervals" in result and (type(result["single_running_core_intervals"]) is not int
+            or result["single_running_core_intervals"] != singles):
+        raise AppleProfileError("Single-running-core summary must match its decoded interval annotations")
+    for key in ["thread_state_rows", "thread_state_other_pid_rows"]:
+        if key in result and not _nonnegative(result[key]):
+            raise AppleProfileError("Native thread-state row counts must be nonnegative integers")
+
+
 def _validate_profile(result, rows):
     scope = result.get("scope")
     if (not isinstance(scope, dict) or not _nonnegative(scope.get("pid")) or not scope["pid"]
@@ -210,6 +273,7 @@ def _validate_profile(result, rows):
             if (not gap["tid"] or not all(_uint(gap.get(key)) for key in ["pid", "tid", "time_ns"])
                     or (gap.get("description") is not None and not isinstance(gap["description"], str))):
                 raise AppleProfileError("Require native trace gap identities and descriptions")
+        _validate_trace_context(result)
     if schema == "MetricTable":
         _validate_guided_summary(result.get("apple_bottlenecks"), rows)
         by_core = result.get("apple_bottlenecks_by_core")
