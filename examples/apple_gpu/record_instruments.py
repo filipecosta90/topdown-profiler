@@ -57,6 +57,8 @@ def _verify(toc: Path, stdout: Path, profile: int, mode: str, passes: int) -> No
     profiles = run.findall("./data/table[@schema='metal-gpu-counter-profile']")
     if len(profiles) != 1 or profiles[0].get("counter-profile") != str(profile):
         raise ValueError("Instruments did not select the requested GPU counter profile")
+    if f"Counter Set: {PROFILE_NAMES[profile]}" not in {node.text for node in run.iter("value")}:
+        raise ValueError("Instruments did not identify the requested GPU counter set")
     for schema in ("metal-gpu-counter-intervals", "metal-gpu-intervals"):
         if len(run.findall(f"./data/table[@schema='{schema}']")) != 1:
             raise ValueError(f"Instruments did not export exactly one {schema} table")

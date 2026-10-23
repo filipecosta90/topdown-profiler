@@ -19,7 +19,8 @@ def test_runner_requires_completed_m1_probe_and_requested_counter_profile(tmp_pa
     toc = tmp_path / "toc.xml"
     stdout = tmp_path / "target.stdout"
     xml = ('<trace-toc><run number="1"><info><target><process return-exit-status="0"/>'
-           '</target></info><data><table schema="metal-gpu-counter-profile" counter-profile="3"/>'
+           '</target><value>Counter Set: Performance Limiters</value></info>'
+           '<data><table schema="metal-gpu-counter-profile" counter-profile="3"/>'
            '<table schema="metal-gpu-counter-intervals"/><table schema="metal-gpu-intervals"/>'
            '</data></run></trace-toc>')
     toc.write_text(xml)
@@ -28,6 +29,9 @@ def test_runner_requires_completed_m1_probe_and_requested_counter_profile(tmp_pa
     runner["_verify"](toc, stdout, 3, "alu", 4)
     toc.write_text(xml.replace('counter-profile="3"', 'counter-profile="4"'))
     with pytest.raises(ValueError, match="requested GPU counter profile"):
+        runner["_verify"](toc, stdout, 3, "alu", 4)
+    toc.write_text(xml.replace("Counter Set: Performance Limiters", "Counter Set: Performance Utilizations"))
+    with pytest.raises(ValueError, match="requested GPU counter set"):
         runner["_verify"](toc, stdout, 3, "alu", 4)
     toc.write_text(xml.replace('return-exit-status="0"', 'return-exit-status="1"'))
     with pytest.raises(ValueError, match="did not exit successfully"):
