@@ -104,8 +104,11 @@ def _validate_stat_counters(counters):
 def _validate_stat(result):
     counters, scope = result.get("counters"), result.get("scope")
     _validate_stat_counters(counters)
-    if not isinstance(scope, dict) or not _uint(scope.get("pid")) or not scope["pid"]:
+    if not isinstance(scope, dict):
         raise AppleProfileError("Process counters require an explicit positive PID")
+    from topdown.collector.apple_stat import _validate_pid
+
+    _validate_pid(scope.get("pid"))
     for key, allowed in [("descendants", (False,)), ("threads", ("all",)),
                          ("execution_levels", ("user-and-kernel",)),
                          ("window", ("process-lifetime", "observed-interval"))]:
