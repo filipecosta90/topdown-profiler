@@ -71,8 +71,35 @@ def test_runner_requires_full_xcode_template_before_creating_artifacts(tmp_path,
 def test_runner_rejects_partial_counter_coverage(tmp_path, runner):
     result = {"probe_coverage": {"workloads_observed": ["burn"], "passes_observed": 4,
                                  "passes_with_counter_samples": 3},
-              "sampled_counter_means": {"ALU Limiter": {"value": 70}}}
+              "sampled_counter_means": {name: {"unit": unit} for name, unit
+                                        in runner["REQUIRED_COUNTERS"][3].items()},
+              "top_limiter_categories": [{"name": "ALU Limiter"}],
+              "top_limiter_unparsed_sampled_time_ns": 0}
     with pytest.raises(ValueError, match="Incomplete M1 probe counter coverage"):
-        runner["_verify_coverage"](result, "alu", 4, tmp_path)
+        runner["_verify_coverage"](result, "alu", 4, 3, tmp_path)
     result["probe_coverage"]["passes_with_counter_samples"] = 4
-    runner["_verify_coverage"](result, "alu", 4, tmp_path)
+    runner["_verify_coverage"](result, "alu", 4, 3, tmp_path)
+
+
+def test_runner_requires_expected_metrics_units_and_top_limiter_labels(tmp_path, runner):
+    result = {"probe_coverage": {"workloads_observed": ["burn"], "passes_observed": 4,
+                                 "passes_with_counter_samples": 4},
+              "sampled_counter_means": {name: {"unit": unit} for name, unit
+                                        in runner["REQUIRED_COUNTERS"][3].items()},
+              "top_limiter_categories": [{"name": "ALU Limiter"}],
+              "top_limiter_unparsed_sampled_time_ns": 0}
+    result["sampled_counter_means"]["GPU Read Bandwidth"]["unit"] = "native"
+    with pytest.raises(ValueError, match="unexpected units"):
+        runner["_verify_coverage"](result, "alu", 4, 3, tmp_path)
+    result["sampled_counter_means"]["GPU Read Bandwidth"]["unit"] = "GB/s"
+    result["top_limiter_unparsed_sampled_time_ns"] = 10
+    with pytest.raises(ValueError, match="Unrecognized M1 top-limiter"):
+        runner["_verify_coverage"](result, "alu", 4, 3, tmp_path)
+
+
+def test_runner_accepts_utilization_profile_metrics(tmp_path, runner):
+    result = {"probe_coverage": {"workloads_observed": ["stream"], "passes_observed": 4,
+                                 "passes_with_counter_samples": 4},
+              "sampled_counter_means": {name: {"unit": unit} for name, unit
+                                        in runner["REQUIRED_COUNTERS"][4].items()}}
+    runner["_verify_coverage"](result, "stream", 4, 4, tmp_path)
