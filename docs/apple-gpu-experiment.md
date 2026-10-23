@@ -657,17 +657,17 @@ per-pass means for key metrics. Those pass distributions overlap-weight the
 native counter intervals and remain unfiltered device-wide observations; they
 are not a complete census of each pass. Each sampled pass contributes one mean
 to the reported quantiles, regardless of its duration or number of samples.
-When GPU activity intervals are present,
-the report also gives a separate per-pass summary after excluding entire counter
-intervals that overlap observed other activity. Filtered pass coverage can be
+When GPU activity intervals are present, the report also gives a separate
+per-pass summary after excluding entire counter intervals that overlap
+observed other activity. Filtered pass coverage can be
 sparse, so its text report uses the median and p10–p90 rather than extremes.
 A fresh 100-pass packaged compute capture on this M1 completed the checked
 runner with per-pass ALU Limiter values from 73.47% to 92.93% and F32
 Utilization from 11.73% to 15.23%. GPU Read Bandwidth has a 0.26 GB/s sampled
 pass median, a 0.12–4.48 GB/s range and a 0.38 GB/s pooled mean; the high
 pass cannot be assigned to the probe from device-wide counters. Its source,
-binary, trace-table and XML
-hashes are in [the packaged-probe evidence](apple-gpu-m1-packaged-probe.json).
+binary, trace-table and XML hashes are in [the packaged-probe
+evidence](apple-gpu-m1-packaged-probe.json).
 Recomputing that hashed export with the conservative activity filter leaves 98
 passes for GPU Read Bandwidth: the median is 0.26 GB/s and p10–p90 is
 0.18–0.33 GB/s, versus a 0.27 GB/s pooled clean mean. This narrower upper tail
