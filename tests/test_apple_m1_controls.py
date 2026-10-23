@@ -134,6 +134,10 @@ def test_calibration_uses_map_bubble_delivery_floor(tmp_path):
     counters.write_text(counter_text.replace("</node>", duplicate + "</node>"))
     with pytest.raises(ValueError, match="duplicate end-time"):
         validate(counters, metrics, 42)
+    counters.write_text(counter_text.replace("</node>",
+                                            duplicate.replace("4000 1000 100", "4000 900 100") + "</node>"))
+    with pytest.raises(ValueError, match="duplicate end-time"):
+        validate(counters, metrics, 42)
     counters.write_text(counter_text)
     metric_text = metrics.read_text()
     extra_rows = metric_text.split("</schema>", 1)[1].split("</node>", 1)[0]
@@ -164,6 +168,45 @@ def test_calibration_uses_map_bubble_delivery_floor(tmp_path):
     counters.write_text(counters.read_text().replace("4000 0 105 0 0", "4000 0 105"))
     with pytest.raises(ValueError, match="vector layout"):
         validate(counters, metrics, 42)
+    metric_rows = metric_text.split("</schema>", 1)[1].split("</node>", 1)[0]
+    first_half = metric_rows.replace("<duration>1000</duration>", "<duration>500</duration>")
+    first_half = first_half.replace("<fixed-decimal>1000</fixed-decimal>",
+                                    "<fixed-decimal>500</fixed-decimal>")
+    second_half = first_half.replace("<start-time>100</start-time>", "<start-time>600</start-time>")
+    metrics.write_text(metric_text.replace(metric_rows, first_half + second_half))
+    prior = duplicate.replace("<sample-time>1100</sample-time>", "<sample-time>100</sample-time>")
+    counters.write_text(counter_text.replace("</node>", prior + "</node>"))
+    split_only = validate(counters, metrics, 42)
+    assert split_only["matched_intervals"] == 0
+    assert split_only["matches_exported_rounding"] is False
+    assert split_only["aggregated_raw_windows"]["cycle_aligned_multi_interval_windows"] == 1
+    assert split_only["aggregated_raw_windows"]["matches_exported_rounding"] is True
+
+
+def test_calibration_checks_multiple_guided_intervals_per_raw_window():
+    validator = Path(__file__).resolve().parents[1] / "examples/apple-m1-validate-tma.py"
+    aggregate = run_path(str(validator))["_aggregate_windows"]
+    values = [1000, 4000, 1000, 100, 200, 4800, 0, 4000, 0, 105, 0, 0]
+    shares = {"useful": 0.5, "processing": 0.2, "discarded": 0.2, "delivery": 0.105}
+    guided = [
+        {"time_ns": 100, "duration_ns": 500, "tid": 2, "core": 7, "cycles": 500, "shares": shares},
+        {"time_ns": 600, "duration_ns": 500, "tid": 2, "core": 7, "cycles": 500, "shares": shares},
+    ]
+    raw = {(2, 7): [(100, values), (1100, values)]}
+    result = aggregate(raw, guided, 1000)
+    assert result["cycle_aligned_windows"] == 1
+    assert result["cycle_aligned_multi_interval_windows"] == 1
+    assert result["windows_matching_exported_rounding"] == 1
+    assert result["guided_cycle_fraction_in_cycle_aligned_windows"] == 1
+    assert result["matches_exported_rounding"] is True
+    guided[1]["cycles"] = 400
+    assert aggregate(raw, guided, 900)["windows_with_cycle_mismatch"] == 1
+    guided[1]["cycles"] = 500
+    guided[0]["time_ns"] = 50
+    assert aggregate(raw, guided, 1000)["windows_with_boundary_straddle"] == 1
+    guided[0]["time_ns"] = 100
+    guided[1]["time_ns"] = 550
+    assert aggregate(raw, guided, 1000)["windows_with_overlapping_guided_intervals"] == 1
 
 
 def test_icache_control_matches_hot_and_large_instruction_streams(tmp_path):

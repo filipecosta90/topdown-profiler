@@ -78,6 +78,9 @@ def _verify_coverage(result: dict, mode: str, passes: int, profile: int, output:
     means = result["sampled_counter_means"]
     if any(means.get(name, {}).get("unit") != unit for name, unit in REQUIRED_COUNTERS[profile].items()):
         raise ValueError(f"Missing M1 GPU metrics or unexpected units for counter profile {profile}; artifacts: {output}")
+    metric_coverage = coverage.get("passes_with_counter_samples_by_metric", {})
+    if any(metric_coverage.get(name) != passes for name in REQUIRED_COUNTERS[profile]):
+        raise ValueError(f"Incomplete M1 probe metric coverage; artifacts: {output}")
     if profile == 3 and (not result["top_limiter_categories"]
                          or result["top_limiter_unparsed_sampled_time_ns"]):
         raise ValueError(f"Unrecognized M1 top-limiter labels; artifacts: {output}")

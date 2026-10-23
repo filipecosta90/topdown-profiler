@@ -624,8 +624,8 @@ four Apple categories on this host:
 | Discarded | `max(0, M - RETIRE_UOP + W × MAP_REWIND) / (W × A)` |
 | Delivery | `max(MAP_DISPATCH_BUBBLE / A, 1 - Useful - Processing - Discarded)` |
 
-Each `MetricTable` interval ends at the corresponding raw PMU sample time.
-Matching by end time, thread, core, and active-cycle count joined 40,234
+Some `MetricTable` intervals end at a raw PMU sample time. Matching by end
+time, thread, core, and active-cycle count joined 40,234
 intervals across sixteen same-trace controls. All four equations reproduced
 every matched Xcode ratio to its nine-decimal fractional export precision;
 the largest absolute difference was below 0.0000001 percentage points.
@@ -638,7 +638,25 @@ disagreement at the same time. The [join-coverage diagnostics](apple-m1-tma-matc
 retain per-control counts, sampled cycles, and verified source XML hashes.
 These categories describe what the two Instruments exports can join; they do
 not establish why samples differ or how many hardware events were lost. The
-equations are validated only on the matched intervals, especially on E cores.
+exact-join result validates individual-interval equations only where both
+exports match, especially on E cores.
+Consecutive raw vectors give a second, wider check. For each thread and core,
+the validator groups guided intervals whose end times fall between two raw
+sample times, requires their starts to stay inside that window, and compares
+their summed cycles with the raw active-cycle count. Across the same sixteen
+controls, 53,059 windows met that cycle check, including 17,165 with multiple
+guided intervals. They covered 95.3–97.8% of guided sampled cycles in the nine
+P-core controls and 86.1–92.3% in the seven E-core controls. Applying the
+candidate equations to each raw vector reproduced the cycle-weighted guided
+categories to export rounding in 53,057 of those windows. The two exceptions
+were E-core windows whose individual guided intervals had positive Discarded
+shares but whose summed raw events fell below the nonnegative clamp; their
+weighted guided Discarded shares were 0.71% and 3.97%. Another 4,844 windows
+had guided-cycle totals different from raw active cycles and are excluded.
+This explains much of the low exact-join coverage as split guided intervals,
+while retaining the evidence that aggregate raw events cannot always recover
+the per-interval classification. Counts, errors, exceptions, and XML hashes are
+in [the window validation](apple-m1-tma-window-validation.json).
 A paired E-core ALU control then requested 500 µs instead of 1,000 µs in the
 custom instrument package. Xcode warned that the requested 500,000 ns differed
 from its configured 1,000,000 ns sampling period. Both captures still had a
@@ -684,6 +702,12 @@ to export rounding on 699 P-core and 1,612 E-core exact joins, covering
 contains the source/binary and XML hashes, core fractions, native shares and
 join diagnostics. This expands the empirical workload range but leaves the
 event labels and Intel slot classification unproved.
+The window check also reproduced the division control's cycle-weighted guided
+ratios in all 641 P-core and 2,046 E-core cycle-aligned windows, including 56
+and 975 windows with multiple guided intervals. Those aligned windows covered
+84.49% and 75.00% of its guided sampled cycles, respectively; the other
+windows remain outside that comparison. The results and source XML hashes are
+included in [the window validation](apple-m1-tma-window-validation.json).
 
 The nonnegative clamp matters: a plain `M - RETIRE_UOP` term produces a
 strongly negative Discarded value for eliminated NOPs. In the 16-NOP mixed
