@@ -11,6 +11,8 @@ import subprocess
 import threading
 import time
 
+import anyio
+
 from topdown.collector.apple import AppleProfileError
 
 _STOP: ContextVar[threading.Event | None] = ContextVar("apple_request_cancellation", default=None)
@@ -58,10 +60,16 @@ def worker(function, *, capture=False):
             except asyncio.CancelledError:
                 stop.set()
                 submitted.cancel()
-                try:
-                    await asyncio.shield(future)
-                except (Exception, asyncio.CancelledError):
-                    pass
+                with anyio.CancelScope(shield=True):
+                    while True:
+                        try:
+                            await asyncio.shield(future)
+                            break
+                        except asyncio.CancelledError:
+                            if future.cancelled():
+                                break
+                        except Exception:
+                            break
                 raise
         finally:
             _STOP.reset(token)
