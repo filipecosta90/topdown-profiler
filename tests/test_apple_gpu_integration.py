@@ -326,6 +326,8 @@ def test_mcp_methodology_separates_native_gpu_replay_and_sampled_counter_scopes(
     assert "get_apple_gpu_report" in text and "query_apple_result" in text
     assert "Limiter percentages overlap, can exceed 100%" in text
     assert "different denominators" in text and "not interchangeable with replay costs" in text
+    assert "Timeline hardware counters can include other GPU activity" in text
+    assert "independently floored" in text and "raw Mach counters" in text
 
 
 def test_gpu_report_retains_recorded_environment_for_comparison():

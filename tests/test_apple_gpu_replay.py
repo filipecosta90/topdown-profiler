@@ -326,3 +326,46 @@ def test_gpu_collect_retains_capture_host_identity(tmp_path, fake_gpudebug, monk
 def test_native_gpu_json_stream_rejects_ambiguous_or_unreadable_results(source):
     with pytest.raises(ValueError):
         REPLAY.json_documents(source)
+
+
+@pytest.mark.parametrize("prefix", ['Trace label: "Session 999 created."\n', '{"name":"Session 999 created."}\n'])
+def test_session_ownership_comes_from_complete_creation_messages(tmp_path, fake_gpudebug, monkeypatch, prefix):
+    native_run = REPLAY.subprocess.run
+    def run(command, **kwargs):
+        response = native_run(command, **kwargs)
+        if "-t" in command:
+            response.stdout = prefix + response.stdout
+        return response
+    monkeypatch.setattr(REPLAY.subprocess, "run", run)
+    trace = tmp_path / "owned.gputrace"
+    trace.mkdir()
+    REPLAY.collect(trace, tmp_path / "profile")
+    assert fake_gpudebug["commands"][-1][-2:] == ["--terminate", "42"]
+    assert all(command[command.index("-s") + 1] == "42" for command in fake_gpudebug["commands"] if "-s" in command)
+
+
+@pytest.mark.parametrize("output", ["Session 42 created.\nSession 99 created.\n", 'Trace "Session 99 created."\n'])
+@pytest.mark.parametrize("timeout", [False, True])
+def test_ambiguous_or_missing_session_messages_never_signal_a_guessed_session(tmp_path, monkeypatch, output, timeout):
+    calls = []
+    def run(command, **kwargs):
+        calls.append(command)
+        if timeout:
+            raise subprocess.TimeoutExpired(command, 120, output=output.encode())
+        return subprocess.CompletedProcess(command, 0, output, "")
+    monkeypatch.setattr(REPLAY.subprocess, "run", run)
+    trace = tmp_path / "unknown.gputrace"
+    trace.mkdir()
+    artifacts = tmp_path / "failed"
+    with pytest.raises(ValueError, match="artifacts"):
+        REPLAY.collect(trace, artifacts)
+    assert len(calls) == 1 and "--terminate" not in calls[0]
+    assert (artifacts / "001.stdout").read_bytes() == output.encode()
+
+
+def test_repeated_identical_creation_lines_are_unambiguous():
+    assert REPLAY._created_session(b"Session 42 created.\r\nSession 42 created.\n") == "42"
+
+
+def test_native_tty_creation_format_does_not_hide_its_session_identity():
+    assert REPLAY._created_session(b"\r\x1b[2K| loading trace  (ctrl+b to run in background)\r\x1b[2KSession 218 created.\n") == "218"

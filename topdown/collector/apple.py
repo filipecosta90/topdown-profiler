@@ -3,6 +3,7 @@
 import hashlib
 import json
 import platform
+import re
 import shlex
 import subprocess
 from collections import Counter
@@ -181,7 +182,7 @@ def doctor() -> dict:
     }
     chip = (result.get("cpu") or "").split()
     if (len(chip) >= 2 and chip[0] == "Apple" and chip[1] in ("M1", "M2")
-            and "27.1" in (result.get("xctrace") or "")):
+            and re.search(r"\bxctrace version 27\.1(?:\s|$)", result.get("xctrace") or "")):
         result["gpu_replay"] = {
             "status": "known_gpu_generation_limit",
             "reason": "Xcode 27.1 GPU replay profiling requires Apple M3 / A17 Pro or later; "

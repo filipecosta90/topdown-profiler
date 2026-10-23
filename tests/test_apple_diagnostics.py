@@ -75,6 +75,11 @@ def test_doctor_routes_pre_m3_gpu_generations_to_instruments(cpu):
         "gpu_replay"]["status"] == "unverified"
 
 
+@pytest.mark.parametrize("version", ["27.10", "127.1", "27.1beta", "27.1.1"])
+def test_known_m1_gpu_limit_does_not_match_unverified_tool_versions_by_substring(version):
+    assert host_doctor(cpu="Apple M1", uuid="OTHER-KERNEL", xcode_version=version)["gpu_replay"]["status"] == "unverified"
+
+
 def test_doctor_cli_retains_diagnostic_without_disabling_other_modes():
     report = host_doctor()
     with patch("topdown.apple_cli.doctor", return_value=report):

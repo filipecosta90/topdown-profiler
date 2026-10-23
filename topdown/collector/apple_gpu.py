@@ -117,6 +117,14 @@ def json_documents(text: str) -> list[dict]:
     return documents
 
 
+def _created_session(output):
+    if isinstance(output, bytes):
+        output = output.decode("utf-8", errors="replace")
+    output = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", output).replace("\r\n", "\n").replace("\r", "\n")
+    sessions = set(re.findall(r"(?m)^Session ([0-9]+) created\.[ \t]*\r?$", output))
+    return next(iter(sessions)) if len(sessions) == 1 else None
+
+
 def collect(trace: Path, output: Path, execution: str = "overlapping") -> dict:
     if execution not in ("overlapping", "serial"):
         raise ValueError("Choose overlapping or serial replay execution")
@@ -150,18 +158,14 @@ def collect(trace: Path, output: Path, execution: str = "overlapping") -> dict:
                 (output / f"{sequence:03d}.stdout").write_bytes(stdout)
                 (output / f"{sequence:03d}.stderr").write_bytes(stderr)
                 if "-t" in arguments:
-                    match = re.search(rb"Session (\d+) created\.", stdout)
-                    if match:
-                        session = match.group(1).decode()
+                    session = _created_session(stdout)
                 if isinstance(exc, AppleProfileError):
                     raise
                 raise ValueError(f"gpudebug timed out; partial artifacts: {output}") from exc
             (output / f"{sequence:03d}.stdout").write_text(result.stdout)
             (output / f"{sequence:03d}.stderr").write_text(result.stderr)
             if "-t" in arguments:
-                match = re.search(r"Session (\d+) created\.", result.stdout)
-                if match:
-                    session = match.group(1)
+                session = _created_session(result.stdout)
             apple_runtime.check_cancelled()
             diagnostic = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", result.stdout + "\n" + result.stderr)
             errors = [line.strip() for line in diagnostic.splitlines() if line.lstrip().lower().startswith("error:")]
@@ -178,11 +182,9 @@ def collect(trace: Path, output: Path, execution: str = "overlapping") -> dict:
             raise ValueError(f"Unexpected gpudebug response to {command!r}: {response.strip()[:300]}; artifacts: {output}") from exc
 
     try:
-        opened = run(["-t", str(trace.resolve()), "--timeout", "180", "-c", "profile"])
-        match = re.search(r"Session (\d+) created\.", opened)
-        if not match:
-            raise ValueError(f"gpudebug did not create a session; artifacts: {output}")
-        session = match.group(1)
+        run(["-t", str(trace.resolve()), "--timeout", "180", "-c", "profile"])
+        if session is None:
+            raise ValueError(f"gpudebug did not report an unambiguous created session; artifacts: {output}")
         run(["-s", session, "-c", f"profile run --gpu-state default --exec {execution}"])
         status = query("profile")
         if status.get("state") != "loaded":
