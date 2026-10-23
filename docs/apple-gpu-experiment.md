@@ -365,8 +365,10 @@ python3 examples/apple_gpu/record_instruments.py \
 
 The runner verifies the M1 probe checksum and target exit, checks that Xcode
 selected the requested counter profile, exports both tables, and requires
-counter overlap with labeled probe passes. It saves the trace, XML, command
-logs and `profile.json`. `--profile 4` selects Performance Utilizations.
+counter overlap with every requested probe pass. It also checks the expected
+counter names and units, plus decoded top-limiter labels for profile 3. It
+saves the trace, XML, command logs and `profile.json`. `--profile 4` selects
+Performance Utilizations.
 Failed checks leave the artifacts for inspection in the new output directory.
 This experimental M1 summary is separate from the packaged GPU replay profile
 format used by the database and MCP commands above.
@@ -436,7 +438,8 @@ used 284 MB peak resident memory in this run, compared with 3.07 GB before the
 streaming change, and produced byte-identical JSON. If a trace includes multiple
 labeled probe processes, it fails until `--pid PID` selects one. The native
 counter stream is still system-wide; concurrent GPU activity remains visible in
-the overlap fields.
+the overlap fields. Counter intervals for each named metric must arrive in time
+order without overlap; otherwise the weighted mean is rejected.
 To run the memory control, substitute `probe 100 stream` in the shell command and
 use a new trace/output directory. `probe 100 alu` selects the original workload
 explicitly.

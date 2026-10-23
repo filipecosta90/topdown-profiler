@@ -16,6 +16,11 @@ from summarize_counters import summarize
 
 TEMPLATE = ("Applications/Instruments.app/Contents/Packages/GPU.instrdst/Contents/Templates/"
             "Metal System Trace.tracetemplate")
+REQUIRED_COUNTERS = {
+    3: {"ALU Limiter": "%", "Buffer Write Limiter": "%", "GPU Read Bandwidth": "GB/s",
+        "Top Performance Limiter": "%"},
+    4: {"ALU Utilization": "%", "Buffer Store Utilization": "%", "GPU Read Bandwidth": "GB/s"},
+}
 
 
 def _sha256(path: Path) -> str:
@@ -64,6 +69,20 @@ def _verify(toc: Path, stdout: Path, profile: int, mode: str, passes: int) -> No
             raise ValueError(f"Instruments did not export exactly one {schema} table")
 
 
+def _verify_coverage(result: dict, mode: str, passes: int, profile: int, output: Path) -> None:
+    coverage = result["probe_coverage"]
+    expected_workload = "burn" if mode == "alu" else "stream"
+    if (coverage["workloads_observed"] != [expected_workload] or coverage["passes_observed"] != passes
+            or coverage["passes_with_counter_samples"] != passes or not result["sampled_counter_means"]):
+        raise ValueError(f"Incomplete M1 probe counter coverage; artifacts: {output}")
+    means = result["sampled_counter_means"]
+    if any(means.get(name, {}).get("unit") != unit for name, unit in REQUIRED_COUNTERS[profile].items()):
+        raise ValueError(f"Missing M1 GPU metrics or unexpected units for counter profile {profile}; artifacts: {output}")
+    if profile == 3 and (not result["top_limiter_categories"]
+                         or result["top_limiter_unparsed_sampled_time_ns"]):
+        raise ValueError(f"Unrecognized M1 top-limiter labels; artifacts: {output}")
+
+
 def record(output: Path, mode: str = "alu", passes: int = 100, profile: int = 3,
            tail: float = 1.0, time_limit: int = 8) -> dict:
     if (mode not in ("alu", "stream") or type(passes) is not int or not 1 <= passes <= 500
@@ -99,11 +118,7 @@ def record(output: Path, mode: str = "alu", passes: int = 100, profile: int = 3,
                                          "--xpath", xpath, "--output", str(path)], 120)
         paths[name] = path
     result = summarize(paths["counters"], paths["gpu-intervals"])
-    coverage = result["probe_coverage"]
-    expected_workload = "burn" if mode == "alu" else "stream"
-    if (coverage["workloads_observed"] != [expected_workload] or coverage["passes_observed"] != passes
-            or coverage["passes_with_counter_samples"] == 0 or not result["sampled_counter_means"]):
-        raise ValueError(f"No verified counter samples for the M1 probe; artifacts: {output}")
+    _verify_coverage(result, mode, passes, profile, output)
     result["capture"] = {
         "mode": mode, "passes": passes, "counter_profile": PROFILE_NAMES[profile],
         "checksum_verified": True, "target_exit_status": 0,
