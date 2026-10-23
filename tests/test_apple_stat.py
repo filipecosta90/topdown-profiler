@@ -515,7 +515,10 @@ def test_existing_pid_final_zombie_snapshot_is_marked_as_exited(tmp_path, captur
     assert result["target_exited"] is True
 
 
-@pytest.mark.parametrize("pid,duration", [(0, 1), (-1, 1), (42, 0), (42, float("nan")), (42, float("inf"))])
+@pytest.mark.parametrize("pid,duration", [
+    (0, 1), (-1, 1), (True, 1), (42.0, 1), ("42", 1), (2**31, 1), (2**32 + 42, 1),
+    (42, 0), (42, True), (42, "1"), (42, float("nan")), (42, float("inf")),
+])
 def test_invalid_pid_interval_does_not_create_output(tmp_path, native_host, pid, duration):
     with pytest.raises(AppleProfileError, match="positive PID"):
         stat_pid(tmp_path / "stat", pid, duration)
@@ -599,3 +602,41 @@ def test_pid_worker_cancellation_retains_partial_data_without_signaling(tmp_path
         assert result["exit_code"] == 130 and result["counters"]["instructions"] == 200
     else:
         assert result["counters"] is None
+
+
+@pytest.mark.parametrize('pid', [True, False, -1, 0, 42.0, '42', 2**31, 2**32 + 42, 10**100])
+def test_native_usage_boundary_rejects_pid_aliases_before_calling_libproc(pid):
+    from topdown.collector.apple_stat import _UsageReader
+
+    reader = _UsageReader.__new__(_UsageReader)
+    with pytest.raises(AppleProfileError, match='native signed pid_t'):
+        reader.read(pid)
+
+
+def test_native_pid_upper_bound_retains_signed_identity():
+    from topdown.collector.apple_stat import _validate_pid
+
+    _validate_pid(1)
+    _validate_pid(2**31 - 1)
+
+
+@pytest.mark.parametrize('options', [{'pid':2**32 + 42}, {'duration_seconds':10**1000}])
+def test_mcp_collection_rejects_native_bounds_before_any_capture(tmp_path, options):
+    from topdown.apple_storage import collect_apple_result
+
+    arguments = {'mode':'stat', 'command':None, 'pid':42, 'duration_seconds':1, **options}
+    output = tmp_path / 'unused'
+    with pytest.raises(AppleProfileError):
+        collect_apple_result(output, **arguments)
+    assert not output.exists()
+
+
+@pytest.mark.parametrize('seconds', [True, '1', 10**1000, 1e100, float('inf'), float('nan'), 0, -1])
+def test_stat_rejects_unsupported_waits_before_opening_native_readers(tmp_path, native_host, seconds):
+    with patch('topdown.collector.apple_stat._UsageReader') as reader:
+        with pytest.raises(AppleProfileError):
+            stat_pid(tmp_path / 'pid', 42, seconds)
+        with pytest.raises(AppleProfileError):
+            stat_process(tmp_path / 'command', [sys.executable], seconds)
+        reader.assert_not_called()
+    assert not (tmp_path / 'pid').exists() and not (tmp_path / 'command').exists()
