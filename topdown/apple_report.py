@@ -9,6 +9,7 @@ from rich.table import Table
 from rich.text import Text
 
 from topdown.collector.apple import AppleProfileError, TMA_ROOTS, _validate_scope
+from topdown.collector.apple_files import read_regular_bytes
 
 STACK_SCHEMAS = {"counters-profile", "cpu-profile", "time-profile"}
 
@@ -80,7 +81,7 @@ def load_hotspots(path: Path, limit: int = 20) -> dict:
     if path.is_dir():
         path = path / "profile.json"
     try:
-        profile = json.loads(path.read_text())
+        profile = json.loads(read_regular_bytes(path))
     except (OSError, ValueError) as exc:
         raise AppleProfileError(f"Cannot read Apple profile {path}: {exc}") from exc
     return summarize_hotspots(profile, limit)
