@@ -105,8 +105,9 @@ trace gaps, and null Intel TMA fields. It does not create floating-point Linux
 metric rows. Capture timestamps are used when available; otherwise the run is
 explicitly labeled `time_basis=import_time`, with unknown capture duration.
 The source SHA-256 and import timestamp are retained. Imports verify that
-performance/other-core counts add up to aggregate counts and that PID interval
-counts agree with their before/after snapshots. SoC channel/state identities,
+performance/other-core instruction, cycle and raw Mach-time pairs add up exactly,
+and that PID interval counts agree with their before/after snapshots. Converted
+nanoseconds retain their native timebase and documented rounding. SoC channel/state identities,
 units, totals and any reported shares must agree; zero observations retain null
 shares. XML exports require known native column/cell types and unsigned integer
 values; PID and nanosecond-window arguments must be integers. Trace gap counts must match the markers for each thread and interval.
@@ -203,6 +204,54 @@ two-core-kind M1 these are the efficiency-core remainder; on other chips, retain
 the broader `other` label. The selected flavor is recorded in `source`, and older
 systems fall back to V4 without these fields. These counts do not reveal per-core
 pipeline slots or programmable events.
+
+New captures preserve `user_time_mach`, `system_time_mach` and their available
+performance/other-group counterparts, alongside `source.mach_timebase`.
+Nanosecond values are floored independently from each native counter. The
+remainder is subtracted in Mach units before conversion so an idle group's
+converted time stays monotonic. Converted split sums can differ from the
+aggregate by 1 ns; interval differences can carry either sign of that rounding.
+Instructions, cycles and raw Mach-time pairs still add up exactly. Import checks
+the conversion and before/after evidence instead of silently adjusting counters.
+
+### M6 counted-instruction control
+
+The [counted ARM loop](../examples/apple-counted-loop.c) executes one `add`, one
+`subs`, and one conditional branch per iteration, and verifies its output.
+[Recorded M6 validation](apple-m6-fixed-instruction-validation.json) includes
+48 full-process captures and 48 startup-barrier intervals across four iteration
+counts, default/background QoS requests, and a balanced repeated order.
+The interval starts after executable initialization and includes the loop plus
+its small I/O protocol. Counts still include user and kernel work.
+
+| Iterations | Planned loop instructions | Full-process median, default QoS | Interval median, default QoS |
+|---|---:|---:|---:|
+| 0 | 0 | 10,882,834.5 | 20,620 |
+| 1,000,000 | 3,000,000 | 13,950,805 | 3,020,863.5 |
+| 10,000,000 | 30,000,000 | 40,890,899 | 30,031,992.5 |
+| 100,000,000 | 300,000,000 | 311,065,217 | 300,072,853 |
+
+Each median uses six trials. Subtracting the zero-loop interval median gives
+ratios of 1.00008–1.00160 relative to planned loop instructions across the
+nonzero sizes and both QoS requests. This supports the fixed-accounting path for
+these controls and illustrates startup overhead. It is not a calibration of
+programmable events, per-core width, or TMA shares. QoS is a scheduling request,
+not a core pin; native performance/other counts and all raw times remain in the
+evidence. Frequency, scheduling and background activity were uncontrolled.
+
+Run the validation from a source checkout on Apple silicon with Xcode:
+
+```sh
+python3 examples/apple-validate-fixed-instructions.py --output /tmp/m6-fixed-check-001
+# Each trial retains its full-process stat.json and paired interval.json.
+topdown apple store /tmp/m6-fixed-check-001/trial-01-default-1000000/interval.json \
+  --process counted-loop --label test_name=m6-fixed-interval
+```
+
+The runner retains source/binary hashes, compiler logs, disassembly and native
+results. The same control exposed a false counter-decrease error caused by
+rounding a derived remainder; the raw-time conversion above fixes it without
+discarding the valid interval.
 
 ## Xcode's four-category M1 bottlenecks
 
