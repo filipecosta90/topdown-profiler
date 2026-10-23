@@ -304,6 +304,11 @@ at least as strong:
 | Buffer Write Limiter | 0.10–0.11% | 99.29–99.46% |
 | GPU Read Bandwidth | 0.03–0.08 GB/s | 28.11–28.53 GB/s |
 
+Among those same clean counter intervals, ALU was the highest-limiter label
+for 98.55–99.24% of sampled ALU top-limiter time; Buffer Write was highest for
+99.96–99.98% of sampled stream top-limiter time. These are categorical shares
+of sampled labels, not GPU work-time or pipeline-slot shares.
+
 The unfiltered sampled means, counter coverage, per-run checksums and XML hashes
 are in [the replication evidence](apple-gpu-m1-replication.json). The fraction of
 sampled probe time with observed other activity was 4.0–6.4% for ALU and
@@ -321,6 +326,30 @@ workload-specific bottleneck; the idle control and its XML hashes are retained
 in the replication evidence.
 
 ## Reproduce the Instruments comparison
+
+For a checked M1 capture in one command, set the full Xcode developer directory
+and use a new output directory:
+
+```sh
+export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+python3 examples/apple_gpu/record_instruments.py \
+  --output /tmp/m1-gpu-alu-001 --mode alu --passes 100 --profile 3
+python3 examples/apple_gpu/record_instruments.py \
+  --output /tmp/m1-gpu-stream-001 --mode stream --passes 100 --profile 3
+```
+
+The runner verifies the M1 probe checksum and target exit, checks that Xcode
+selected the requested counter profile, exports both tables, and requires
+counter overlap with labeled probe passes. It saves the trace, XML, command
+logs and `profile.json`. `--profile 4` selects Performance Utilizations.
+Failed checks leave the artifacts for inspection in the new output directory.
+On this M1, a four-pass profile-3 ALU smoke check sampled all four passes;
+a 100-pass profile-4 stream capture sampled all 100 and reported 1.77% ALU
+Utilization and 28.18 GB/s GPU Read Bandwidth. The checked-runner hashes and
+coverage are in the replication evidence.
+
+The equivalent lower-level commands are shown below for template and export
+inspection.
 
 Use Xcode's developer directory; Command Line Tools alone do not include
 Instruments. Set `DEVELOPER_DIR` to the actual Xcode app location if it differs.

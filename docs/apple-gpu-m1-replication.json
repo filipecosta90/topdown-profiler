@@ -488,5 +488,47 @@
     "toc_sha256": "fb2add4cde1882c30553d724aa707ef0e4761afc5b7528ad5ccd20b070291068",
     "counter_xml_sha256": "c0a37ac749f4b66bf8414f940129bba24a72e8e96e5bbc90289cc906c78c8f22",
     "gpu_xml_sha256": "7e5f6e2ec3384f9d9a485d9ba43a8c6c60cdd85cb7f7b66d81c27307611b65bd"
+  },
+  "checked_runner_smoke": {
+    "mode": "alu",
+    "passes": 4,
+    "counter_profile": "Performance Limiters",
+    "counter_rows": 161995,
+    "passes_with_counter_samples": 4,
+    "sampled_gpu_work_time_ns": 238833,
+    "capture_hashes": {
+      "source_sha256": "fec63983b3589ae8f578d96dba08c5e64d0ce03af284e78b1c36e5c8a3badea5",
+      "template_sha256": "936997d41f2a1231623da319e7a5e540d1df04cc7d8be2c2aa19e61ae1753d6c",
+      "toc_sha256": "e1fec134c983931ee611f6275327303e8bfcbeec681a3015f212c0aeb82ae094",
+      "counter_xml_sha256": "8abb2c4b857c6c68679454309f23b664251114731e1b2f4139be93a2fb6efd6a",
+      "gpu_xml_sha256": "ae5f96ac626784cd57c3a93bd68d78f2f2836a702a3fcc37dcaba6ad232288e3"
+    }
+  },
+  "checked_runner_utilizations": {
+    "mode": "stream",
+    "passes": 100,
+    "counter_profile": "Performance Utilizations",
+    "counter_rows": 157300,
+    "passes_with_counter_samples": 100,
+    "sampled_gpu_work_time_ns": 116288792,
+    "alu_utilization": {
+      "value": 1.771207,
+      "unit": "%",
+      "sampled_time_ns": 116288792,
+      "counter_intervals": 5861
+    },
+    "gpu_read_bandwidth": {
+      "value": 28.184383,
+      "unit": "GB/s",
+      "sampled_time_ns": 116288792,
+      "counter_intervals": 5861
+    },
+    "capture_hashes": {
+      "source_sha256": "fec63983b3589ae8f578d96dba08c5e64d0ce03af284e78b1c36e5c8a3badea5",
+      "template_sha256": "7fa24c2bb719010f7a8a11d4559c571e360c236b9617c45967165ffc3feba4eb",
+      "toc_sha256": "4834edde72d89c5de5b7c5082ec14191a475beb59eed3e29623f08fcf96646bb",
+      "counter_xml_sha256": "7e969d4691e349c0e95acba06ae47aa963a5ffb3ce0aa9a54912b69e99c1c3b0",
+      "gpu_xml_sha256": "b03e80df79237a2db9e45d9e3ef4cbd3b7e451c265956169fbf2257c9f394dd2"
+    }
   }
 }
