@@ -470,8 +470,9 @@ format used by the database and MCP commands above.
 The saved-profile report ranks the sampled limiter and utilization means within
 each counter type, shows bandwidth separately, and prints the sampled fraction,
 sparse-pass count, and overlap with observed other GPU activity. Its clean means
-exclude counter intervals that overlap observed other activity; they do not
-make device-wide counters process-specific.
+exclude counter intervals that overlap observed other activity and show how
+much sampled time remains for each metric; they do not make device-wide
+counters process-specific.
 On this M1, a four-pass profile-3 ALU smoke check sampled all four passes;
 a fresh four-pass check covered 16.28% of GPU work time with counter samples.
 A 100-pass profile-4 stream capture sampled all 100 and reported 1.77% ALU
