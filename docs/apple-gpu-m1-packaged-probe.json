@@ -741,5 +741,77 @@
         "Top Performance Limiter": 100
       }
     }
+  },
+  "checked_runner_pass_distribution": {
+    "capture": {
+      "mode": "compute",
+      "passes": 100,
+      "items": 65536,
+      "probe_source": "packaged",
+      "counter_profile": "Performance Limiters",
+      "checksum_verified": true,
+      "target_exit_status": 0,
+      "probe_process_verified": true,
+      "source_sha256": "da9260233b4e1ebd16764d070e56c5c7bffb427192d055f8cbc9ff028a93adf0",
+      "binary_sha256": "93ae438444bacdf18867bc01996ae5bd6f0c1cc1e26db507048ecb0586ee338f",
+      "template_sha256": "936997d41f2a1231623da319e7a5e540d1df04cc7d8be2c2aa19e61ae1753d6c",
+      "toc_sha256": "ff64b2e565dcc9d4aee7d9c17c42e425c82e5edb38dcf85a5beae47f530f0b3e",
+      "counter_xml_sha256": "09b5909b906b13300dd4f909f166482b075891f936eaf38b588b5f3b628a152b",
+      "gpu_xml_sha256": "e434134666e44b5f5c1506d04584f6170c9b569360f1290085d0519f7c525916",
+      "probe_json_sha256": "f9c46f6aa22ec9495aaf24a5ac3fa121f566e6aeeeffac71e771c19ddd632c3d"
+    },
+    "profile_json_sha256": "a6849679fb111fe4066421a8fdb5ec9328b68fd529621fbb36812dcd814c1065",
+    "probe_coverage": {
+      "selected_pid": 49006,
+      "passes_observed": 100,
+      "passes_with_counter_samples": 100,
+      "sampled_gpu_work_fraction": 0.26290104980637774,
+      "sampled_pass_fraction_min": 0.12231247013855709,
+      "observed_other_activity_fraction_of_sampled_gpu_work": 0.07673185155562333
+    },
+    "required_metric_pass_coverage": {
+      "ALU Limiter": 100,
+      "Buffer Write Limiter": 100,
+      "GPU Read Bandwidth": 100,
+      "Top Performance Limiter": 100
+    },
+    "sampled_per_pass_metric_distributions": {
+      "ALU Limiter": {
+        "sampled_passes": 100,
+        "unit": "%",
+        "minimum": 73.472526,
+        "p10": 86.278261,
+        "median": 88.986085,
+        "p90": 92.358864,
+        "maximum": 92.92596
+      },
+      "ALU Utilization": {
+        "sampled_passes": 100,
+        "unit": "%",
+        "minimum": 35.22071,
+        "p10": 41.150686,
+        "median": 42.474944,
+        "p90": 44.250451,
+        "maximum": 47.67758
+      },
+      "F32 Utilization": {
+        "sampled_passes": 100,
+        "unit": "%",
+        "minimum": 11.726329,
+        "p10": 13.696624,
+        "median": 14.115553,
+        "p90": 14.679431,
+        "maximum": 15.228133
+      },
+      "GPU Read Bandwidth": {
+        "sampled_passes": 100,
+        "unit": "GB/s",
+        "minimum": 0.118953,
+        "p10": 0.187697,
+        "median": 0.256328,
+        "p90": 0.451844,
+        "maximum": 4.477367
+      }
+    }
   }
 }

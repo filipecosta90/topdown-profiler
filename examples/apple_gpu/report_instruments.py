@@ -46,6 +46,19 @@ def report(profile: dict) -> dict:
     if other is not None:
         other = _fraction(other, "observed other GPU activity fraction")
 
+    distributions = profile.get("sampled_per_pass_metric_distributions", {})
+    if not isinstance(distributions, dict):
+        raise ValueError("Invalid M1 GPU per-pass metric distributions")
+    for name, stats in distributions.items():
+        unit = means.get(name, {}).get("unit") if isinstance(means.get(name), dict) else None
+        if (not isinstance(stats, dict) or type(stats.get("sampled_passes")) is not int
+                or not 1 <= stats["sampled_passes"] <= passes or stats.get("unit") != unit):
+            raise ValueError(f"Invalid M1 GPU per-pass distribution for {name}")
+        values = [stats.get(key) for key in ("minimum", "p10", "median", "p90", "maximum")]
+        if (any(type(value) not in (int, float) or not math.isfinite(value) for value in values)
+                or values != sorted(values)):
+            raise ValueError(f"Invalid M1 GPU per-pass distribution for {name}")
+
     ranked = []
     for name, metric in means.items():
         if not name.endswith((" Limiter", " Utilization")) or name == "Top Performance Limiter":
@@ -123,6 +136,7 @@ def report(profile: dict) -> dict:
                      "observed_other_activity_fraction_of_sampled_gpu_work": other},
         "ranked_sampled_percent_metrics": ranked,
         "sampled_bandwidth": bandwidth,
+        "sampled_per_pass_metric_distributions": distributions,
         "top_limiter_categories": categories,
         "top_limiter_unparsed_sampled_time_ns": unparsed,
     }
@@ -141,6 +155,8 @@ def format_report(data: dict) -> str:
         lines.append(f"Observed other GPU activity within sampled work: {other:.2%}")
     if coverage["passes_below_10_percent_sampled"]:
         lines.append(f"Passes below 10% sampled: {coverage['passes_below_10_percent_sampled']}")
+    if data["sampled_per_pass_metric_distributions"]:
+        lines.append("Per-pass ranges use unfiltered, overlap-weighted device-wide samples.")
     for suffix, heading in ((" Limiter", "Highest sampled limiter means"),
                             (" Utilization", "Highest sampled utilization means")):
         metrics = [row for row in data["ranked_sampled_percent_metrics"] if row["name"].endswith(suffix)]
@@ -152,11 +168,21 @@ def format_report(data: dict) -> str:
             fraction = metric["clean_sampled_time_fraction"]
             clean_text = f"; clean {clean:.2f}% ({fraction:.1%} of sampled time)" if clean is not None else ""
             lines.append(f"  {metric['name']}: {metric['sampled_mean_percent']:.2f}%{clean_text}")
+            pass_stats = data["sampled_per_pass_metric_distributions"].get(metric["name"])
+            if pass_stats:
+                lines.append(f"    sampled pass median {pass_stats['median']:.2f}%; "
+                             f"range {pass_stats['minimum']:.2f}–{pass_stats['maximum']:.2f}% "
+                             f"({pass_stats['sampled_passes']} passes)")
     for name, metric in data["sampled_bandwidth"].items():
         clean = metric["mean_without_observed_other_activity_gb_s"]
         fraction = metric["clean_sampled_time_fraction"]
         clean_text = f"; clean {clean:.2f} GB/s ({fraction:.1%} of sampled time)" if clean is not None else ""
         lines.append(f"  {name}: {metric['sampled_mean_gb_s']:.2f} GB/s{clean_text}")
+        pass_stats = data["sampled_per_pass_metric_distributions"].get(name)
+        if pass_stats:
+            lines.append(f"    sampled pass median {pass_stats['median']:.2f} GB/s; "
+                         f"range {pass_stats['minimum']:.2f}–{pass_stats['maximum']:.2f} GB/s "
+                         f"({pass_stats['sampled_passes']} passes)")
     if data["top_limiter_categories"]:
         winner = data["top_limiter_categories"][0]
         lines.append(f"Most frequent parsed top-limiter label: {winner['name']} "
