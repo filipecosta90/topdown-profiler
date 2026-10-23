@@ -490,3 +490,17 @@ def test_native_command_can_request_process_isolation_outside_mcp():
                  timeout=3, start_new_session=True)
     pid, group = map(int, result.stdout.split())
     assert result.returncode == 0 and pid == group and group != os.getpgrp()
+
+
+def test_noninteractive_native_command_preserves_requested_stdin(monkeypatch):
+    import subprocess
+    from unittest.mock import Mock
+    from topdown.collector.apple_runtime import run
+
+    command = ["native", "metadata"]
+    result = subprocess.CompletedProcess(command, 0, "", "")
+    native = Mock(return_value=result)
+    monkeypatch.setattr(subprocess, "run", native)
+    assert run(command, timeout=3, stdin=subprocess.DEVNULL, start_new_session=True) is result
+    assert native.call_args.kwargs["stdin"] == subprocess.DEVNULL
+    assert native.call_args.kwargs["start_new_session"] is True
