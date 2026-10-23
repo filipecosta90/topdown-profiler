@@ -381,7 +381,7 @@ Reports retain native bandwidth units, observed-counter coverage and sampled
 cores. Timeline hardware counters can include concurrent GPU activity.
 Use `apple gpu profile` for an existing `.gputrace`. The guide also preserves the
 M1 Instruments counter experiment, including sampled ALU versus Buffer Write
-limiter contrasts; replay profiling is unavailable on M1.
+limiter contrasts; the tested Xcode 27.1 GPU replay requires M3/A17 Pro or later.
 From a source checkout on M1, use the checked Instruments path and its saved
 sampled-counter report:
 

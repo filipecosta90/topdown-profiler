@@ -640,6 +640,10 @@ the checked runner to reject an otherwise completed probe.
 Failed checks leave the artifacts for inspection in the new output directory.
 This experimental M1 summary is separate from the packaged GPU replay profile
 format used by the database and MCP commands above.
+The tested M1 Performance Limiters and Performance Utilizations exports have
+32 and 13 counter names respectively, with no `Control Flow` counter in either
+inventory. They cannot reproduce M6's per-encoder Control Flow limiter; the
+M1 compute/optimized-ALU comparison uses sampled ALU and F32 counters instead.
 The saved-profile report ranks the sampled limiter and utilization means within
 each counter type, shows bandwidth separately, and prints the sampled fraction,
 sparse-pass count, and overlap with observed other GPU activity. Its compact
