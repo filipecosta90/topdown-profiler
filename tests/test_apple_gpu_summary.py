@@ -196,6 +196,40 @@ def test_summary_exposes_missing_metric_on_a_sampled_pass():
     }
 
 
+def test_summary_distributes_sampled_metric_means_by_labeled_pass():
+    counters = b"""<trace-query-result><node><schema name="metal-gpu-counter-intervals">
+    <col><mnemonic>start</mnemonic></col><col><mnemonic>duration</mnemonic></col>
+    <col><mnemonic>name</mnemonic></col><col><mnemonic>label</mnemonic></col>
+    <col><mnemonic>value</mnemonic></col><col><mnemonic>is-percentage</mnemonic></col></schema>
+    <row><start-time>100</start-time><duration>10</duration>
+    <gpu-counter-name fmt="ALU Limiter">1.ALU Limiter</gpu-counter-name><formatted-label fmt="10%"/>
+    <fixed-decimal>10</fixed-decimal><boolean>1</boolean></row>
+    <row><start-time>200</start-time><duration>10</duration>
+    <gpu-counter-name fmt="ALU Limiter">1.ALU Limiter</gpu-counter-name><formatted-label fmt="30%"/>
+    <fixed-decimal>30</fixed-decimal><boolean>1</boolean></row>
+    <row><start-time>300</start-time><duration>10</duration>
+    <gpu-counter-name fmt="GPU Read Bandwidth">2.GPU Read Bandwidth</gpu-counter-name>
+    <formatted-label fmt="2 GB/s"/><fixed-decimal>2</fixed-decimal><boolean>0</boolean></row>
+    </node></trace-query-result>"""
+    gpu = b"""<trace-query-result><node><schema name="metal-gpu-intervals">
+    <col><mnemonic>start</mnemonic></col><col><mnemonic>duration</mnemonic></col>
+    <col><mnemonic>event-label</mnemonic></col></schema>
+    <row><start-time>100</start-time><duration>10</duration>
+    <formatted-label fmt="topdown GPU probe pass 0:burn compute pass 0"/></row>
+    <row><start-time>200</start-time><duration>10</duration>
+    <formatted-label fmt="topdown GPU probe pass 1:burn compute pass 1"/></row>
+    <row><start-time>300</start-time><duration>10</duration>
+    <formatted-label fmt="topdown GPU probe pass 2:burn compute pass 2"/></row>
+    </node></trace-query-result>"""
+    result = MODULE.summarize(counters, gpu)
+    assert result["sampled_per_pass_metric_distributions"]["ALU Limiter"] == {
+        "sampled_passes": 2, "unit": "%", "minimum": 10, "p10": 12,
+        "median": 20, "p90": 28, "maximum": 30,
+    }
+    assert result["sampled_per_pass_metric_distributions"]["GPU Read Bandwidth"]["sampled_passes"] == 1
+    assert result["probe_coverage"]["passes_with_counter_samples"] == 3
+
+
 def test_idle_counter_rows_do_not_claim_probe_work():
     counters = b"""<trace-query-result><node><schema name="metal-gpu-counter-intervals"/>
     <row><start-time>100</start-time><duration>20</duration><uint32>0</uint32>

@@ -645,7 +645,14 @@ each counter type, shows bandwidth separately, and prints the sampled fraction,
 sparse-pass count, and overlap with observed other GPU activity. Its clean means
 exclude counter intervals that overlap observed other activity and show how
 much sampled time remains for each metric; they do not make device-wide
-counters process-specific.
+counters process-specific. New captures also report median and range of sampled
+per-pass means for key metrics. Those pass distributions overlap-weight the
+native counter intervals and remain unfiltered device-wide observations; they
+are not a complete census of each pass.
+A fresh 100-pass packaged compute capture on this M1 completed the checked
+runner with per-pass ALU Limiter values from 73.47% to 92.93% and F32
+Utilization from 11.73% to 15.23%. Its source, binary, trace-table and XML
+hashes are in [the packaged-probe evidence](apple-gpu-m1-packaged-probe.json).
 On this M1, a four-pass profile-3 ALU smoke check sampled all four passes;
 a fresh four-pass check covered 16.28% of GPU work time with counter samples.
 A 100-pass profile-4 stream capture sampled all 100 and reported 1.77% ALU

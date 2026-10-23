@@ -19,7 +19,7 @@ def profile():
         "schema": "metal-gpu-counter-intervals", "counter_scope": "device-wide",
         "capture": {"mode": "compute", "probe_source": "packaged", "passes": 2, "items": 65536,
                     "counter_profile": "Performance Limiters", "checksum_verified": True,
-                    "target_exit_status": 0},
+                    "target_exit_status": 0, "probe_process_verified": True},
         "probe_coverage": {"status": "sampled", "passes_observed": 2,
                            "passes_with_counter_samples": 2, "sampled_gpu_work_fraction": 0.25,
                            "sampled_pass_fraction_min": 0.1, "passes_below_10_percent_sampled": 0,
@@ -33,6 +33,10 @@ def profile():
         "sampled_counter_means_without_observed_other_activity": {
             "ALU Limiter": {"value": 90, "unit": "%", "sampled_time_ns": 800},
             "GPU Read Bandwidth": {"value": 1.5, "unit": "GB/s", "sampled_time_ns": 800},
+        },
+        "sampled_per_pass_metric_distributions": {
+            "ALU Limiter": {"sampled_passes": 2, "unit": "%", "minimum": 70, "p10": 72,
+                            "median": 80, "p90": 88, "maximum": 90},
         },
         "top_limiter_categories": [
             {"name": "ALU Limiter", "sampled_time_ns": 950,
@@ -51,16 +55,21 @@ def test_m1_report_preserves_scope_coverage_and_clean_counter_means(profile):
     assert report["ranked_sampled_percent_metrics"][0]["mean_without_observed_other_activity_percent"] == 90
     assert report["ranked_sampled_percent_metrics"][0]["clean_sampled_time_fraction"] == 0.8
     assert report["sampled_bandwidth"]["GPU Read Bandwidth"]["sampled_mean_gb_s"] == 2.5
+    assert report["sampled_per_pass_metric_distributions"]["ALU Limiter"]["median"] == 80
     text = MODULE.format_report(report)
     assert "device-wide Instruments samples" in text
+    assert "Probe process: verified against the compiled binary" in text
     assert "Sampled passes: 2/2; sampled GPU work: 25.00%; least-sampled pass: 10.00%" in text
     assert "Observed other GPU activity within sampled work: 20.00%" in text
+    assert "Per-pass ranges use unfiltered, overlap-weighted device-wide samples." in text
     assert "ALU Limiter: 80.00%; clean 90.00% (80.0% of sampled time)" in text
+    assert "sampled pass median 80.00%; range 70.00–90.00% (2 passes)" in text
 
 
 def test_utilization_only_report_has_no_empty_limiter_section(profile):
     profile["sampled_counter_means"].pop("ALU Limiter")
     profile["sampled_counter_means"].pop("Buffer Write Limiter")
+    profile["sampled_per_pass_metric_distributions"].pop("ALU Limiter")
     profile["sampled_counter_means"]["F32 Utilization"] = {
         "value": 60, "unit": "%", "sampled_time_ns": 1000}
     text = MODULE.format_report(MODULE.report(profile))
@@ -68,9 +77,19 @@ def test_utilization_only_report_has_no_empty_limiter_section(profile):
     assert "F32 Utilization: 60.00%" in text
 
 
+def test_report_accepts_profiles_without_per_pass_distributions(profile):
+    profile.pop("sampled_per_pass_metric_distributions")
+    profile["capture"].pop("probe_process_verified")
+    data = MODULE.report(profile)
+    assert data["sampled_per_pass_metric_distributions"] == {}
+    assert "Per-pass ranges" not in MODULE.format_report(data)
+    assert "Probe process: not independently verified in this profile" in MODULE.format_report(data)
+
+
 @pytest.mark.parametrize("change,match", [
     ({"counter_scope": "per-encoder"}, "device-wide"),
     ({"capture": {"checksum_verified": False}}, "checksum-verified"),
+    ({"capture": {"probe_process_verified": "yes"}}, "probe process verification"),
     ({"probe_coverage": {"passes_with_counter_samples": 3}}, "pass coverage"),
     ({"probe_coverage": {"passes_below_10_percent_sampled": 3}}, "sparse-pass"),
     ({"probe_coverage": {"sampled_gpu_work_fraction": float("nan")}}, "sampled GPU work fraction"),
@@ -85,6 +104,12 @@ def test_utilization_only_report_has_no_empty_limiter_section(profile):
      "exceeds total"),
     ({"top_limiter_categories": [{"name": "ALU Limiter", "sampled_time_ns": 950,
                                   "share_of_top_limiter_samples_percent": 105}]}, "top-limiter category"),
+    ({"sampled_per_pass_metric_distributions": {
+        "ALU Limiter": {"sampled_passes": 3, "unit": "%", "minimum": 70, "p10": 72,
+                        "median": 80, "p90": 88, "maximum": 90}}}, "per-pass distribution"),
+    ({"sampled_per_pass_metric_distributions": {
+        "Unknown Limiter": {"sampled_passes": 1, "unit": None, "minimum": 70, "p10": 72,
+                            "median": 80, "p90": 88, "maximum": 90}}}, "per-pass distribution"),
 ])
 def test_m1_report_rejects_invalid_provenance_or_sampled_values(profile, change, match):
     altered = deepcopy(profile)

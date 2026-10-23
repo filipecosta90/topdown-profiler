@@ -17,6 +17,8 @@ PROBE_LABEL = re.compile(r"^topdown GPU probe pass (\d+):(burn|stream) compute p
 PACKAGED_PROBE_LABEL = re.compile(
     r"^topdown GPU (compute|alu|memory|stream) pass (\d+):\1 compute pass \2(?:\s|$)"
 )
+PASS_DISTRIBUTION_METRICS = {"ALU Limiter", "ALU Utilization", "Buffer Write Limiter",
+                             "F32 Utilization", "GPU Read Bandwidth"}
 
 
 class _Cell(NamedTuple):
@@ -129,6 +131,13 @@ def _intersection(left: list[tuple[int, int]], right: list[tuple[int, int]]) -> 
 
 def _process_pid(cell) -> int | None:
     return _integer(_Cell(cell.pid, None), "probe PID") if cell.pid is not None else None
+
+
+def _percentile(values: list[float], fraction: float) -> float:
+    position = (len(values) - 1) * fraction
+    lower = int(position)
+    upper = min(lower + 1, len(values) - 1)
+    return values[lower] + (values[upper] - values[lower]) * (position - lower)
 
 
 def summarize(source: bytes, gpu_intervals: bytes | None = None, pid: int | None = None) -> dict:
@@ -288,6 +297,7 @@ def summarize(source: bytes, gpu_intervals: bytes | None = None, pid: int | None
     }
     means = {}
     clean_means = {}
+    per_pass = {}
     top_categories = Counter()
     clean_top_categories = Counter()
     for start, end, name, value, unit, label in values:
@@ -295,6 +305,13 @@ def summarize(source: bytes, gpu_intervals: bytes | None = None, pid: int | None
         if not overlap:
             continue
         clean = state_available and not _overlap(start, end, other_windows)
+        if name in PASS_DISTRIBUTION_METRICS:
+            for key, pieces in pass_windows.items():
+                pass_overlap = _overlap(start, end, pieces)
+                if pass_overlap:
+                    metric = per_pass.setdefault((key, name), [0.0, 0])
+                    metric[0] += pass_overlap * value
+                    metric[1] += pass_overlap
         buckets = [(means, top_categories)]
         if clean:
             buckets.append((clean_means, clean_top_categories))
@@ -324,6 +341,20 @@ def summarize(source: bytes, gpu_intervals: bytes | None = None, pid: int | None
                 for name, duration in sorted(categories.items(), key=lambda item: (-item[1], item[0]))]
 
     result["sampled_counter_means"] = summarize_means(means)
+    distributions = {}
+    for name in sorted(PASS_DISTRIBUTION_METRICS):
+        sampled = sorted(total / duration for (key, metric), (total, duration) in per_pass.items()
+                         if metric == name and duration)
+        if sampled:
+            distributions[name] = {
+                "sampled_passes": len(sampled), "unit": means[name]["unit"],
+                "minimum": round(sampled[0], 6),
+                "p10": round(_percentile(sampled, 0.1), 6),
+                "median": round(median(sampled), 6),
+                "p90": round(_percentile(sampled, 0.9), 6),
+                "maximum": round(sampled[-1], 6),
+            }
+    result["sampled_per_pass_metric_distributions"] = distributions
     result["top_limiter_categories"] = summarize_categories(top_categories)
     result["top_limiter_unparsed_sampled_time_ns"] = (
         means.get("Top Performance Limiter", {}).get("sampled_time_ns", 0) - sum(top_categories.values())

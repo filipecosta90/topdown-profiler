@@ -31,6 +31,9 @@ def report(profile: dict) -> dict:
             or not means or not isinstance(clean, dict) or capture.get("checksum_verified") is not True
             or capture.get("target_exit_status") != 0 or coverage.get("status") != "sampled"):
         raise ValueError("M1 GPU profile lacks a completed, sampled, checksum-verified capture")
+    process_verified = capture.get("probe_process_verified")
+    if process_verified is not None and type(process_verified) is not bool:
+        raise ValueError("Invalid M1 GPU probe process verification")
     passes = capture.get("passes")
     observed = coverage.get("passes_observed")
     sampled = coverage.get("passes_with_counter_samples")
@@ -45,6 +48,21 @@ def report(profile: dict) -> dict:
     other = coverage.get("observed_other_activity_fraction_of_sampled_gpu_work")
     if other is not None:
         other = _fraction(other, "observed other GPU activity fraction")
+
+    distributions = profile.get("sampled_per_pass_metric_distributions", {})
+    if not isinstance(distributions, dict):
+        raise ValueError("Invalid M1 GPU per-pass metric distributions")
+    for name, stats in distributions.items():
+        metric = means.get(name)
+        if (not isinstance(metric, dict) or not isinstance(stats, dict)
+                or type(stats.get("sampled_passes")) is not int
+                or not 1 <= stats["sampled_passes"] <= sampled
+                or stats.get("unit") != metric.get("unit")):
+            raise ValueError(f"Invalid M1 GPU per-pass distribution for {name}")
+        values = [stats.get(key) for key in ("minimum", "p10", "median", "p90", "maximum")]
+        if (any(type(value) not in (int, float) or not math.isfinite(value) for value in values)
+                or values != sorted(values)):
+            raise ValueError(f"Invalid M1 GPU per-pass distribution for {name}")
 
     ranked = []
     for name, metric in means.items():
@@ -115,7 +133,7 @@ def report(profile: dict) -> dict:
     return {
         "measurement_kind": "m1-instruments-device-wide-sampled-gpu",
         "capture": {key: capture.get(key) for key in
-                    ("mode", "probe_source", "passes", "items", "counter_profile")},
+                    ("mode", "probe_source", "passes", "items", "counter_profile", "probe_process_verified")},
         "coverage": {"passes_observed": observed, "passes_with_counter_samples": sampled,
                      "sampled_gpu_work_fraction": sampled_fraction,
                      "sampled_pass_fraction_min": minimum,
@@ -123,6 +141,7 @@ def report(profile: dict) -> dict:
                      "observed_other_activity_fraction_of_sampled_gpu_work": other},
         "ranked_sampled_percent_metrics": ranked,
         "sampled_bandwidth": bandwidth,
+        "sampled_per_pass_metric_distributions": distributions,
         "top_limiter_categories": categories,
         "top_limiter_unparsed_sampled_time_ns": unparsed,
     }
@@ -136,11 +155,15 @@ def format_report(data: dict) -> str:
              f"Sampled passes: {coverage['passes_with_counter_samples']}/{capture['passes']}; "
              f"sampled GPU work: {coverage['sampled_gpu_work_fraction']:.2%}; "
              f"least-sampled pass: {coverage['sampled_pass_fraction_min']:.2%}"]
+    lines.append("Probe process: " + ("verified against the compiled binary" if capture["probe_process_verified"]
+                                      else "not independently verified in this profile"))
     other = coverage["observed_other_activity_fraction_of_sampled_gpu_work"]
     if other is not None:
         lines.append(f"Observed other GPU activity within sampled work: {other:.2%}")
     if coverage["passes_below_10_percent_sampled"]:
         lines.append(f"Passes below 10% sampled: {coverage['passes_below_10_percent_sampled']}")
+    if data["sampled_per_pass_metric_distributions"]:
+        lines.append("Per-pass ranges use unfiltered, overlap-weighted device-wide samples.")
     for suffix, heading in ((" Limiter", "Highest sampled limiter means"),
                             (" Utilization", "Highest sampled utilization means")):
         metrics = [row for row in data["ranked_sampled_percent_metrics"] if row["name"].endswith(suffix)]
@@ -152,11 +175,21 @@ def format_report(data: dict) -> str:
             fraction = metric["clean_sampled_time_fraction"]
             clean_text = f"; clean {clean:.2f}% ({fraction:.1%} of sampled time)" if clean is not None else ""
             lines.append(f"  {metric['name']}: {metric['sampled_mean_percent']:.2f}%{clean_text}")
+            pass_stats = data["sampled_per_pass_metric_distributions"].get(metric["name"])
+            if pass_stats:
+                lines.append(f"    sampled pass median {pass_stats['median']:.2f}%; "
+                             f"range {pass_stats['minimum']:.2f}–{pass_stats['maximum']:.2f}% "
+                             f"({pass_stats['sampled_passes']} passes)")
     for name, metric in data["sampled_bandwidth"].items():
         clean = metric["mean_without_observed_other_activity_gb_s"]
         fraction = metric["clean_sampled_time_fraction"]
         clean_text = f"; clean {clean:.2f} GB/s ({fraction:.1%} of sampled time)" if clean is not None else ""
         lines.append(f"  {name}: {metric['sampled_mean_gb_s']:.2f} GB/s{clean_text}")
+        pass_stats = data["sampled_per_pass_metric_distributions"].get(name)
+        if pass_stats:
+            lines.append(f"    sampled pass median {pass_stats['median']:.2f} GB/s; "
+                         f"range {pass_stats['minimum']:.2f}–{pass_stats['maximum']:.2f} GB/s "
+                         f"({pass_stats['sampled_passes']} passes)")
     if data["top_limiter_categories"]:
         winner = data["top_limiter_categories"][0]
         lines.append(f"Most frequent parsed top-limiter label: {winner['name']} "
