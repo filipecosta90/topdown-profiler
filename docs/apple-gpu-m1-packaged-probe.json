@@ -505,5 +505,150 @@
     "compute_vs_alu_gpu_time_ratio": 4.90374870332456,
     "memory_vs_stream_gpu_time_ratio": 0.9706858590631869
   },
-  "interpretation": "The same packaged kernels used by the M6 replay path execute and checksum-verify on M1. Compute versus optimized ALU has a 4.90x original-command GPU time ratio in these separate M1 captures, while M1 sampled clean ALU Limiter falls from 72.30% to 23.02%. The short optimized ALU commands had only 76/100 passes with counter overlap, so its limiter mean is especially sampling-limited. Memory and stream had all 8 passes sampled and clean Buffer Write Limiter near 98.39% and 99.17%. M1 Instruments counters remain device-wide samples; M6 replay limiter names/denominators are not directly comparable."
+  "interpretation": "The same packaged kernels used by the M6 replay path execute and checksum-verify on M1. Compute versus optimized ALU has a 4.90x original-command GPU time ratio in these separate M1 captures, while M1 sampled clean ALU Limiter falls from 72.30% to 23.02%. The short optimized ALU commands had only 76/100 passes with counter overlap, so its limiter mean is especially sampling-limited. Memory and stream had all 8 passes sampled and clean Buffer Write Limiter near 98.39% and 99.17%. M1 Instruments counters remain device-wide samples; M6 replay limiter names/denominators are not directly comparable.",
+  "checked_runner_smokes": {
+    "compute_limiters": {
+      "command": [
+        "python3",
+        "examples/apple_gpu/record_instruments.py",
+        "--probe-source",
+        "packaged",
+        "--mode",
+        "compute",
+        "--passes",
+        "100",
+        "--items",
+        "65536",
+        "--profile",
+        "3",
+        "--output",
+        "<new-directory>"
+      ],
+      "capture": {
+        "mode": "compute",
+        "passes": 100,
+        "items": 65536,
+        "probe_source": "packaged",
+        "counter_profile": "Performance Limiters",
+        "checksum_verified": true,
+        "target_exit_status": 0,
+        "source_sha256": "da9260233b4e1ebd16764d070e56c5c7bffb427192d055f8cbc9ff028a93adf0",
+        "template_sha256": "936997d41f2a1231623da319e7a5e540d1df04cc7d8be2c2aa19e61ae1753d6c",
+        "toc_sha256": "0be967fef755968c45f38ad123a427d32d2c95e5b0b3b122b71778a2542a38d6",
+        "counter_xml_sha256": "35e783f276c7c29fe3aaf69c2aa263345b8058c647b10ba7b8b91a0efd04f602",
+        "gpu_xml_sha256": "2bc354469e05d44cb5d54cf468b772c91ce0e85ef9eecb2ba48e1f78a0302890",
+        "probe_json_sha256": "9aaf22be7bebaabfa520a209faaea00b86f72c26b20d1301ba509b7b4e54b437"
+      },
+      "profile_json_sha256": "841ebaacc04074a41497588dd2b69db82ef952b7ab2b7988a764ce6844a5ce08",
+      "probe_checksum": 56889.272805809975,
+      "probe_coverage": {
+        "selected_pid": 36863,
+        "passes_observed": 100,
+        "pass_index_min": 0,
+        "pass_index_max": 99,
+        "passes_with_counter_samples": 100,
+        "sampled_gpu_work_fraction": 0.27102628882118485,
+        "sampled_pass_fraction_min": 0.12462670407544901,
+        "observed_other_activity_fraction_of_sampled_gpu_work": 0.07079597058348791
+      },
+      "required_metric_pass_coverage": {
+        "ALU Limiter": 100,
+        "Buffer Write Limiter": 100,
+        "GPU Read Bandwidth": 100,
+        "Top Performance Limiter": 100
+      }
+    },
+    "memory_defaults": {
+      "command": [
+        "python3",
+        "examples/apple_gpu/record_instruments.py",
+        "--probe-source",
+        "packaged",
+        "--mode",
+        "memory",
+        "--output",
+        "<new-directory>"
+      ],
+      "capture": {
+        "mode": "memory",
+        "passes": 8,
+        "items": 16777216,
+        "probe_source": "packaged",
+        "counter_profile": "Performance Limiters",
+        "checksum_verified": true,
+        "target_exit_status": 0,
+        "source_sha256": "da9260233b4e1ebd16764d070e56c5c7bffb427192d055f8cbc9ff028a93adf0",
+        "template_sha256": "936997d41f2a1231623da319e7a5e540d1df04cc7d8be2c2aa19e61ae1753d6c",
+        "toc_sha256": "2fb4c0d7081caf51902e6ba5a7cac85d32bbdf0760c3496f2c7e079360f00169",
+        "counter_xml_sha256": "1ded4ea1336b91c5907ae2a326bebc72f9e6ae744a586fd8a0b272bfde9f3e68",
+        "gpu_xml_sha256": "03f3d7b0459e9c2d8edc7c52dfe4ca48caedb9eb734c4581392dc35b5e4da890",
+        "probe_json_sha256": "fc8c40c57314054d84b2c8f87b2acb8941d228718e683bb8c9f90e5460d85653"
+      },
+      "profile_json_sha256": "542b55c3aaaacdb5f8e44a7dd7cd26f919e37072c92142a8468cb85936e1475d",
+      "probe_checksum": 8302593.127732211,
+      "probe_coverage": {
+        "selected_pid": 36914,
+        "passes_observed": 8,
+        "pass_index_min": 0,
+        "pass_index_max": 7,
+        "passes_with_counter_samples": 8,
+        "sampled_gpu_work_fraction": 0.2911681695077944,
+        "sampled_pass_fraction_min": 0.15703052854664018,
+        "observed_other_activity_fraction_of_sampled_gpu_work": 0.13560518384023684
+      },
+      "required_metric_pass_coverage": {
+        "ALU Limiter": 8,
+        "Buffer Write Limiter": 8,
+        "GPU Read Bandwidth": 8,
+        "Top Performance Limiter": 8
+      }
+    },
+    "compute_utilizations": {
+      "command": [
+        "python3",
+        "examples/apple_gpu/record_instruments.py",
+        "--probe-source",
+        "packaged",
+        "--mode",
+        "compute",
+        "--profile",
+        "4",
+        "--output",
+        "<new-directory>"
+      ],
+      "capture": {
+        "mode": "compute",
+        "passes": 100,
+        "items": 65536,
+        "probe_source": "packaged",
+        "counter_profile": "Performance Utilizations",
+        "checksum_verified": true,
+        "target_exit_status": 0,
+        "source_sha256": "da9260233b4e1ebd16764d070e56c5c7bffb427192d055f8cbc9ff028a93adf0",
+        "template_sha256": "7fa24c2bb719010f7a8a11d4559c571e360c236b9617c45967165ffc3feba4eb",
+        "toc_sha256": "c835f369ab2a393b1d538238b395aca681bd858466dfadd627c945fcfdfd1d04",
+        "counter_xml_sha256": "5436f3a181cf3a008c549e6f76a14a8d8f398711c723f8254cd43e531725054c",
+        "gpu_xml_sha256": "e2ab991afa79db1000093fe94cf691d280ceb05ff1be2551bd9452ccbe7e4e3b",
+        "probe_json_sha256": "7554827df246d26207f20eca679ae1210435eef4ea9b5e499db4900e8b9ab139"
+      },
+      "profile_json_sha256": "33fd5902d9c60fde71241340f471b5716b70b47ec5b4c9a2e9ddb9dac24d96ae",
+      "probe_checksum": 56889.272805809975,
+      "probe_coverage": {
+        "selected_pid": 37569,
+        "passes_observed": 100,
+        "pass_index_min": 0,
+        "pass_index_max": 99,
+        "passes_with_counter_samples": 100,
+        "sampled_gpu_work_fraction": 0.25164007482554096,
+        "sampled_pass_fraction_min": 0.12504060898282385,
+        "observed_other_activity_fraction_of_sampled_gpu_work": 0.059892735430532064
+      },
+      "required_metric_pass_coverage": {
+        "ALU Utilization": 100,
+        "F32 Utilization": 100,
+        "Buffer Store Utilization": 100,
+        "GPU Read Bandwidth": 100
+      }
+    }
+  }
 }

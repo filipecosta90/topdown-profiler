@@ -162,6 +162,11 @@ control retains the original loop. Their `stream` controls also differ: the repl
 probe uses vectorized FMAs, while the Instruments probe uses scalar addition.
 The packaged probe was also run through the M1 Instruments path below. Use the
 matching source and measurement path when reproducing each result.
+The one-command M1 runner completed native packaged-probe checks for compute
+with 100 passes on both limiter and utilization profiles, and memory with eight
+passes on the limiter profile. Every requested pass and required metric was
+sampled; the capture hashes and coverage are in
+[the M1 packaged-probe artifact](apple-gpu-m1-packaged-probe.json).
 Use a fresh directory and full Xcode:
 
 ```sh
@@ -431,6 +436,14 @@ python3 examples/apple_gpu/record_instruments.py \
   --output /tmp/m1-gpu-alu-001 --mode alu --passes 100 --profile 3
 python3 examples/apple_gpu/record_instruments.py \
   --output /tmp/m1-gpu-stream-001 --mode stream --passes 100 --profile 3
+
+# Use the packaged M6 probe kernels on M1's sampled counter timeline.
+python3 examples/apple_gpu/record_instruments.py \
+  --probe-source packaged --mode compute --passes 100 --items 65536 \
+  --output /tmp/m1-gpu-packaged-compute-001
+python3 examples/apple_gpu/record_instruments.py \
+  --probe-source packaged --mode memory --passes 8 --items 16777216 \
+  --output /tmp/m1-gpu-packaged-memory-001
 ```
 
 The runner verifies the M1 probe checksum and target exit, checks that Xcode
@@ -439,6 +452,13 @@ counter overlap with every requested probe pass. It also requires each expected
 counter metric to overlap every pass, checks units, and verifies decoded
 top-limiter labels for profile 3. It saves the trace, XML, command logs and
 `profile.json`. `--profile 4` selects Performance Utilizations.
+For the packaged probe, it also validates the saved `probe.json` checksum,
+mode, item count, and ordered command labels. It requires the observed pass
+indices to run from zero through the requested last pass. The packaged default
+is 100 passes and 65,536 items for compute/ALU, or 8 passes and 16,777,216
+items for memory/stream; the original M1 probe keeps its existing defaults.
+Very short packaged ALU commands can miss individual counter samples, causing
+the checked runner to reject an otherwise completed probe.
 Failed checks leave the artifacts for inspection in the new output directory.
 This experimental M1 summary is separate from the packaged GPU replay profile
 format used by the database and MCP commands above.

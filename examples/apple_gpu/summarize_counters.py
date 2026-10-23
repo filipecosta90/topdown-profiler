@@ -263,6 +263,8 @@ def summarize(source: bytes, gpu_intervals: bytes | None = None, pid: int | None
         "status": "no_probe_intervals" if not passes else "sampled" if covered else "no_counter_overlap",
         "workloads_observed": sorted({workload for workload, _ in passes}),
         "passes_observed": len(passes),
+        "pass_index_min": min(index for _, index in passes) if passes else None,
+        "pass_index_max": max(index for _, index in passes) if passes else None,
         "passes_with_counter_samples": covered,
         "passes_with_counter_samples_by_metric": dict(sorted(metric_coverage.items())),
         "sampled_pass_fraction_min": min(pass_fractions) if pass_fractions else None,

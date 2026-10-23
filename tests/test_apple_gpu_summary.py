@@ -91,6 +91,8 @@ def test_summary_checks_probe_counter_overlap():
         "status": "sampled",
         "workloads_observed": ["burn"],
         "passes_observed": 2,
+        "pass_index_min": 0,
+        "pass_index_max": 1,
         "passes_with_counter_samples": 1,
         "passes_with_counter_samples_by_metric": {},
         "sampled_pass_fraction_min": 0,
