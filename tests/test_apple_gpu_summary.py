@@ -19,6 +19,7 @@ def test_summary_resolves_xctrace_references():
     </node></trace-query-result>"""
     assert MODULE.summarize(source) == {
         "schema": "metal-gpu-counter-intervals",
+        "counter_scope": "device-wide",
         "counter_rows": 2,
         "sample_intervals": 1,
         "counter_names": {"ALU Limiter": 2},
@@ -28,6 +29,17 @@ def test_summary_resolves_xctrace_references():
 def test_summary_rejects_wrong_schema():
     with pytest.raises(ValueError, match="expected"):
         MODULE.summarize(b'<trace-query-result><schema name="gpu-intervals"/></trace-query-result>')
+
+
+def test_summary_uses_counter_column_names_when_export_order_changes():
+    source = b"""<trace-query-result><node><schema name="metal-gpu-counter-intervals">
+    <col><mnemonic>name</mnemonic></col><col><mnemonic>duration</mnemonic></col>
+    <col><mnemonic>counter-id</mnemonic></col><col><mnemonic>start</mnemonic></col>
+    </schema><row><gpu-counter-name>ALU Limiter</gpu-counter-name><duration>20</duration>
+    <uint32>0</uint32><start-time>100</start-time></row></node></trace-query-result>"""
+    result = MODULE.summarize(source)
+    assert result["sample_intervals"] == 1
+    assert result["counter_names"] == {"ALU Limiter": 1}
 
 
 def test_summary_checks_probe_counter_overlap():
@@ -46,6 +58,7 @@ def test_summary_checks_probe_counter_overlap():
     </node></trace-query-result>"""
     result = MODULE.summarize(counters, gpu)["probe_coverage"]
     assert result == {
+        "selected_pid": None,
         "status": "sampled",
         "workloads_observed": ["burn"],
         "passes_observed": 2,
@@ -54,6 +67,7 @@ def test_summary_checks_probe_counter_overlap():
         "sampled_gpu_work_time_ns": 10,
         "counter_sample_intervals_overlapping": 1,
         "other_active_gpu_time_overlapping_ns": None,
+        "other_active_gpu_time_in_counter_samples_ns": None,
         "last_counter_end_minus_last_probe_end_ns": -65,
     }
 
@@ -92,6 +106,7 @@ def test_summary_counts_other_active_gpu_overlap():
     result = MODULE.summarize(counters, gpu)["probe_coverage"]
     assert result["workloads_observed"] == ["stream"]
     assert result["other_active_gpu_time_overlapping_ns"] == 10
+    assert result["other_active_gpu_time_in_counter_samples_ns"] == 0
 
 
 def test_summary_weights_sampled_values_and_keeps_units():
@@ -154,8 +169,58 @@ def test_summary_requires_pid_for_concurrent_labeled_probes():
     assert result["passes_observed"] == 1
     assert result["gpu_work_time_ns"] == 20
     assert result["other_active_gpu_time_overlapping_ns"] == 10
+    assert result["selected_pid"] == 101
     with pytest.raises(ValueError, match="no labeled probe intervals"):
         MODULE.summarize(counters, gpu, pid=303)
+
+
+def test_summary_identifies_other_activity_during_sampled_probe_time():
+    counters = b"""<trace-query-result><node><schema name="metal-gpu-counter-intervals"/>
+    <row><start-time>100</start-time><duration>10</duration><uint32>0</uint32>
+    <gpu-counter-name>ALU Limiter</gpu-counter-name></row></node></trace-query-result>"""
+    gpu = b"""<trace-query-result><node><schema name="metal-gpu-intervals">
+    <col><mnemonic>start</mnemonic></col><col><mnemonic>duration</mnemonic></col>
+    <col><mnemonic>event-label</mnemonic></col><col><mnemonic>state</mnemonic></col></schema>
+    <row><start-time>100</start-time><duration>20</duration>
+    <formatted-label fmt="topdown GPU probe pass 0:burn compute pass 0"/>
+    <gpu-state fmt="Active"/></row>
+    <row><start-time>105</start-time><duration>10</duration>
+    <formatted-label fmt="other GPU activity"/><gpu-state fmt="Active"/></row>
+    </node></trace-query-result>"""
+    coverage = MODULE.summarize(counters, gpu)["probe_coverage"]
+    assert coverage["other_active_gpu_time_overlapping_ns"] == 10
+    assert coverage["sampled_gpu_work_time_ns"] == 10
+    assert coverage["other_active_gpu_time_in_counter_samples_ns"] == 5
+
+
+def test_summary_keeps_separate_means_without_observed_other_activity():
+    counters = b"""<trace-query-result><node><schema name="metal-gpu-counter-intervals">
+    <col><mnemonic>start</mnemonic></col><col><mnemonic>duration</mnemonic></col>
+    <col><mnemonic>counter-id</mnemonic></col><col><mnemonic>name</mnemonic></col>
+    <col><mnemonic>label</mnemonic></col><col><mnemonic>value</mnemonic></col>
+    <col><mnemonic>is-percentage</mnemonic></col></schema>
+    <row><start-time>100</start-time><duration>10</duration><uint32>0</uint32>
+    <gpu-counter-name fmt="ALU Limiter">1.ALU Limiter</gpu-counter-name>
+    <formatted-label fmt="10%"/><fixed-decimal>10</fixed-decimal><boolean>1</boolean></row>
+    <row><start-time>110</start-time><duration>10</duration><uint32>0</uint32>
+    <gpu-counter-name fmt="ALU Limiter">1.ALU Limiter</gpu-counter-name>
+    <formatted-label fmt="90%"/><fixed-decimal>90</fixed-decimal><boolean>1</boolean></row>
+    </node></trace-query-result>"""
+    gpu = b"""<trace-query-result><node><schema name="metal-gpu-intervals">
+    <col><mnemonic>start</mnemonic></col><col><mnemonic>duration</mnemonic></col>
+    <col><mnemonic>event-label</mnemonic></col><col><mnemonic>state</mnemonic></col></schema>
+    <row><start-time>100</start-time><duration>20</duration>
+    <formatted-label fmt="topdown GPU probe pass 0:burn compute pass 0"/>
+    <gpu-state fmt="Active"/></row>
+    <row><start-time>105</start-time><duration>5</duration>
+    <formatted-label fmt="other GPU activity"/><gpu-state fmt="Active"/></row>
+    </node></trace-query-result>"""
+    result = MODULE.summarize(counters, gpu)
+    assert result["sampled_counter_means"]["ALU Limiter"]["value"] == 50
+    clean = result["sampled_counter_means_without_observed_other_activity"]["ALU Limiter"]
+    assert clean["value"] == 90
+    assert clean["sampled_time_ns"] == 10
+    assert clean["counter_intervals"] == 1
 
 
 def test_summary_streams_files_and_keeps_cross_row_and_nested_references(tmp_path):

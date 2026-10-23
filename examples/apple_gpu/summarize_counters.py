@@ -108,6 +108,21 @@ def _merge(windows: list[tuple[int, int]]) -> list[tuple[int, int]]:
     return merged
 
 
+def _intersection(left: list[tuple[int, int]], right: list[tuple[int, int]]) -> list[tuple[int, int]]:
+    shared = []
+    left_index = right_index = 0
+    while left_index < len(left) and right_index < len(right):
+        start = max(left[left_index][0], right[right_index][0])
+        end = min(left[left_index][1], right[right_index][1])
+        if start < end:
+            shared.append((start, end))
+        if left[left_index][1] < right[right_index][1]:
+            left_index += 1
+        else:
+            right_index += 1
+    return shared
+
+
 def _process_pid(cell) -> int | None:
     return _integer(_Cell(cell.pid, None), "probe PID") if cell.pid is not None else None
 
@@ -122,17 +137,25 @@ def summarize(source: bytes, gpu_intervals: bytes | None = None, pid: int | None
     samples = set()
     values = []
     for columns, row in _table(source, "metal-gpu-counter-intervals"):
-        if len(row) < 4:
-            raise ValueError("counter row has fewer than four columns")
-        if not row[0].text or not row[3].text:
+        if columns:
+            if not {"start", "duration", "name"}.issubset(columns):
+                raise ValueError("counter table lacks required columns")
+            start_cell = row[columns.index("start")]
+            duration_cell = row[columns.index("duration")]
+            name_cell = row[columns.index("name")]
+        else:
+            if len(row) < 4:
+                raise ValueError("counter row has fewer than four columns")
+            start_cell, duration_cell, name_cell = row[0], row[1], row[3]
+        if not start_cell.text or not name_cell.text:
             raise ValueError("counter row lacks start time or counter name")
-        start = _integer(row[0], "counter start")
-        duration = _integer(row[1], "counter duration")
+        start = _integer(start_cell, "counter start")
+        duration = _integer(duration_cell, "counter duration")
         if duration == 0:
             raise ValueError("counter duration must be positive")
         starts.add(start)
         samples.add((start, start + duration))
-        names[row[3].text] += 1
+        names[name_cell.text] += 1
         if {"name", "value", "label", "is-percentage"}.issubset(columns):
             name = row[columns.index("name")].fmt or row[columns.index("name")].text
             label = row[columns.index("label")].fmt or ""
@@ -149,6 +172,7 @@ def summarize(source: bytes, gpu_intervals: bytes | None = None, pid: int | None
             values.append((start, start + duration, name, value, unit, label))
     result = {
         "schema": "metal-gpu-counter-intervals",
+        "counter_scope": "device-wide",
         "counter_rows": sum(names.values()),
         "sample_intervals": len(starts),
         "counter_names": dict(sorted(names.items())),
@@ -202,56 +226,72 @@ def summarize(source: bytes, gpu_intervals: bytes | None = None, pid: int | None
     pass_windows = {key: _merge(pieces) for key, pieces in passes.items()}
     windows = _merge([window for pieces in pass_windows.values() for window in pieces])
     sampled = _merge([sample for sample in samples if _overlap(*sample, windows)])
+    other_windows = _merge(other_active)
+    sampled_probe = _intersection(sampled, windows)
+    sampled_other_time = sum(end - start for start, end in _intersection(sampled_probe, other_windows))
     covered = sum(any(_overlap(*sample, pieces) for sample in sampled) for pieces in pass_windows.values())
     result["probe_coverage"] = {
+        "selected_pid": selected_pid,
         "status": "no_probe_intervals" if not passes else "sampled" if covered else "no_counter_overlap",
         "workloads_observed": sorted({workload for workload, _ in passes}),
         "passes_observed": len(passes),
         "passes_with_counter_samples": covered,
         "gpu_work_time_ns": sum(end - start for start, end in windows),
-        "sampled_gpu_work_time_ns": sum(_overlap(start, end, windows) for start, end in sampled),
+        "sampled_gpu_work_time_ns": sum(end - start for start, end in sampled_probe),
         "counter_sample_intervals_overlapping": sum(bool(_overlap(*sample, windows)) for sample in samples),
         "other_active_gpu_time_overlapping_ns": (
-            sum(_overlap(start, end, windows) for start, end in _merge(other_active)) if state_available else None
+            sum(end - start for start, end in _intersection(other_windows, windows)) if state_available else None
         ),
+        "other_active_gpu_time_in_counter_samples_ns": sampled_other_time if state_available else None,
         "last_counter_end_minus_last_probe_end_ns": (
             max(end for _, end in samples) - max(end for _, end in windows) if samples and windows else None
         ),
     }
     means = {}
+    clean_means = {}
     top_categories = Counter()
+    clean_top_categories = Counter()
     for start, end, name, value, unit, label in values:
         overlap = _overlap(start, end, windows)
         if not overlap:
             continue
-        metric = means.setdefault(name, {"weighted_sum": 0.0, "sampled_time_ns": 0, "counter_intervals": 0, "unit": unit})
-        if metric["unit"] != unit:
-            raise ValueError(f"mixed units for {name}")
-        metric["weighted_sum"] += overlap * value
-        metric["sampled_time_ns"] += overlap
-        metric["counter_intervals"] += 1
-        if name == "Top Performance Limiter":
-            category = re.search(r"\((-?\d+\.([^()]*)\))$", label)
-            if category:
-                top_categories[category.group(2)] += overlap
-    result["sampled_counter_means"] = {
-        name: {
-            "value": round(metric["weighted_sum"] / metric["sampled_time_ns"], 6),
-            "unit": metric["unit"],
-            "sampled_time_ns": metric["sampled_time_ns"],
-            "counter_intervals": metric["counter_intervals"],
-        }
-        for name, metric in sorted(means.items())
-    }
-    top_total = sum(top_categories.values())
-    result["top_limiter_categories"] = [
-        {
-            "name": name,
-            "sampled_time_ns": duration,
-            "share_of_top_limiter_samples_percent": round(100 * duration / top_total, 4),
-        }
-        for name, duration in sorted(top_categories.items(), key=lambda item: (-item[1], item[0]))
-    ]
+        clean = state_available and not _overlap(start, end, other_windows)
+        buckets = [(means, top_categories)]
+        if clean:
+            buckets.append((clean_means, clean_top_categories))
+        for bucket, categories in buckets:
+            metric = bucket.setdefault(name, {"weighted_sum": 0.0, "sampled_time_ns": 0,
+                                              "counter_intervals": 0, "unit": unit})
+            if metric["unit"] != unit:
+                raise ValueError(f"mixed units for {name}")
+            metric["weighted_sum"] += overlap * value
+            metric["sampled_time_ns"] += overlap
+            metric["counter_intervals"] += 1
+            if name == "Top Performance Limiter":
+                category = re.search(r"\((-?\d+\.([^()]*)\))$", label)
+                if category:
+                    categories[category.group(2)] += overlap
+
+    def summarize_means(bucket):
+        return {name: {"value": round(metric["weighted_sum"] / metric["sampled_time_ns"], 6),
+                       "unit": metric["unit"], "sampled_time_ns": metric["sampled_time_ns"],
+                       "counter_intervals": metric["counter_intervals"]}
+                for name, metric in sorted(bucket.items())}
+
+    def summarize_categories(categories):
+        total = sum(categories.values())
+        return [{"name": name, "sampled_time_ns": duration,
+                 "share_of_top_limiter_samples_percent": round(100 * duration / total, 4)}
+                for name, duration in sorted(categories.items(), key=lambda item: (-item[1], item[0]))]
+
+    result["sampled_counter_means"] = summarize_means(means)
+    result["top_limiter_categories"] = summarize_categories(top_categories)
+    result["sampled_counter_means_without_observed_other_activity"] = (
+        summarize_means(clean_means) if state_available else None
+    )
+    result["top_limiter_categories_without_observed_other_activity"] = (
+        summarize_categories(clean_top_categories) if state_available else None
+    )
     return result
 
 

@@ -290,6 +290,28 @@ with the Performance Limiters capture (29.60 GB/s). This is an independent
 counter-set check, still subject to the same system-wide sampling limits. Its
 sanitized results are also in the validation JSON.
 
+### Alternating M1 replication and observed interference
+
+Three fresh ALU/stream pairs, alternated in that order with 100 passes each,
+completed checksum verification and had counter samples overlapping every pass.
+The device-wide counter means repeated the contrast. Excluding any counter
+interval that overlapped *observed* other active GPU work made the distinction
+at least as strong:
+
+| Counter, clean sampled intervals | ALU range across 3 runs | Stream range across 3 runs |
+|---|---:|---:|
+| ALU Limiter | 71.60–73.32% | 1.30–1.33% |
+| Buffer Write Limiter | 0.10–0.11% | 99.29–99.46% |
+| GPU Read Bandwidth | 0.03–0.08 GB/s | 28.11–28.53 GB/s |
+
+The unfiltered sampled means, counter coverage, per-run checksums and XML hashes
+are in [the replication evidence](apple-gpu-m1-replication.json). The fraction of
+sampled probe time with observed other activity was 4.0–6.4% for ALU and
+9.3–11.9% for stream. The clean subset discards entire counter intervals that
+overlap that activity; it is still a sampled, device-wide measurement. Unseen
+activity, boundary contamination, frequency and thermal changes are not ruled
+out by these six runs.
+
 ## Reproduce the Instruments comparison
 
 Use Xcode's developer directory; Command Line Tools alone do not include
@@ -339,12 +361,18 @@ does not establish probe coverage. Use 100 and 200 passes for longer comparison
 captures; the four-pass run is a smoke check. Inspect sampled time, pass coverage,
 and `other_active_gpu_time_overlapping_ns` before interpreting
 `sampled_counter_means`. The latter are weighted only over sampled intervals.
+`other_active_gpu_time_in_counter_samples_ns` narrows the interference check to
+the sampled portions of probe work. The summary records `counter_scope` as
+`device-wide` and `probe_coverage.selected_pid` for provenance; selecting a PID
+does not isolate the native GPU counters from concurrent processes.
+Counter samples that straddle a probe boundary can still include outside GPU
+work, so zero observed overlap does not certify isolation.
 The summarizer reads exported counter rows incrementally; a 183 MB M1 XML export
 used 284 MB peak resident memory in this run, compared with 3.07 GB before the
 streaming change, and produced byte-identical JSON. If a trace includes multiple
 labeled probe processes, it fails until `--pid PID` selects one. The native
 counter stream is still system-wide; concurrent GPU activity remains visible in
-the overlap field.
+the overlap fields.
 To run the memory control, substitute `probe 100 stream` in the shell command and
 use a new trace/output directory. `probe 100 alu` selects the original workload
 explicitly.
