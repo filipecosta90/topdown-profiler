@@ -456,7 +456,12 @@ of sampled probe work across these summaries. Compute/ALU command GPU-time
 ratios ranged from 3.07 to 4.26, so this control supports the direction of the
 kernel effect rather than a fixed speedup. ALU remained the most frequent
 *top-limiter label* for both kernels, showing why that label alone cannot
-describe F32 utilization or the size of the ALU limiter. The same-trace
+describe F32 utilization or the size of the ALU limiter. An additional
+per-pass overlap-weighted check found no overlap between the sampled F32
+Utilization ranges in these four traces: compute was at most 15.29%, while
+every sampled optimized-ALU pass was at least 26.68%. These are unfiltered,
+device-wide samples, and one ALU pass in the first limiter trace was unsampled.
+The same-trace
 checksums, PID matches, counter coverage, sampled and clean means, and hashes
 are in [the paired-trace evidence](apple-gpu-m1-packaged-paired-traces.json).
 

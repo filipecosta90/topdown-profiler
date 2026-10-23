@@ -750,5 +750,132 @@
         }
       }
     }
+  },
+  "per_pass_analysis": {
+    "method": "For each labeled pass window and counter interval, weight the native metric value by nanosecond overlap; then summarize the resulting sampled pass means. These are unfiltered device-wide counter samples and may include observed other activity. Unsampled passes are excluded.",
+    "source_sha256": "00cdf6d7d36fa93c679d71473edadc6234e80e145c5dee2453e6a1b90c29478f",
+    "source": "import json\nimport math\nfrom pathlib import Path\nimport re\nimport statistics\nimport sys\nsys.path.insert(0,'examples/apple_gpu')\nfrom summarize_counters import _table,_process_pid,PACKAGED_PROBE_LABEL,_merge,_overlap\nroot=Path('/private/tmp/topdown-m1-packaged-pairs-retry-20261023')\nresult={}\nfor profile in (3,4):\n for order in ('compute-first','alu-first'):\n  folder=root/f'profile-{profile}-{order}'\n  pid_mode={json.load(open(folder/f'{mode}-summary.json'))['probe_coverage']['selected_pid']:mode for mode in ('compute','alu')}\n  windows={}\n  for columns,row in _table(folder/'gpu-intervals.xml','metal-gpu-intervals'):\n   label=row[columns.index('event-label')].fmt or row[columns.index('event-label')].text or ''\n   match=PACKAGED_PROBE_LABEL.match(label)\n   if not match:continue\n   pid=_process_pid(row[columns.index('process')])\n   if pid not in pid_mode:continue\n   mode,index=match.group(1),int(match.group(2))\n   if mode!=pid_mode[pid]:raise ValueError('mode-PID mismatch')\n   start=int(row[columns.index('start')].text);duration=int(row[columns.index('duration')].text)\n   windows.setdefault((mode,index),[]).append((start,start+duration))\n  windows={key:_merge(value) for key,value in windows.items()}\n  metrics=['ALU Limiter','F32 Utilization'] if profile==3 else ['F32 Utilization']\n  totals={key:{name:[0.,0] for name in metrics} for key in windows}\n  for columns,row in _table(folder/'counters.xml','metal-gpu-counter-intervals'):\n   name_cell=row[columns.index('name')];name=name_cell.fmt or name_cell.text\n   if name not in metrics:continue\n   start=int(row[columns.index('start')].text);end=start+int(row[columns.index('duration')].text)\n   value=float(row[columns.index('value')].text)\n   for key,pieces in windows.items():\n    overlap=_overlap(start,end,pieces)\n    if overlap:\n     totals[key][name][0]+=overlap*value;totals[key][name][1]+=overlap\n  report={}\n  for mode in ('compute','alu'):\n   report[mode]={}\n   for name in metrics:\n    samples=[totals[(mode,index)][name][0]/totals[(mode,index)][name][1]\n             for index in range(100) if (mode,index) in totals and totals[(mode,index)][name][1]]\n    samples.sort();report[mode][name]={'sampled_passes':len(samples),'min':samples[0],\n     'p10':samples[int(.1*(len(samples)-1))],'median':statistics.median(samples),\n     'p90':samples[int(.9*(len(samples)-1))],'max':samples[-1]}\n  result[f'{profile}-{order}']=report\nprint(json.dumps(result,indent=2))\n",
+    "distributions": {
+      "3-compute-first": {
+        "compute": {
+          "ALU Limiter": {
+            "sampled_passes": 100,
+            "min": 78.30831897267068,
+            "p10": 86.34402334914418,
+            "median": 89.39962046116499,
+            "p90": 92.26910301361322,
+            "max": 92.95063748149332
+          },
+          "F32 Utilization": {
+            "sampled_passes": 100,
+            "min": 12.487280623837512,
+            "p10": 13.703042326799338,
+            "median": 14.2309513493,
+            "p90": 14.7024853742,
+            "max": 15.13325255090909
+          }
+        },
+        "alu": {
+          "ALU Limiter": {
+            "sampled_passes": 99,
+            "min": 54.07356767261088,
+            "p10": 56.83731626800001,
+            "median": 74.95550604309757,
+            "p90": 83.84023408843578,
+            "max": 90.979894687
+          },
+          "F32 Utilization": {
+            "sampled_passes": 99,
+            "min": 43.25281825169255,
+            "p10": 51.578859304000005,
+            "median": 68.495714914,
+            "p90": 76.62161345762455,
+            "max": 83.210050084
+          }
+        }
+      },
+      "3-alu-first": {
+        "compute": {
+          "ALU Limiter": {
+            "sampled_passes": 100,
+            "min": 75.45445700146153,
+            "p10": 85.66808078442048,
+            "median": 89.24630687735001,
+            "p90": 91.9460182725,
+            "max": 92.51230845040001
+          },
+          "F32 Utilization": {
+            "sampled_passes": 100,
+            "min": 12.201088668333332,
+            "p10": 13.615124235720561,
+            "median": 14.207410870499999,
+            "p90": 14.631991040799997,
+            "max": 14.962555716307692
+          }
+        },
+        "alu": {
+          "ALU Limiter": {
+            "sampled_passes": 100,
+            "min": 29.179306995000005,
+            "p10": 55.6417142855,
+            "median": 70.49322976704086,
+            "p90": 83.92625939735694,
+            "max": 91.917590219
+          },
+          "F32 Utilization": {
+            "sampled_passes": 100,
+            "min": 26.683520438000002,
+            "p10": 50.85955628181619,
+            "median": 63.37665999806356,
+            "p90": 75.471330237,
+            "max": 84.025462347
+          }
+        }
+      },
+      "4-compute-first": {
+        "compute": {
+          "F32 Utilization": {
+            "sampled_passes": 100,
+            "min": 11.364595596545454,
+            "p10": 13.666846078167195,
+            "median": 14.130373247999998,
+            "p90": 14.705055059,
+            "max": 14.9991341524
+          }
+        },
+        "alu": {
+          "F32 Utilization": {
+            "sampled_passes": 100,
+            "min": 49.179315761,
+            "p10": 53.41745923395745,
+            "median": 66.92807269975,
+            "p90": 74.898285714,
+            "max": 81.244553898
+          }
+        }
+      },
+      "4-alu-first": {
+        "compute": {
+          "F32 Utilization": {
+            "sampled_passes": 100,
+            "min": 11.296493401624998,
+            "p10": 13.633247173823156,
+            "median": 14.27957474135,
+            "p90": 14.68800714408416,
+            "max": 15.288249048090908
+          }
+        },
+        "alu": {
+          "F32 Utilization": {
+            "sampled_passes": 100,
+            "min": 40.0407059565,
+            "p10": 50.641293176426224,
+            "median": 65.843606314,
+            "p90": 75.968571428,
+            "max": 83.255901664
+          }
+        }
+      }
+    }
   }
 }
