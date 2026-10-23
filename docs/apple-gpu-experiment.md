@@ -162,10 +162,12 @@ control retains the original loop. Their `stream` controls also differ: the repl
 probe uses vectorized FMAs, while the Instruments probe uses scalar addition.
 The packaged probe was also run through the M1 Instruments path below. Use the
 matching source and measurement path when reproducing each result.
-The one-command M1 runner completed native packaged-probe checks for compute
-with 100 passes on both limiter and utilization profiles, and memory with eight
-passes on the limiter profile. Every requested pass and required metric was
-sampled; the capture hashes and coverage are in
+The one-command M1 runner completed native packaged-probe limiter checks for
+all four modes, plus a utilization check for compute. Every requested pass and
+required metric was sampled. The 100-pass ALU check still had 13 passes with
+less than 10% sampled duration, and the eight-pass stream check had observed
+other GPU activity during 33% of sampled probe time. The capture hashes and
+coverage are in
 [the M1 packaged-probe artifact](apple-gpu-m1-packaged-probe.json).
 Use a fresh directory and full Xcode:
 

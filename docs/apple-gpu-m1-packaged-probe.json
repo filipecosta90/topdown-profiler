@@ -649,6 +649,97 @@
         "Buffer Store Utilization": 100,
         "GPU Read Bandwidth": 100
       }
+    },
+    "stream_defaults": {
+      "command": [
+        "python3",
+        "examples/apple_gpu/record_instruments.py",
+        "--probe-source",
+        "packaged",
+        "--mode",
+        "stream",
+        "--output",
+        "<new-directory>"
+      ],
+      "capture": {
+        "mode": "stream",
+        "passes": 8,
+        "items": 16777216,
+        "probe_source": "packaged",
+        "counter_profile": "Performance Limiters",
+        "checksum_verified": true,
+        "target_exit_status": 0,
+        "source_sha256": "da9260233b4e1ebd16764d070e56c5c7bffb427192d055f8cbc9ff028a93adf0",
+        "template_sha256": "936997d41f2a1231623da319e7a5e540d1df04cc7d8be2c2aa19e61ae1753d6c",
+        "toc_sha256": "a68b9d727f9180605c4389ca72c8f0a33f233f13d92aff4757cc245e5b7948f7",
+        "counter_xml_sha256": "8d1f1091943010d68147cb11b21102effefdd817d2bc71efbc317dab8d1b8d23",
+        "gpu_xml_sha256": "c39746258b8741e2bab582d6cb5bce078b6b39386ef5b7c2e7939199be2d3c80",
+        "probe_json_sha256": "ea261bac0dda3e27c96938051a3a909329e8dcfcf480d2302ccf2eeea0f17d0b"
+      },
+      "profile_json_sha256": "25a88464c8a82f94292bbcca0b8729f843cef46c2a4d2d6476e2ab5bb8553fb7",
+      "probe_checksum": 8302593.127732211,
+      "probe_coverage": {
+        "selected_pid": 38649,
+        "passes_observed": 8,
+        "pass_index_min": 0,
+        "pass_index_max": 7,
+        "passes_with_counter_samples": 8,
+        "sampled_gpu_work_fraction": 0.2837388620202702,
+        "sampled_pass_fraction_min": 0.1596902589667895,
+        "observed_other_activity_fraction_of_sampled_gpu_work": 0.3315712744169658
+      },
+      "required_metric_pass_coverage": {
+        "ALU Limiter": 8,
+        "Buffer Write Limiter": 8,
+        "GPU Read Bandwidth": 8,
+        "Top Performance Limiter": 8
+      }
+    },
+    "alu_defaults": {
+      "command": [
+        "python3",
+        "examples/apple_gpu/record_instruments.py",
+        "--probe-source",
+        "packaged",
+        "--mode",
+        "alu",
+        "--output",
+        "<new-directory>"
+      ],
+      "capture": {
+        "mode": "alu",
+        "passes": 100,
+        "items": 65536,
+        "probe_source": "packaged",
+        "counter_profile": "Performance Limiters",
+        "checksum_verified": true,
+        "target_exit_status": 0,
+        "source_sha256": "da9260233b4e1ebd16764d070e56c5c7bffb427192d055f8cbc9ff028a93adf0",
+        "template_sha256": "936997d41f2a1231623da319e7a5e540d1df04cc7d8be2c2aa19e61ae1753d6c",
+        "toc_sha256": "53d99a9d483ba6cd685dd21d6af65808d4da1ef06b2297424bbf94a25a294ada",
+        "counter_xml_sha256": "59e5c55f4b2b60d5c97da04636a87e49bcbe770b53ee14605beb9a177e55b8ce",
+        "gpu_xml_sha256": "b54a0197568af95bbbd60b4b45426710aa26991b279b23b023e6e31cd55810ac",
+        "probe_json_sha256": "d99c80bfab40380a362ec00b66c5d36903b35fc6e443ff984990306142312f00"
+      },
+      "profile_json_sha256": "341c08ea627bbdeb45c215fbf3d79c173e06b8e5d0041f643fec64343f49dccf",
+      "probe_checksum": 56889.272805809975,
+      "probe_coverage": {
+        "selected_pid": 38725,
+        "passes_observed": 100,
+        "pass_index_min": 0,
+        "pass_index_max": 99,
+        "passes_with_counter_samples": 100,
+        "sampled_gpu_work_fraction": 0.16208591819877316,
+        "sampled_pass_fraction_min": 0.09094381491114789,
+        "passes_below_10_percent_sampled": 13,
+        "observed_other_activity_fraction_of_sampled_gpu_work": 0.05636256090756111
+      },
+      "required_metric_pass_coverage": {
+        "ALU Limiter": 100,
+        "Buffer Write Limiter": 100,
+        "GPU Read Bandwidth": 100,
+        "Top Performance Limiter": 100
+      }
     }
   }
 }
