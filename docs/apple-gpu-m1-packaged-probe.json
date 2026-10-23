@@ -632,6 +632,8 @@
         "probe_json_sha256": "7554827df246d26207f20eca679ae1210435eef4ea9b5e499db4900e8b9ab139"
       },
       "profile_json_sha256": "33fd5902d9c60fde71241340f471b5716b70b47ec5b4c9a2e9ddb9dac24d96ae",
+      "counter_name_count": 13,
+      "control_flow_counter_present": false,
       "probe_checksum": 56889.272805809975,
       "probe_coverage": {
         "selected_pid": 37569,
@@ -761,6 +763,8 @@
       "probe_json_sha256": "f9c46f6aa22ec9495aaf24a5ac3fa121f566e6aeeeffac71e771c19ddd632c3d"
     },
     "profile_json_sha256": "a6849679fb111fe4066421a8fdb5ec9328b68fd529621fbb36812dcd814c1065",
+    "counter_name_count": 32,
+    "control_flow_counter_present": false,
     "probe_coverage": {
       "selected_pid": 49006,
       "passes_observed": 100,

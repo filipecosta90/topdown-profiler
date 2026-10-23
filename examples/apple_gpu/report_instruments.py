@@ -4,6 +4,11 @@ import argparse
 import json
 import math
 from pathlib import Path
+import re
+
+
+CAPTURE_HASHES = ("source_sha256", "binary_sha256", "template_sha256", "toc_sha256",
+                  "counter_xml_sha256", "gpu_xml_sha256", "probe_json_sha256")
 
 
 def _fraction(value, label: str) -> float:
@@ -34,6 +39,15 @@ def report(profile: dict) -> dict:
     process_verified = capture.get("probe_process_verified")
     if process_verified is not None and type(process_verified) is not bool:
         raise ValueError("Invalid M1 GPU probe process verification")
+    selected_pid = coverage.get("selected_pid")
+    if selected_pid is not None and (type(selected_pid) is not int or selected_pid <= 0):
+        raise ValueError("Invalid M1 GPU selected probe PID")
+    if process_verified is True and selected_pid is None:
+        raise ValueError("Verified M1 GPU probe process lacks a selected PID")
+    hashes = {key: capture[key] for key in CAPTURE_HASHES if key in capture}
+    if any(not isinstance(value, str) or re.fullmatch(r"[0-9a-f]{64}", value) is None
+           for value in hashes.values()):
+        raise ValueError("Invalid M1 GPU capture hash")
     passes = capture.get("passes")
     observed = coverage.get("passes_observed")
     sampled = coverage.get("passes_with_counter_samples")
@@ -129,12 +143,19 @@ def report(profile: dict) -> dict:
                 or not math.isfinite(category["share_of_top_limiter_samples_percent"])
                 or not 0 <= category["share_of_top_limiter_samples_percent"] <= 100):
             raise ValueError("Invalid M1 GPU top-limiter category")
+    top_metric = means.get("Top Performance Limiter")
+    if (top_metric is None and (categories or unparsed)
+            or top_metric is not None and (not isinstance(top_metric, dict)
+                or sum(category["sampled_time_ns"] for category in categories) + unparsed
+                != _sampled_time(top_metric, "Top Performance Limiter"))):
+        raise ValueError("M1 GPU top-limiter sample time does not match its categories")
 
     return {
         "measurement_kind": "m1-instruments-device-wide-sampled-gpu",
         "capture": {key: capture.get(key) for key in
-                    ("mode", "probe_source", "passes", "items", "counter_profile", "probe_process_verified")},
-        "coverage": {"passes_observed": observed, "passes_with_counter_samples": sampled,
+                    ("mode", "probe_source", "passes", "items", "counter_profile", "probe_process_verified")}
+                   | hashes,
+        "coverage": {"selected_pid": selected_pid, "passes_observed": observed, "passes_with_counter_samples": sampled,
                      "sampled_gpu_work_fraction": sampled_fraction,
                      "sampled_pass_fraction_min": minimum,
                      "passes_below_10_percent_sampled": sparse,
@@ -155,8 +176,10 @@ def format_report(data: dict) -> str:
              f"Sampled passes: {coverage['passes_with_counter_samples']}/{capture['passes']}; "
              f"sampled GPU work: {coverage['sampled_gpu_work_fraction']:.2%}; "
              f"least-sampled pass: {coverage['sampled_pass_fraction_min']:.2%}"]
-    lines.append("Probe process: " + ("verified against the compiled binary" if capture["probe_process_verified"]
-                                      else "not independently verified in this profile"))
+    pid_text = f" (PID {coverage['selected_pid']})" if coverage["selected_pid"] is not None else ""
+    verification = ("verified against the compiled binary" if capture["probe_process_verified"]
+                    else "not independently verified in this profile")
+    lines.append(f"Probe process: {verification}{pid_text}")
     other = coverage["observed_other_activity_fraction_of_sampled_gpu_work"]
     if other is not None:
         lines.append(f"Observed other GPU activity within sampled work: {other:.2%}")

@@ -19,8 +19,9 @@ def profile():
         "schema": "metal-gpu-counter-intervals", "counter_scope": "device-wide",
         "capture": {"mode": "compute", "probe_source": "packaged", "passes": 2, "items": 65536,
                     "counter_profile": "Performance Limiters", "checksum_verified": True,
-                    "target_exit_status": 0, "probe_process_verified": True},
-        "probe_coverage": {"status": "sampled", "passes_observed": 2,
+                    "target_exit_status": 0, "probe_process_verified": True,
+                    "binary_sha256": "a" * 64},
+        "probe_coverage": {"status": "sampled", "selected_pid": 42, "passes_observed": 2,
                            "passes_with_counter_samples": 2, "sampled_gpu_work_fraction": 0.25,
                            "sampled_pass_fraction_min": 0.1, "passes_below_10_percent_sampled": 0,
                            "observed_other_activity_fraction_of_sampled_gpu_work": 0.2},
@@ -40,7 +41,9 @@ def profile():
         },
         "top_limiter_categories": [
             {"name": "ALU Limiter", "sampled_time_ns": 950,
-             "share_of_top_limiter_samples_percent": 95}],
+             "share_of_top_limiter_samples_percent": 95},
+            {"name": "Other Limiter", "sampled_time_ns": 50,
+             "share_of_top_limiter_samples_percent": 5}],
         "top_limiter_unparsed_sampled_time_ns": 0,
     }
 
@@ -55,10 +58,12 @@ def test_m1_report_preserves_scope_coverage_and_clean_counter_means(profile):
     assert report["ranked_sampled_percent_metrics"][0]["mean_without_observed_other_activity_percent"] == 90
     assert report["ranked_sampled_percent_metrics"][0]["clean_sampled_time_fraction"] == 0.8
     assert report["sampled_bandwidth"]["GPU Read Bandwidth"]["sampled_mean_gb_s"] == 2.5
+    assert report["capture"]["binary_sha256"] == "a" * 64
+    assert report["coverage"]["selected_pid"] == 42
     assert report["sampled_per_pass_metric_distributions"]["ALU Limiter"]["median"] == 80
     text = MODULE.format_report(report)
     assert "device-wide Instruments samples" in text
-    assert "Probe process: verified against the compiled binary" in text
+    assert "Probe process: verified against the compiled binary (PID 42)" in text
     assert "Sampled passes: 2/2; sampled GPU work: 25.00%; least-sampled pass: 10.00%" in text
     assert "Observed other GPU activity within sampled work: 20.00%" in text
     assert "Per-pass ranges use unfiltered, overlap-weighted device-wide samples." in text
@@ -90,6 +95,8 @@ def test_report_accepts_profiles_without_per_pass_distributions(profile):
     ({"counter_scope": "per-encoder"}, "device-wide"),
     ({"capture": {"checksum_verified": False}}, "checksum-verified"),
     ({"capture": {"probe_process_verified": "yes"}}, "probe process verification"),
+    ({"capture": {"binary_sha256": "wrong"}}, "capture hash"),
+    ({"probe_coverage": {"selected_pid": None}}, "lacks a selected PID"),
     ({"probe_coverage": {"passes_with_counter_samples": 3}}, "pass coverage"),
     ({"probe_coverage": {"passes_below_10_percent_sampled": 3}}, "sparse-pass"),
     ({"probe_coverage": {"sampled_gpu_work_fraction": float("nan")}}, "sampled GPU work fraction"),
@@ -104,6 +111,7 @@ def test_report_accepts_profiles_without_per_pass_distributions(profile):
      "exceeds total"),
     ({"top_limiter_categories": [{"name": "ALU Limiter", "sampled_time_ns": 950,
                                   "share_of_top_limiter_samples_percent": 105}]}, "top-limiter category"),
+    ({"top_limiter_unparsed_sampled_time_ns": 1}, "top-limiter sample time"),
     ({"sampled_per_pass_metric_distributions": {
         "ALU Limiter": {"sampled_passes": 3, "unit": "%", "minimum": 70, "p10": 72,
                         "median": 80, "p90": 88, "maximum": 90}}}, "per-pass distribution"),

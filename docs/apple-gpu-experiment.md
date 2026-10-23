@@ -640,9 +640,16 @@ the checked runner to reject an otherwise completed probe.
 Failed checks leave the artifacts for inspection in the new output directory.
 This experimental M1 summary is separate from the packaged GPU replay profile
 format used by the database and MCP commands above.
+The tested M1 Performance Limiters and Performance Utilizations exports have
+32 and 13 counter names respectively, with no `Control Flow` counter in either
+inventory. They cannot reproduce M6's per-encoder Control Flow limiter; the
+M1 compute/optimized-ALU comparison uses sampled ALU and F32 counters instead.
 The saved-profile report ranks the sampled limiter and utilization means within
 each counter type, shows bandwidth separately, and prints the sampled fraction,
-sparse-pass count, and overlap with observed other GPU activity. Its clean means
+sparse-pass count, and overlap with observed other GPU activity. Its compact
+JSON retains the selected PID and capture hashes; the text report states whether
+the capture bound that PID to the compiled probe. Older profiles without this
+check remain readable and are labeled as unverified. Its clean means
 exclude counter intervals that overlap observed other activity and show how
 much sampled time remains for each metric; they do not make device-wide
 counters process-specific. New captures also report median and range of sampled
@@ -651,7 +658,10 @@ native counter intervals and remain unfiltered device-wide observations; they
 are not a complete census of each pass.
 A fresh 100-pass packaged compute capture on this M1 completed the checked
 runner with per-pass ALU Limiter values from 73.47% to 92.93% and F32
-Utilization from 11.73% to 15.23%. Its source, binary, trace-table and XML
+Utilization from 11.73% to 15.23%. GPU Read Bandwidth has a 0.26 GB/s sampled
+pass median, a 0.12–4.48 GB/s range and a 0.38 GB/s pooled mean; the high
+pass cannot be assigned to the probe from device-wide counters. Its source,
+binary, trace-table and XML
 hashes are in [the packaged-probe evidence](apple-gpu-m1-packaged-probe.json).
 On this M1, a four-pass profile-3 ALU smoke check sampled all four passes;
 a fresh four-pass check covered 16.28% of GPU work time with counter samples.
