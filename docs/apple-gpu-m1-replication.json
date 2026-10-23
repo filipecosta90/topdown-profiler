@@ -542,5 +542,37 @@
       "counter_xml_sha256": "7e969d4691e349c0e95acba06ae47aa963a5ffb3ce0aa9a54912b69e99c1c3b0",
       "gpu_xml_sha256": "b03e80df79237a2db9e45d9e3ef4cbd3b7e451c265956169fbf2257c9f394dd2"
     }
+  },
+  "checked_runner_strict_coverage": {
+    "mode": "alu",
+    "passes": 4,
+    "counter_profile": "Performance Limiters",
+    "target_stdout_checksum": "8336.906823405065",
+    "checksum_verified": true,
+    "counter_rows": 147358,
+    "probe_coverage": {
+      "selected_pid": 22068,
+      "status": "sampled",
+      "workloads_observed": [
+        "burn"
+      ],
+      "passes_observed": 4,
+      "passes_with_counter_samples": 4,
+      "gpu_work_time_ns": 1349709,
+      "sampled_gpu_work_time_ns": 219750,
+      "sampled_gpu_work_fraction": 0.16281287299706826,
+      "counter_sample_intervals_overlapping": 12,
+      "other_active_gpu_time_overlapping_ns": 0,
+      "other_active_gpu_time_in_counter_samples_ns": 0,
+      "observed_other_activity_fraction_of_sampled_gpu_work": 0.0,
+      "last_counter_end_minus_last_probe_end_ns": 1000326541
+    },
+    "capture_hashes": {
+      "source_sha256": "fec63983b3589ae8f578d96dba08c5e64d0ce03af284e78b1c36e5c8a3badea5",
+      "template_sha256": "936997d41f2a1231623da319e7a5e540d1df04cc7d8be2c2aa19e61ae1753d6c",
+      "toc_sha256": "b4120402cf8c8d99e57f52357640910e50d7a7ad2d6d6d6567ec593099a6c580",
+      "counter_xml_sha256": "38795f2a1b66e903918e23a3443dbb5d884cf1fa572b133d353e51d5db4f9e64",
+      "gpu_xml_sha256": "9276d68b8556a8a07e24162d956158a1d34b527f8661a1be42486691ac9e028e"
+    }
   }
 }

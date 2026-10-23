@@ -341,9 +341,11 @@ ALU Limiter was 18.57%, versus 1.96% on that clean subset. This directly
 demonstrates that PID selection identifies probe windows but cannot make
 device-wide counter values process-specific. The raw XML hashes, sampled
 coverage, and both summaries are in [the concurrent evidence](apple-gpu-m1-concurrent.json).
-Only 3.53 ms of the ALU's 36.48 ms sampled time remained in the clean subset,
-so its cleaned values are a small sample and should not be treated as an
-isolated full-run measurement.
+Only 3.53 ms of the ALU's 36.48 ms sampled time remained in the clean subset;
+89.47% overlapped observed other GPU activity. The stream overlap was 33.90%
+of its sampled time. These fractions are now explicit summary fields. The
+cleaned ALU values are a small sample and should not be treated as an isolated
+full-run measurement.
 
 ## Reproduce the Instruments comparison
 
@@ -368,7 +370,8 @@ Failed checks leave the artifacts for inspection in the new output directory.
 This experimental M1 summary is separate from the packaged GPU replay profile
 format used by the database and MCP commands above.
 On this M1, a four-pass profile-3 ALU smoke check sampled all four passes;
-a 100-pass profile-4 stream capture sampled all 100 and reported 1.77% ALU
+a fresh four-pass check covered 16.28% of GPU work time with counter samples.
+A 100-pass profile-4 stream capture sampled all 100 and reported 1.77% ALU
 Utilization and 28.18 GB/s GPU Read Bandwidth. The checked-runner hashes and
 coverage are in the replication evidence.
 
@@ -423,7 +426,9 @@ captures; the four-pass run is a smoke check. Inspect sampled time, pass coverag
 and `other_active_gpu_time_overlapping_ns` before interpreting
 `sampled_counter_means`. The latter are weighted only over sampled intervals.
 `other_active_gpu_time_in_counter_samples_ns` narrows the interference check to
-the sampled portions of probe work. The summary records `counter_scope` as
+the sampled portions of probe work. `sampled_gpu_work_fraction` and
+`observed_other_activity_fraction_of_sampled_gpu_work` put coverage and
+observed interference on a 0–1 scale. The summary records `counter_scope` as
 `device-wide` and `probe_coverage.selected_pid` for provenance; selecting a PID
 does not isolate the native GPU counters from concurrent processes.
 Counter samples that straddle a probe boundary can still include outside GPU

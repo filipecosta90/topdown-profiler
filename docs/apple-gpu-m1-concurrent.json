@@ -36,7 +36,9 @@
         "counter_sample_intervals_overlapping": 2064,
         "other_active_gpu_time_overlapping_ns": 69619074,
         "other_active_gpu_time_in_counter_samples_ns": 32639416,
-        "last_counter_end_minus_last_probe_end_ns": 1041644416
+        "last_counter_end_minus_last_probe_end_ns": 1041644416,
+        "sampled_gpu_work_fraction": 0.4491948139772359,
+        "observed_other_activity_fraction_of_sampled_gpu_work": 0.8947105814412544
       },
       "sampled_counter_means": {
         "ALU Limiter": {
@@ -111,7 +113,9 @@
         "counter_sample_intervals_overlapping": 6199,
         "other_active_gpu_time_overlapping_ns": 87406024,
         "other_active_gpu_time_in_counter_samples_ns": 41662999,
-        "last_counter_end_minus_last_probe_end_ns": 1005129958
+        "last_counter_end_minus_last_probe_end_ns": 1005129958,
+        "sampled_gpu_work_fraction": 0.4954368434950705,
+        "observed_other_activity_fraction_of_sampled_gpu_work": 0.339022970489182
       },
       "sampled_counter_means": {
         "ALU Limiter": {
