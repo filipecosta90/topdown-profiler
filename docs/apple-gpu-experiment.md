@@ -160,7 +160,8 @@ The packaged replay probe and the M1 Instruments probe use different controls;
 `alu` reduces loop overhead in the replay probe, while the Instruments `alu`
 control retains the original loop. Their `stream` controls also differ: the replay
 probe uses vectorized FMAs, while the Instruments probe uses scalar addition.
-Use the matching source and measurement path when reproducing each result.
+The packaged probe was also run through the M1 Instruments path below. Use the
+matching source and measurement path when reproducing each result.
 Use a fresh directory and full Xcode:
 
 ```sh
@@ -374,6 +375,33 @@ per-pass coverage and native summaries are in
 [the reversed-order evidence](apple-gpu-m1-reversed-sequential.json). These
 two same-trace orderings support a repeatable workload contrast, within the
 limits of sampled, device-wide counters.
+
+### Same Metal kernels on M1 and M6
+
+The M6 replay probe compiled and checksum-verified on M1 under Instruments.
+The M1 summarizer now recognizes its command-buffer and encoder labels as
+well as the original M1 probe labels. Four Performance Limiters captures used
+the same packaged kernels and item counts as the M6 controls:
+
+| Packaged mode | Passes × items | M1 command GPU time | Passes sampled | Clean ALU Limiter | Clean Buffer Write Limiter |
+|---|---:|---:|---:|---:|---:|
+| Compute | 100 × 16,384 | 34.43 ms | 100/100 | 72.30% | 0.10% |
+| ALU | 100 × 16,384 | 7.02 ms | 76/100 | 23.02% | 0.20% |
+| Memory | 8 × 16,777,216 | 19.50 ms | 8/8 | 2.50% | 98.39% |
+| Stream | 8 × 16,777,216 | 20.09 ms | 8/8 | 1.61% | 99.17% |
+
+Compute and optimized ALU returned the same checksum. Their original-command
+GPU times differed by 4.90× in these separate M1 captures. The optimized
+ALU commands were short enough that 24 passes had no counter overlap and 37
+had under 10% sampled coverage, so its limiter mean needs caution. Memory
+and stream also returned the same checksum; their clean sampled GPU Read
+Bandwidth means were 27.51 and 26.41 GB/s. Observed other activity overlapped
+13.30% and 30.83% of their sampled work, respectively. The selected template,
+probe, TOC and XML hashes, checksums, per-metric coverage and unfiltered means
+are in [the packaged-probe evidence](apple-gpu-m1-packaged-probe.json).
+The kernels now match across hosts, but M1's device-wide Instruments samples
+and M6's captured-workload replay counters have different scopes and native
+limiter meanings. Their percentages cannot be compared as one TMA scale.
 
 ## Reproduce the Instruments comparison
 
