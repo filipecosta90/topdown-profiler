@@ -112,6 +112,55 @@ Three replication trials also have vertex or fragment timeline observations
 despite the captured queue containing only compute encoders. These values are
 preserved; counter availability varies between runs.
 
+### M6 dependent reads: parallelism and table size
+
+The [dependent-read probe](../examples/apple_gpu/dependent_reads_probe.swift)
+executes 16,777,216 logical `uint` loads per trial. Each thread follows a chain
+through a CPU-initialized table; every output is checked against an independent
+CPU recurrence. Changing the number of independent chains changes the loop
+length while retaining the logical load count. Two table allocations and three
+chain counts were measured in a balanced forward/reverse order:
+
+| Allocated table | Independent chains | Original command GPU time | Replay GPU time | Native active cores |
+|---|---:|---:|---:|---:|
+| 64 MiB | 64 | 77.4195–77.6923 ms | 81.7184–81.8344 ms | 8% |
+| 64 MiB | 4,096 | 11.9596–11.9745 ms | 9.4159–9.4705 ms | 84% |
+| 64 MiB | 262,144 | 11.8131–11.8981 ms | 9.3366–9.3452 ms | 100% |
+| 64 KiB | 64 | 16.3811–16.4249 ms | 10.3593–10.3779 ms | 8–9% |
+| 64 KiB | 4,096 | 0.7026 ms | 0.2780 ms | 76% |
+| 64 KiB | 262,144 | 0.4717–0.4773 ms | 0.1865–0.1866 ms | 98–100% |
+
+Each row contains two trials. A second 12-trial run of the public runner
+replicated the broad timing pattern; both runs are retained in
+[the native evidence](apple-gpu-m6-dependent-reads.json). Increasing parallel
+chains makes the large-table replay much faster until the timing changes little
+between 4,096 and 262,144 chains. The smaller table has substantially lower
+timings, especially with many chains. These controls help distinguish limited
+parallel work from the effects of the address range.
+
+Native counter availability matters. The 64-chain cases have no per-encoder
+limiter entries; the report prints them as unavailable. At 262,144 chains the
+large-table timeline reports about 20% kernel occupancy and 102.82 GiB/s external
+GPU bandwidth, while the small-table cases report 84–85% kernel occupancy and
+1.34 GiB/s. The same logical load count therefore does not imply the same external
+traffic. Native compute-launch limiters are high in both high-parallelism cases
+despite very different timings. Sampling coverage and concurrent graphics
+observations remain explicit.
+
+This is not a calibrated cache-level, DRAM-bandwidth, or per-load latency test.
+Table allocation bounds the address range; unique addresses, cache hits,
+transaction sizes and access overlap are not measured. Changing chain count also
+changes launch count and loop length. Frequency and background activity remain
+uncontrolled, and timeline counters can include other GPU work.
+
+```sh
+python3 examples/apple_gpu/dependent_reads.py --output /tmp/m6-dependent-reads-001
+topdown apple gpu report /tmp/m6-dependent-reads-001/trial-00-bits-24-threads-64/replay
+# Store a replay, or use profile_apple_gpu_trace with its capture.gputrace in MCP.
+topdown apple store /tmp/m6-dependent-reads-001/trial-02-bits-24-threads-262144/replay \
+  --process dependent-reads --label test_name=m6-dependent-reads
+```
+
 ### Timeline counters include concurrent GPU activity
 
 A separate [offscreen renderer](../examples/apple_gpu/background_render_probe.swift)
@@ -246,9 +295,10 @@ read/query tools use separate workers and remain responsive during replay.
 Cancelling a queued capture prevents it from starting. Cancelling active work waits for the current native debugger command to finish
 (with its existing timeout), retains command logs, skips automatic database
 storage, and terminates only the
-debugger session created by that capture when its ID is known. A session whose
-startup did not return an ID retains its 180-second idle timeout. Cancellation
-during a debugger command is deferred because killing its client can leave an
+debugger session created by that capture when its ID is known. Cleanup uses only
+an unambiguous native session-creation message; unexpected startup output stays
+in the retained logs. A session whose startup did not return an ID retains its
+180-second idle timeout. Cancellation during a debugger command is deferred because killing its client can leave an
 XPC profiling operation running after the session disappears. Other MCP tools
 remain responsive while that command finishes.
 CLI Ctrl-C during replay also waits for the current bounded debugger command,
