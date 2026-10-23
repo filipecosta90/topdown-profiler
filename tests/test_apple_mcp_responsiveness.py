@@ -430,3 +430,51 @@ async def test_methodology_resource_exposes_native_apple_scope_on_both_servers()
     assert "Apple Silicon and macOS" in text and "query_apple_result" in text
     assert "sample shares are not CPU-time percentages" in text
     assert "keep Intel TMA roots null" in text
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("authenticated", [False, True])
+@pytest.mark.parametrize("tool,arguments", [
+    ("collect_apple_profile", {"pid": True}),
+    ("collect_apple_profile", {"pid": 42.0}),
+    ("collect_apple_profile", {"pid": "42"}),
+    ("collect_apple_profile", {"command": ["/usr/bin/true"], "duration_seconds": True}),
+    ("collect_apple_profile", {"command": ["/usr/bin/true"], "duration_seconds": "0.5"}),
+    ("query_apple_result", {"run_id": "unused", "offset": True}),
+    ("query_apple_result", {"run_id": "unused", "limit": "1"}),
+    ("get_apple_hotspots", {"run_id": "unused", "limit": True}),
+])
+async def test_mcp_rejects_coerced_native_arguments_before_any_io(monkeypatch, authenticated, tool, arguments):
+    from mcp.server.fastmcp import FastMCP
+    from mcp.server.fastmcp.exceptions import ToolError
+    from unittest.mock import Mock
+
+    backend = Mock(side_effect=AssertionError("database opened for invalid MCP input"))
+    capture = Mock(side_effect=AssertionError("native collection received coerced MCP input"))
+    config = Mock(side_effect=AssertionError("configuration read for invalid MCP input"))
+    monkeypatch.setattr(mcp_server, "_get_backend", backend)
+    monkeypatch.setattr(mcp_server, "get_config", config)
+    monkeypatch.setattr("topdown.apple_storage.collect_apple_result", capture)
+    server = FastMCP("strict-arguments") if authenticated else mcp_server.mcp
+    if authenticated:
+        mcp_server._register_tools_and_resources(server)
+    with pytest.raises(ToolError, match="validation"):
+        await server.call_tool(tool, arguments)
+    backend.assert_not_called()
+    capture.assert_not_called()
+    config.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("seconds", [1, 0.5])
+async def test_strict_mcp_duration_still_accepts_json_integer_and_fractional_numbers(tmp_path, monkeypatch, seconds):
+    from topdown.config import TopdownConfig
+    from topdown.collector.apple import AppleProfileError
+    from unittest.mock import Mock
+
+    capture = Mock(side_effect=AppleProfileError("stopped before native access"))
+    monkeypatch.setattr(mcp_server, "get_config", lambda: TopdownConfig(db_path=tmp_path / "native.db"))
+    monkeypatch.setattr("topdown.apple_storage.collect_apple_result", capture)
+    await mcp_server.mcp.call_tool("collect_apple_profile", {"pid": 42, "duration_seconds": seconds})
+    assert capture.call_args.args[3] == 42
+    assert capture.call_args.args[4] == seconds and type(capture.call_args.args[4]) is float

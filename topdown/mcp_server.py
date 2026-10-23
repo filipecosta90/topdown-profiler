@@ -11,6 +11,7 @@ Auth modes (via TOPDOWN_AUTH_MODE env var):
 
 
 from mcp.server.fastmcp import FastMCP
+from pydantic import StrictFloat, StrictInt
 
 from topdown.config import get_config
 from topdown.storage import get_backend
@@ -112,8 +113,8 @@ def import_apple_result(path: str, process_name: str | None = None, labels: dict
 
 @_apple_tool(capture=True)
 def collect_apple_profile(
-    mode: str = "stat", command: list[str] | None = None, pid: int | None = None,
-    duration_seconds: float = 5, process_name: str | None = None, labels: dict[str, str] | None = None,
+    mode: str = "stat", command: list[str] | None = None, pid: StrictInt | None = None,
+    duration_seconds: StrictFloat = 5, process_name: str | None = None, labels: dict[str, str] | None = None,
 ) -> dict:
     """Capture and store native Apple results on this MCP server's macOS host.
 
@@ -147,7 +148,7 @@ def collect_apple_profile(
 
 
 @_apple_tool()
-def query_apple_result(run_id: str, section: str = "summary", offset: int = 0, limit: int = 100) -> dict:
+def query_apple_result(run_id: str, section: str = "summary", offset: StrictInt = 0, limit: StrictInt = 100) -> dict:
     """Read a stored native Apple result by run ID, on any server OS.
 
     summary returns native totals/categories, scope and provenance without bulk observations.
@@ -167,7 +168,7 @@ def query_apple_result(run_id: str, section: str = "summary", offset: int = 0, l
 
 
 @_apple_tool()
-def get_apple_hotspots(run_id: str, limit: int = 20) -> dict:
+def get_apple_hotspots(run_id: str, limit: StrictInt = 20) -> dict:
     """Rank stored Apple stack samples by function frequency; shares are sample fractions, not CPU-time/TMA percentages."""
     from topdown.apple_storage import stored_apple_hotspots
     from topdown.collector.apple import AppleProfileError
