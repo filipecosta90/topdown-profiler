@@ -825,6 +825,53 @@
         "p90": 0.451844,
         "maximum": 4.477367
       }
+    },
+    "recomputed_clean_per_pass_metric_distributions": {
+      "ALU Limiter": {
+        "sampled_passes": 98,
+        "unit": "%",
+        "minimum": 15.203733,
+        "p10": 86.269203,
+        "median": 88.986085,
+        "p90": 94.411731,
+        "maximum": 99.999571
+      },
+      "ALU Utilization": {
+        "sampled_passes": 98,
+        "unit": "%",
+        "minimum": 14.262,
+        "p10": 41.143115,
+        "median": 42.408997,
+        "p90": 44.90617,
+        "maximum": 47.210804
+      },
+      "Buffer Write Limiter": {
+        "sampled_passes": 98,
+        "unit": "%",
+        "minimum": 0.0,
+        "p10": 0.105265,
+        "median": 0.116799,
+        "p90": 0.11703,
+        "maximum": 0.117036
+      },
+      "F32 Utilization": {
+        "sampled_passes": 98,
+        "unit": "%",
+        "minimum": 5.935547,
+        "p10": 13.69387,
+        "median": 14.115553,
+        "p90": 14.954312,
+        "maximum": 15.727714
+      },
+      "GPU Read Bandwidth": {
+        "sampled_passes": 98,
+        "unit": "GB/s",
+        "minimum": 0.000922,
+        "p10": 0.182411,
+        "median": 0.255908,
+        "p90": 0.328401,
+        "maximum": 1.473154
+      }
     }
   }
 }

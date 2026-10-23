@@ -705,14 +705,42 @@ much sampled time remains for each metric; they do not make device-wide
 counters process-specific. New captures also report median and range of sampled
 per-pass means for key metrics. Those pass distributions overlap-weight the
 native counter intervals and remain unfiltered device-wide observations; they
-are not a complete census of each pass.
+are not a complete census of each pass. Each sampled pass contributes one mean
+to the reported quantiles, regardless of its duration or number of samples.
+When GPU activity intervals are present, the report also gives a separate
+per-pass summary after excluding entire counter intervals that overlap
+observed other activity. Filtered pass coverage can be
+sparse, so its text report uses the median and p10–p90 rather than extremes.
 A fresh 100-pass packaged compute capture on this M1 completed the checked
 runner with per-pass ALU Limiter values from 73.47% to 92.93% and F32
 Utilization from 11.73% to 15.23%. GPU Read Bandwidth has a 0.26 GB/s sampled
 pass median, a 0.12–4.48 GB/s range and a 0.38 GB/s pooled mean; the high
 pass cannot be assigned to the probe from device-wide counters. Its source,
-binary, trace-table and XML
-hashes are in [the packaged-probe evidence](apple-gpu-m1-packaged-probe.json).
+binary, trace-table and XML hashes are in [the packaged-probe
+evidence](apple-gpu-m1-packaged-probe.json).
+Recomputing that hashed export with the conservative activity filter leaves 98
+passes for GPU Read Bandwidth: the median is 0.26 GB/s and p10–p90 is
+0.18–0.33 GB/s, versus a 0.27 GB/s pooled clean mean. This narrower upper tail
+is consistent with contamination from observed other activity; it does not
+establish process-exclusive bandwidth.
+A fresh checked capture with this reporting code sampled all 100 packaged
+compute passes, verified the compiled-probe PID, and retained clean samples
+for all 100 passes of the key metrics. Observed other activity overlapped 6.60%
+of sampled probe work. The clean ALU Limiter pass median was 89.30% with
+p10–p90 of 86.47–92.47%; clean GPU Read Bandwidth had a 0.33 GB/s median and
+0.24–0.47 GB/s p10–p90. Capture and XML hashes, means and both pass
+distributions are in [the fresh M1 validation](apple-gpu-m1-clean-pass-validation.json).
+The same runner completed a fresh Performance Utilizations capture with all
+100 passes sampled and a verified probe PID. Its clean F32 Utilization pass
+median was 14.20%, with p10–p90 of 13.71–14.73%; 5.72% of sampled work
+overlapped observed other GPU activity. The same evidence file includes its
+separate capture and XML hashes.
+Reanalyzing the earlier eight-pass packaged memory and stream captures with the
+same code retained all eight sampled and clean passes for both workloads.
+Their clean GPU Read Bandwidth pass medians were 29.29 and 26.96 GB/s, with
+Buffer Write Limiter medians of 98.83% and 99.45%, respectively. The original
+means and coverage remained unchanged; the source-profile and XML hashes are
+recorded in the fresh M1 validation file.
 On this M1, a four-pass profile-3 ALU smoke check sampled all four passes;
 a fresh four-pass check covered 16.28% of GPU work time with counter samples.
 A 100-pass profile-4 stream capture sampled all 100 and reported 1.77% ALU

@@ -227,6 +227,7 @@ def test_summary_distributes_sampled_metric_means_by_labeled_pass():
         "median": 20, "p90": 28, "maximum": 30,
     }
     assert result["sampled_per_pass_metric_distributions"]["GPU Read Bandwidth"]["sampled_passes"] == 1
+    assert result["sampled_per_pass_metric_distributions_without_observed_other_activity"] is None
     assert result["probe_coverage"]["passes_with_counter_samples"] == 3
 
 
@@ -397,8 +398,11 @@ def test_summary_keeps_separate_means_without_observed_other_activity():
     gpu = b"""<trace-query-result><node><schema name="metal-gpu-intervals">
     <col><mnemonic>start</mnemonic></col><col><mnemonic>duration</mnemonic></col>
     <col><mnemonic>event-label</mnemonic></col><col><mnemonic>state</mnemonic></col></schema>
-    <row><start-time>100</start-time><duration>20</duration>
+    <row><start-time>100</start-time><duration>10</duration>
     <formatted-label fmt="topdown GPU probe pass 0:burn compute pass 0"/>
+    <gpu-state fmt="Active"/></row>
+    <row><start-time>110</start-time><duration>10</duration>
+    <formatted-label fmt="topdown GPU probe pass 1:burn compute pass 1"/>
     <gpu-state fmt="Active"/></row>
     <row><start-time>105</start-time><duration>5</duration>
     <formatted-label fmt="other GPU activity"/><gpu-state fmt="Active"/></row>
@@ -409,6 +413,11 @@ def test_summary_keeps_separate_means_without_observed_other_activity():
     assert clean["value"] == 90
     assert clean["sampled_time_ns"] == 10
     assert clean["counter_intervals"] == 1
+    assert result["sampled_per_pass_metric_distributions"]["ALU Limiter"]["sampled_passes"] == 2
+    assert result["sampled_per_pass_metric_distributions_without_observed_other_activity"]["ALU Limiter"] == {
+        "sampled_passes": 1, "unit": "%", "minimum": 90, "p10": 90,
+        "median": 90, "p90": 90, "maximum": 90,
+    }
 
 
 def test_summary_streams_files_and_keeps_cross_row_and_nested_references(tmp_path):

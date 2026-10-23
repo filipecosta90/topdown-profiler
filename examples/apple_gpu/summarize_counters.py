@@ -298,6 +298,7 @@ def summarize(source: bytes, gpu_intervals: bytes | None = None, pid: int | None
     means = {}
     clean_means = {}
     per_pass = {}
+    clean_per_pass = {}
     top_categories = Counter()
     clean_top_categories = Counter()
     for start, end, name, value, unit, label in values:
@@ -312,6 +313,10 @@ def summarize(source: bytes, gpu_intervals: bytes | None = None, pid: int | None
                     metric = per_pass.setdefault((key, name), [0.0, 0])
                     metric[0] += pass_overlap * value
                     metric[1] += pass_overlap
+                    if clean:
+                        metric = clean_per_pass.setdefault((key, name), [0.0, 0])
+                        metric[0] += pass_overlap * value
+                        metric[1] += pass_overlap
         buckets = [(means, top_categories)]
         if clean:
             buckets.append((clean_means, clean_top_categories))
@@ -341,20 +346,26 @@ def summarize(source: bytes, gpu_intervals: bytes | None = None, pid: int | None
                 for name, duration in sorted(categories.items(), key=lambda item: (-item[1], item[0]))]
 
     result["sampled_counter_means"] = summarize_means(means)
-    distributions = {}
-    for name in sorted(PASS_DISTRIBUTION_METRICS):
-        sampled = sorted(total / duration for (key, metric), (total, duration) in per_pass.items()
-                         if metric == name and duration)
-        if sampled:
-            distributions[name] = {
-                "sampled_passes": len(sampled), "unit": means[name]["unit"],
-                "minimum": round(sampled[0], 6),
-                "p10": round(_percentile(sampled, 0.1), 6),
-                "median": round(median(sampled), 6),
-                "p90": round(_percentile(sampled, 0.9), 6),
-                "maximum": round(sampled[-1], 6),
-            }
-    result["sampled_per_pass_metric_distributions"] = distributions
+    def summarize_distributions(bucket, means_bucket):
+        distributions = {}
+        for name in sorted(PASS_DISTRIBUTION_METRICS):
+            sampled = sorted(total / duration for (key, metric), (total, duration) in bucket.items()
+                             if metric == name and duration)
+            if sampled:
+                distributions[name] = {
+                    "sampled_passes": len(sampled), "unit": means_bucket[name]["unit"],
+                    "minimum": round(sampled[0], 6),
+                    "p10": round(_percentile(sampled, 0.1), 6),
+                    "median": round(median(sampled), 6),
+                    "p90": round(_percentile(sampled, 0.9), 6),
+                    "maximum": round(sampled[-1], 6),
+                }
+        return distributions
+
+    result["sampled_per_pass_metric_distributions"] = summarize_distributions(per_pass, means)
+    result["sampled_per_pass_metric_distributions_without_observed_other_activity"] = (
+        summarize_distributions(clean_per_pass, clean_means) if state_available else None
+    )
     result["top_limiter_categories"] = summarize_categories(top_categories)
     result["top_limiter_unparsed_sampled_time_ns"] = (
         means.get("Top Performance Limiter", {}).get("sampled_time_ns", 0) - sum(top_categories.values())
