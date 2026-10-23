@@ -299,3 +299,12 @@ def test_gpu_collect_retains_capture_host_identity(tmp_path, fake_gpudebug, monk
     result = REPLAY.collect(trace, output)
     assert result["environment"] == metadata
     assert json.loads((output / "profile.json").read_text())["environment"] == metadata
+
+
+@pytest.mark.parametrize("source", [
+    '{"Cost":"0%","Cost":"100%"}', '{"value":NaN}', '{"value":1e999}',
+    '{"nested":' + '[' * 20000 + '0' + ']' * 20000 + '}',
+], ids=["duplicate-cost", "nan", "overflowing-float", "nesting"])
+def test_native_gpu_json_stream_rejects_ambiguous_or_unreadable_results(source):
+    with pytest.raises(ValueError):
+        REPLAY.json_documents(source)

@@ -14,7 +14,7 @@ import time
 
 from topdown.collector.apple import AppleProfileError, TMA_ROOTS
 from topdown.collector import apple_runtime
-from topdown.collector.apple_files import decode_json_object, read_regular_bytes
+from topdown.collector.apple_files import NativeJSONDecoder, decode_json_object, read_regular_bytes
 from topdown.collector.apple_environment import capture_environment
 
 GPU_KIND = "apple-gpu-replay-profile"
@@ -76,7 +76,7 @@ def record(output: Path, mode="compute", passes=4, items=16384, execution="overl
 
 
 def json_documents(text: str) -> list[dict]:
-    decoder = json.JSONDecoder()
+    decoder = NativeJSONDecoder()
     documents = []
     while text.strip():
         value, end = decoder.raw_decode(text.lstrip())
