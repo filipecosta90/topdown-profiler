@@ -76,6 +76,13 @@ def test_utilization_only_report_has_no_empty_limiter_section(profile):
     assert "F32 Utilization: 60.00%" in text
 
 
+def test_report_accepts_profiles_without_per_pass_distributions(profile):
+    profile.pop("sampled_per_pass_metric_distributions")
+    data = MODULE.report(profile)
+    assert data["sampled_per_pass_metric_distributions"] == {}
+    assert "Per-pass ranges" not in MODULE.format_report(data)
+
+
 @pytest.mark.parametrize("change,match", [
     ({"counter_scope": "per-encoder"}, "device-wide"),
     ({"capture": {"checksum_verified": False}}, "checksum-verified"),
@@ -96,6 +103,9 @@ def test_utilization_only_report_has_no_empty_limiter_section(profile):
     ({"sampled_per_pass_metric_distributions": {
         "ALU Limiter": {"sampled_passes": 3, "unit": "%", "minimum": 70, "p10": 72,
                         "median": 80, "p90": 88, "maximum": 90}}}, "per-pass distribution"),
+    ({"sampled_per_pass_metric_distributions": {
+        "Unknown Limiter": {"sampled_passes": 1, "unit": None, "minimum": 70, "p10": 72,
+                            "median": 80, "p90": 88, "maximum": 90}}}, "per-pass distribution"),
 ])
 def test_m1_report_rejects_invalid_provenance_or_sampled_values(profile, change, match):
     altered = deepcopy(profile)

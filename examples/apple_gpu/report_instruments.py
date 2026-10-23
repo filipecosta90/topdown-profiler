@@ -50,9 +50,11 @@ def report(profile: dict) -> dict:
     if not isinstance(distributions, dict):
         raise ValueError("Invalid M1 GPU per-pass metric distributions")
     for name, stats in distributions.items():
-        unit = means.get(name, {}).get("unit") if isinstance(means.get(name), dict) else None
-        if (not isinstance(stats, dict) or type(stats.get("sampled_passes")) is not int
-                or not 1 <= stats["sampled_passes"] <= passes or stats.get("unit") != unit):
+        metric = means.get(name)
+        if (not isinstance(metric, dict) or not isinstance(stats, dict)
+                or type(stats.get("sampled_passes")) is not int
+                or not 1 <= stats["sampled_passes"] <= sampled
+                or stats.get("unit") != metric.get("unit")):
             raise ValueError(f"Invalid M1 GPU per-pass distribution for {name}")
         values = [stats.get(key) for key in ("minimum", "p10", "median", "p90", "maximum")]
         if (any(type(value) not in (int, float) or not math.isfinite(value) for value in values)
