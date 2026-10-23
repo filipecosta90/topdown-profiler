@@ -101,6 +101,7 @@ def collect(trace: Path, output: Path, execution: str = "overlapping") -> dict:
 
     def run(arguments, timeout=120):
         nonlocal sequence, session
+        apple_runtime.check_cancelled()
         if "--terminate" not in arguments:
             timeout = min(timeout, max(0, expires - time.monotonic()))
             if not timeout:
@@ -109,7 +110,9 @@ def collect(trace: Path, output: Path, execution: str = "overlapping") -> dict:
         command = ["xcrun", "gpudebug", *arguments]
         (output / f"{sequence:03d}.command.json").write_text(json.dumps(command))
         try:
-            result = apple_runtime.run(command, timeout=timeout)
+            # Killing a replay client can strand its XPC profiling operation after session removal.
+            with apple_runtime.uncancellable():
+                result = apple_runtime.run(command, timeout=timeout)
         except (subprocess.TimeoutExpired, AppleProfileError) as exc:
             stdout = getattr(exc, "stdout", None) or b""
             stderr = getattr(exc, "stderr", None) or b""
@@ -128,6 +131,7 @@ def collect(trace: Path, output: Path, execution: str = "overlapping") -> dict:
             match = re.search(r"Session (\d+) created\.", result.stdout)
             if match:
                 session = match.group(1)
+        apple_runtime.check_cancelled()
         if result.returncode:
             raise ValueError(f"gpudebug failed: {result.stderr.strip() or result.stdout.strip()}; artifacts: {output}")
         return result.stdout

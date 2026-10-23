@@ -100,10 +100,14 @@ The MCP server exposes:
 
 GPU captures share the serialized native capture worker with CPU captures;
 read/query tools use separate workers and remain responsive during replay.
-Cancelling a queued capture prevents it from starting. Cancelling active work
-retains partial logs, skips automatic database storage, and terminates only the
+Cancelling a queued capture prevents it from starting. Cancelling active work waits for the current native debugger command to finish
+(with its existing timeout), retains command logs, skips automatic database
+storage, and terminates only the
 debugger session created by that capture when its ID is known. A session whose
-startup did not return an ID retains its 180-second idle timeout.
+startup did not return an ID retains its 180-second idle timeout. Cancellation
+during a debugger command is deferred because killing its client can leave an
+XPC profiling operation running after the session disappears. Other MCP tools
+remain responsive while that command finishes.
 
 | Tool | Purpose |
 |---|---|

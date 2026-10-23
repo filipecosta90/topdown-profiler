@@ -24,7 +24,7 @@ async def test_cancelled_gpu_replay_retains_partial_logs_and_cleans_owned_sessio
     trace = tmp_path / "test.gputrace"
     trace.mkdir()
     output = tmp_path / "replay"
-    started = threading.Event()
+    started, release = threading.Event(), threading.Event()
     commands = []
 
     def run(command, **kwargs):
@@ -35,23 +35,24 @@ async def test_cancelled_gpu_replay_retains_partial_logs_and_cleans_owned_sessio
         if "-t" in command and phase == "replay":
             return subprocess.CompletedProcess(command, 0, "Session 42 created.\n", "")
         started.set()
-        try:
-            apple_runtime.sleep(5)
-        except AppleProfileError as exc:
-            exc.stdout = b"partial replay" if phase == "replay" else (
-                b"starting" if phase == "unknown-session" else b"Session 42 created.\n")
-            exc.stderr = b"partial stderr"
-            raise
-        pytest.fail("request was not cancelled")
+        assert release.wait(3), "GPU cancellation blocked the MCP event loop"
+        apple_runtime.check_cancelled()
+        stdout = "partial replay" if phase == "replay" else (
+            "starting" if phase == "unknown-session" else "Session 42 created.\n")
+        return subprocess.CompletedProcess(command, 0, stdout, "partial stderr")
 
     monkeypatch.setattr(apple_runtime, "run", run)
     task = asyncio.create_task(apple_runtime.worker(lambda: apple_gpu.collect(trace, output), capture=True)())
     try:
         assert await asyncio.to_thread(started.wait, 2)
         task.cancel()
+        await asyncio.sleep(0)
+        assert not task.done(), "cancelled before native command could finish safely"
+        release.set()
         with pytest.raises(asyncio.CancelledError):
             await asyncio.wait_for(task, 3)
     finally:
+        release.set()
         if not task.done():
             task.cancel()
             await asyncio.gather(task, return_exceptions=True)
