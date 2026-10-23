@@ -303,6 +303,27 @@ def _validate_profile(result, rows):
     if schema == "MetricTable":
         _validate_guided_coverage(result, rows)
         _validate_guided_summary(result.get("apple_bottlenecks"), rows)
+        coverage_fields = ("invalid_cycles_with_known_count", "invalid_intervals_without_cycle_count",
+                           "valid_cycle_fraction_of_scoped_intervals")
+        if any(field in result for field in coverage_fields):
+            if not all(field in result for field in coverage_fields):
+                raise AppleProfileError("Guided cycle coverage fields must be reported together")
+            invalid_cycles = result["invalid_cycles_with_known_count"]
+            unknown = result["invalid_intervals_without_cycle_count"]
+            if (not _nonnegative(invalid_cycles) or not _nonnegative(unknown)
+                    or unknown > result.get("invalid_intervals", 0)
+                    or invalid_cycles > (result.get("invalid_intervals", 0) - unknown) * (2**64 - 1)):
+                raise AppleProfileError("Invalid guided interval coverage counts")
+            fraction = result["valid_cycle_fraction_of_scoped_intervals"]
+            expected = None if unknown else result["apple_bottlenecks"]["cycles"] / (
+                result["apple_bottlenecks"]["cycles"] + invalid_cycles)
+            if expected is None:
+                valid_fraction = fraction is None
+            else:
+                valid_fraction = (type(fraction) in (int, float) and math.isfinite(fraction)
+                                  and math.isclose(fraction, expected, rel_tol=1e-12, abs_tol=1e-12))
+            if not valid_fraction:
+                raise AppleProfileError("Guided cycle coverage must match native interval counts")
         by_core = result.get("apple_bottlenecks_by_core")
         if (not isinstance(by_core, list) or not all(isinstance(entry, dict) and _nonnegative(entry.get("core")) for entry in by_core)
                 or len(by_core) != len({row["core"] for row in rows})

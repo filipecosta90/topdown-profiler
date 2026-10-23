@@ -85,7 +85,9 @@
       },
       "toc_sha256": "a72df467e4bc4bcc5daca309d9fc1e2336504cfec82162d06ee0409f0ad57548",
       "counter_xml_sha256": "f82073dc0e79a724a08e05906d3e8255deeef62c82cdb2fef27b025160bb8ae6",
-      "gpu_xml_sha256": "430fe9c16c1bbd0570137edf144a6eb3c029568de1f47a214d72a9e8788f6293"
+      "gpu_xml_sha256": "430fe9c16c1bbd0570137edf144a6eb3c029568de1f47a214d72a9e8788f6293",
+      "top_limiter_unparsed_sampled_time_ns": 0,
+      "top_limiter_unparsed_clean_sampled_time_ns": 0
     },
     {
       "trial": 1,
@@ -161,7 +163,9 @@
       },
       "toc_sha256": "5eb59b6e7a959be6fa9f8c4d4aa424fa33400a2f5022175ac895aafbfb6b36ed",
       "counter_xml_sha256": "281765fa933980322c4ec427968d0990f23bd8f74869ef1ef9a10bd8950f3668",
-      "gpu_xml_sha256": "ff4d4e97a28c5513e8992b6be83bb2be3e85775d8217a8896329b33cb83869da"
+      "gpu_xml_sha256": "ff4d4e97a28c5513e8992b6be83bb2be3e85775d8217a8896329b33cb83869da",
+      "top_limiter_unparsed_sampled_time_ns": 0,
+      "top_limiter_unparsed_clean_sampled_time_ns": 0
     },
     {
       "trial": 2,
@@ -237,7 +241,9 @@
       },
       "toc_sha256": "cdc4963d2df2e9f096eb6876aeb46c921cfc7812b13e356cb20ff64f5743946c",
       "counter_xml_sha256": "444359bc91737880889f7145692e19bdd1aee9b8890b3b40bfb36ad5e3d85735",
-      "gpu_xml_sha256": "f3c403a7cf57e018d1a315f31691b21a1fd6fc35ed37fae7d2e8eeea4358d341"
+      "gpu_xml_sha256": "f3c403a7cf57e018d1a315f31691b21a1fd6fc35ed37fae7d2e8eeea4358d341",
+      "top_limiter_unparsed_sampled_time_ns": 0,
+      "top_limiter_unparsed_clean_sampled_time_ns": 0
     },
     {
       "trial": 2,
@@ -313,7 +319,9 @@
       },
       "toc_sha256": "ebd8792840ca0a28815e8ea735062085132ba46b3f62dc058495817a221f6061",
       "counter_xml_sha256": "c7d5570f41464ae8997e0f89c4574f11e8fe7320f0a90997d024d9b3a3405593",
-      "gpu_xml_sha256": "fe8f918c5b31c23cb34b6344f507c2324e6970a647b10ab4ff8cdee45825e2e9"
+      "gpu_xml_sha256": "fe8f918c5b31c23cb34b6344f507c2324e6970a647b10ab4ff8cdee45825e2e9",
+      "top_limiter_unparsed_sampled_time_ns": 0,
+      "top_limiter_unparsed_clean_sampled_time_ns": 0
     },
     {
       "trial": 3,
@@ -389,7 +397,9 @@
       },
       "toc_sha256": "c1dfbbde6ab16edb39844a98bcfcf7821039a62d8716a7fd988feed5400d0f1b",
       "counter_xml_sha256": "9964094be61deffc0ac5a705359a80c353dfe553fc912326de6ba914f4d81325",
-      "gpu_xml_sha256": "32ddb7e775159070bf5f3fb56dd38dda1448670fb71af47b8c312a276d06e7c2"
+      "gpu_xml_sha256": "32ddb7e775159070bf5f3fb56dd38dda1448670fb71af47b8c312a276d06e7c2",
+      "top_limiter_unparsed_sampled_time_ns": 0,
+      "top_limiter_unparsed_clean_sampled_time_ns": 0
     },
     {
       "trial": 3,
@@ -465,7 +475,9 @@
       },
       "toc_sha256": "09df8ef0de96dbe77d04bdfcd4f90630dcbf8a20456e57e6322d602e3c718989",
       "counter_xml_sha256": "8105ee731a8cf32b06d8c09fd6142fc1b8d7d8528c1587597a57fd68b9f06a85",
-      "gpu_xml_sha256": "8cff024ba138f591e54b6558621d24bb0e341f080add99a641ea7b4e79282308"
+      "gpu_xml_sha256": "8cff024ba138f591e54b6558621d24bb0e341f080add99a641ea7b4e79282308",
+      "top_limiter_unparsed_sampled_time_ns": 0,
+      "top_limiter_unparsed_clean_sampled_time_ns": 0
     }
   ],
   "limitations": [
@@ -473,5 +485,62 @@
     "The clean subset excludes counter intervals with observed other active GPU activity; unobserved activity and boundary contamination remain possible.",
     "The sample is three pairs on one host with uncontrolled GPU frequency, temperature and background activity.",
     "Limiter percentages overlap and are not Intel CPU TMA slot shares."
-  ]
+  ],
+  "idle_control": {
+    "probe_mode": "idle",
+    "submitted_gpu_commands": 0,
+    "checksum_verified": true,
+    "counter_rows": 162631,
+    "counter_sample_intervals": 5178,
+    "counter_name_count": 32,
+    "active_gpu_intervals": 4298,
+    "distinct_non_probe_active_processes": 3,
+    "probe_coverage_status": "no_probe_intervals",
+    "probe_source_sha256": "da9260233b4e1ebd16764d070e56c5c7bffb427192d055f8cbc9ff028a93adf0",
+    "toc_sha256": "fb2add4cde1882c30553d724aa707ef0e4761afc5b7528ad5ccd20b070291068",
+    "counter_xml_sha256": "c0a37ac749f4b66bf8414f940129bba24a72e8e96e5bbc90289cc906c78c8f22",
+    "gpu_xml_sha256": "7e5f6e2ec3384f9d9a485d9ba43a8c6c60cdd85cb7f7b66d81c27307611b65bd"
+  },
+  "checked_runner_smoke": {
+    "mode": "alu",
+    "passes": 4,
+    "counter_profile": "Performance Limiters",
+    "counter_rows": 161995,
+    "passes_with_counter_samples": 4,
+    "sampled_gpu_work_time_ns": 238833,
+    "capture_hashes": {
+      "source_sha256": "fec63983b3589ae8f578d96dba08c5e64d0ce03af284e78b1c36e5c8a3badea5",
+      "template_sha256": "936997d41f2a1231623da319e7a5e540d1df04cc7d8be2c2aa19e61ae1753d6c",
+      "toc_sha256": "e1fec134c983931ee611f6275327303e8bfcbeec681a3015f212c0aeb82ae094",
+      "counter_xml_sha256": "8abb2c4b857c6c68679454309f23b664251114731e1b2f4139be93a2fb6efd6a",
+      "gpu_xml_sha256": "ae5f96ac626784cd57c3a93bd68d78f2f2836a702a3fcc37dcaba6ad232288e3"
+    }
+  },
+  "checked_runner_utilizations": {
+    "mode": "stream",
+    "passes": 100,
+    "counter_profile": "Performance Utilizations",
+    "counter_rows": 157300,
+    "passes_with_counter_samples": 100,
+    "sampled_gpu_work_time_ns": 116288792,
+    "alu_utilization": {
+      "value": 1.771207,
+      "unit": "%",
+      "sampled_time_ns": 116288792,
+      "counter_intervals": 5861
+    },
+    "gpu_read_bandwidth": {
+      "value": 28.184383,
+      "unit": "GB/s",
+      "sampled_time_ns": 116288792,
+      "counter_intervals": 5861
+    },
+    "capture_hashes": {
+      "source_sha256": "fec63983b3589ae8f578d96dba08c5e64d0ce03af284e78b1c36e5c8a3badea5",
+      "template_sha256": "7fa24c2bb719010f7a8a11d4559c571e360c236b9617c45967165ffc3feba4eb",
+      "toc_sha256": "4834edde72d89c5de5b7c5082ec14191a475beb59eed3e29623f08fcf96646bb",
+      "counter_xml_sha256": "7e969d4691e349c0e95acba06ae47aa963a5ffb3ce0aa9a54912b69e99c1c3b0",
+      "gpu_xml_sha256": "b03e80df79237a2db9e45d9e3ef4cbd3b7e451c265956169fbf2257c9f394dd2"
+    }
+  }
 }

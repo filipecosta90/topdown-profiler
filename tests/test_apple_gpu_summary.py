@@ -42,6 +42,18 @@ def test_summary_uses_counter_column_names_when_export_order_changes():
     assert result["counter_names"] == {"ALU Limiter": 1}
 
 
+def test_summary_distinguishes_counter_intervals_with_the_same_start():
+    source = b"""<trace-query-result><node><schema name="metal-gpu-counter-intervals"/>
+    <row><start-time>100</start-time><duration>10</duration><uint32>0</uint32>
+    <gpu-counter-name>ALU Limiter</gpu-counter-name></row>
+    <row><start-time>100</start-time><duration>20</duration><uint32>0</uint32>
+    <gpu-counter-name>GPU Read Bandwidth</gpu-counter-name></row>
+    </node></trace-query-result>"""
+    result = MODULE.summarize(source)
+    assert result["counter_rows"] == 2
+    assert result["sample_intervals"] == 2
+
+
 def test_summary_checks_probe_counter_overlap():
     counters = b"""<trace-query-result><node><schema name="metal-gpu-counter-intervals"/>
     <row><start-time id="1">105</start-time><duration id="2">10</duration><uint32>0</uint32>
@@ -88,6 +100,23 @@ def test_summary_reports_counter_rows_without_probe_coverage():
     assert result["passes_with_counter_samples"] == 0
     assert result["status"] == "no_counter_overlap"
     assert result["sampled_gpu_work_time_ns"] == 0
+
+
+def test_idle_counter_rows_do_not_claim_probe_work():
+    counters = b"""<trace-query-result><node><schema name="metal-gpu-counter-intervals"/>
+    <row><start-time>100</start-time><duration>20</duration><uint32>0</uint32>
+    <gpu-counter-name>ALU Limiter</gpu-counter-name></row></node></trace-query-result>"""
+    gpu = b"""<trace-query-result><node><schema name="metal-gpu-intervals">
+    <col><mnemonic>start</mnemonic></col><col><mnemonic>duration</mnemonic></col>
+    <col><mnemonic>event-label</mnemonic></col><col><mnemonic>state</mnemonic></col></schema>
+    <row><start-time>100</start-time><duration>20</duration>
+    <formatted-label fmt="other process"/><gpu-state fmt="Active"/></row>
+    </node></trace-query-result>"""
+    result = MODULE.summarize(counters, gpu)
+    assert result["counter_rows"] == 1
+    assert result["probe_coverage"]["status"] == "no_probe_intervals"
+    assert result["probe_coverage"]["passes_observed"] == 0
+    assert result["sampled_counter_means"] == {}
 
 
 def test_summary_counts_other_active_gpu_overlap():
@@ -148,6 +177,32 @@ def test_summary_weights_sampled_values_and_keeps_units():
         "sampled_time_ns": 30,
         "share_of_top_limiter_samples_percent": 100.0,
     }]
+    assert summary["top_limiter_unparsed_sampled_time_ns"] == 0
+
+
+def test_summary_reports_unparsed_top_limiter_time():
+    counters = b"""<trace-query-result><node><schema name="metal-gpu-counter-intervals">
+    <col><mnemonic>start</mnemonic></col><col><mnemonic>duration</mnemonic></col>
+    <col><mnemonic>counter-id</mnemonic></col><col><mnemonic>name</mnemonic></col>
+    <col><mnemonic>label</mnemonic></col><col><mnemonic>value</mnemonic></col>
+    <col><mnemonic>is-percentage</mnemonic></col></schema>
+    <row><start-time>100</start-time><duration>10</duration><uint32>0</uint32>
+    <gpu-counter-name fmt="Top Performance Limiter">-2.Top Performance Limiter</gpu-counter-name>
+    <formatted-label fmt="30% (1.ALU Limiter)"/><fixed-decimal>30</fixed-decimal><boolean>1</boolean></row>
+    <row><start-time>110</start-time><duration>10</duration><uint32>0</uint32>
+    <gpu-counter-name fmt="Top Performance Limiter">-2.Top Performance Limiter</gpu-counter-name>
+    <formatted-label fmt="no category"/><fixed-decimal>10</fixed-decimal><boolean>1</boolean></row>
+    </node></trace-query-result>"""
+    gpu = b"""<trace-query-result><node><schema name="metal-gpu-intervals">
+    <col><mnemonic>start</mnemonic></col><col><mnemonic>duration</mnemonic></col>
+    <col><mnemonic>event-label</mnemonic></col></schema>
+    <row><start-time>100</start-time><duration>20</duration>
+    <formatted-label fmt="topdown GPU probe pass 0:burn compute pass 0"/></row>
+    </node></trace-query-result>"""
+    summary = MODULE.summarize(counters, gpu)
+    assert summary["top_limiter_categories"][0]["share_of_top_limiter_samples_percent"] == 100
+    assert summary["top_limiter_unparsed_sampled_time_ns"] == 10
+    assert summary["top_limiter_unparsed_clean_sampled_time_ns"] is None
 
 
 def test_summary_requires_pid_for_concurrent_labeled_probes():

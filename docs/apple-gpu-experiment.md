@@ -277,6 +277,9 @@ time, while Buffer Write was highest for 99.98% of the corresponding stream run.
 Those are shares of **sampled top-limiter labels**, not shares of GPU time or
 pipeline slots. Apple demonstrates this highest-limiter track in its GPU counter
 walkthrough.
+The summarizer reports unparsed top-limiter sampled time separately. Check that
+it is zero before treating the listed category shares as representative of all
+sampled top-limiter intervals; it was zero in all six replicated captures.
 See Apple's
 [GPU counter walkthrough](https://developer.apple.com/videos/play/wwdc2020/10603/),
 [Metal compute guidance](https://developer.apple.com/videos/play/tech-talks/10580/),
@@ -304,6 +307,11 @@ at least as strong:
 | Buffer Write Limiter | 0.10–0.11% | 99.29–99.46% |
 | GPU Read Bandwidth | 0.03–0.08 GB/s | 28.11–28.53 GB/s |
 
+Among those same clean counter intervals, ALU was the highest-limiter label
+for 98.55–99.24% of sampled ALU top-limiter time; Buffer Write was highest for
+99.96–99.98% of sampled stream top-limiter time. These are categorical shares
+of sampled labels, not GPU work-time or pipeline-slot shares.
+
 The unfiltered sampled means, counter coverage, per-run checksums and XML hashes
 are in [the replication evidence](apple-gpu-m1-replication.json). The fraction of
 sampled probe time with observed other activity was 4.0–6.4% for ALU and
@@ -312,7 +320,41 @@ overlap that activity; it is still a sampled, device-wide measurement. Unseen
 activity, boundary contamination, frequency and thermal changes are not ruled
 out by these six runs.
 
+An idle control using the packaged Metal probe submitted **zero** GPU commands
+and verified its checksum. The same M1 Instruments profile nevertheless
+exported 162,631 counter rows across 5,178 sample intervals, alongside 4,298
+active GPU intervals attributed to at least three other processes. It had no
+labeled probe interval. This confirms why row count cannot establish a
+workload-specific bottleneck; the idle control and its XML hashes are retained
+in the replication evidence.
+
 ## Reproduce the Instruments comparison
+
+For a checked M1 capture in one command, set the full Xcode developer directory
+and use a new output directory:
+
+```sh
+export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+python3 examples/apple_gpu/record_instruments.py \
+  --output /tmp/m1-gpu-alu-001 --mode alu --passes 100 --profile 3
+python3 examples/apple_gpu/record_instruments.py \
+  --output /tmp/m1-gpu-stream-001 --mode stream --passes 100 --profile 3
+```
+
+The runner verifies the M1 probe checksum and target exit, checks that Xcode
+selected the requested counter profile, exports both tables, and requires
+counter overlap with labeled probe passes. It saves the trace, XML, command
+logs and `profile.json`. `--profile 4` selects Performance Utilizations.
+Failed checks leave the artifacts for inspection in the new output directory.
+This experimental M1 summary is separate from the packaged GPU replay profile
+format used by the database and MCP commands above.
+On this M1, a four-pass profile-3 ALU smoke check sampled all four passes;
+a 100-pass profile-4 stream capture sampled all 100 and reported 1.77% ALU
+Utilization and 28.18 GB/s GPU Read Bandwidth. The checked-runner hashes and
+coverage are in the replication evidence.
+
+The equivalent lower-level commands are shown below for template and export
+inspection.
 
 Use Xcode's developer directory; Command Line Tools alone do not include
 Instruments. Set `DEVELOPER_DIR` to the actual Xcode app location if it differs.
