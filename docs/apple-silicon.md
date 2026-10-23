@@ -343,6 +343,24 @@ are Apple-native cycle ratios from separate recordings; they do not prove
 same-interval parent/child equality or Intel slot-TMA equivalence. The
 recording options, commands, checksums, XML hashes, and complete interval
 counts are in [M1 delivery subcategories](apple-m1-delivery-subcategories.json).
+Three other modes advertised by this M1's CPU Counters trace exported
+`MetricTable` rows, but their values were integer counts with `is-ratio=0`:
+
+| Mode and control | Sampled P-core intervals | Selected native counts |
+|---|---:|---|
+| Discarded sampling, random branch | 3,380 | 249,573,259 incorrectly predicted branches; 249,572,215 conditional and 1,044 other |
+| Discarded indirect sampling, random branch | 3,189 | 1,026 incorrectly predicted indirect branches; 495 indirect calls; 137 returns |
+| L1D miss sampling, pointer chase | 6,130 | 76,167,883 load misses; 18,141,988 store misses; 76,900,813 L1D TLB misses |
+
+The Discarded branch count equaled conditional plus other in every sampled
+interval. Indirect branch did not equal calls plus returns in four of 3,189
+intervals, so those names do not establish another additive split. All rows
+in these captures had complete event sets and no overlapping same-thread/core
+intervals. These counts are totals over sampled intervals, not a whole-run
+census or shares of the four bottleneck categories. They expose mechanisms
+without filling the missing Apple Processing breakdown or Intel slot-TMA
+mapping. Recording options, checksums and XML hashes are in
+[M1 deeper counting modes](apple-m1-deeper-counting-modes.json).
 Apple's [CPU counter subsystem overview](https://github.com/apple-oss-distributions/xnu/blob/main/doc/observability/cpu_counters.md)
 identifies KPC as the manager of configurable core counters; Monotonic and
 Recount expose fixed instructions/cycles. Those fixed-counter paths cannot
