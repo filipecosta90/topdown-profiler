@@ -86,3 +86,27 @@ def test_additive_schema_keeps_existing_linux_samples(postgres_backend, tmp_path
     native = store_apple_result(backend, path)
     assert backend.get_apple_result(native.run_id)
     assert backend.get_samples(linux.run_id)[0].value == 42
+
+
+@pytest.mark.parametrize("failure", ["components", "duplicate-fields", "metadata", "timestamps"])
+def test_inconsistent_apple_imports_fail_before_jsonb_insert(postgres_backend, tmp_path, failure):
+    from topdown.collector.apple import AppleProfileError
+
+    path, original = native_file(tmp_path)
+    if failure == "components":
+        original["counters"].update(performance_instructions=2**64 - 1, other_instructions=1)
+        path.write_text(json.dumps(original))
+    elif failure == "duplicate-fields":
+        path.write_text(path.read_text().replace('"cycles":', '"cycles": 0, "cycles":'))
+    elif failure == "metadata":
+        path = path.rename(tmp_path / "profile.json")
+        (tmp_path / "capture.json").write_text('{"environment":{"invalid":1e999}}')
+    else:
+        original.update(started_at="", ended_at="2026-10-23T10:00:00Z")
+        path.write_text(json.dumps(original))
+    with pytest.raises(AppleProfileError):
+        store_apple_result(postgres_backend, path)
+    assert postgres_backend.list_runs() == []
+    valid, original = native_file(tmp_path)
+    run = store_apple_result(postgres_backend, valid)
+    assert postgres_backend.get_apple_result(run.run_id)["result"] == original

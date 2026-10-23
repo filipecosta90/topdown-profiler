@@ -92,7 +92,13 @@ The importer retains source scope, native M1 bottleneck shares, unmeasured rows,
 trace gaps, and null Intel TMA fields. It does not create floating-point Linux
 metric rows. Capture timestamps are used when available; otherwise the run is
 explicitly labeled `time_basis=import_time`, with unknown capture duration.
-The source SHA-256 and import timestamp are retained. A failed automatic capture
+The source SHA-256 and import timestamp are retained. Imports verify that
+performance/other-core counts add up to aggregate counts and that PID interval
+counts agree with their before/after snapshots. SoC channel/state identities,
+units, totals and any reported shares must agree; zero observations retain null
+shares. Duplicate JSON fields, non-finite numbers and invalid supplied timestamps
+are rejected before insertion, including in capture metadata. UTC timestamps
+ending in `Z` are supported across Python 3.10–3.13. A failed automatic capture
 is not stored; database errors leave capture artifacts available for retry with
 `apple store`.
 

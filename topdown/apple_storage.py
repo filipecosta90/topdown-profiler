@@ -61,6 +61,100 @@ def _validate_guided_summary(summary, rows):
             raise AppleProfileError("Guided bottleneck shares must match their cycle-weighted samples")
 
 
+def _validate_stat_counters(counters):
+    if (not isinstance(counters, dict) or not {"instructions", "cycles"}.issubset(counters)
+            or not all(_uint(value) for value in counters.values())):
+        raise AppleProfileError("Require observed unsigned process counters")
+    for total in ["instructions", "cycles", "user_time_ns", "system_time_ns"]:
+        performance, other = "performance_" + total, "other_" + total
+        if performance in counters or other in counters:
+            if (performance not in counters or other not in counters or total not in counters
+                    or counters[performance] + counters[other] != counters[total]):
+                raise AppleProfileError("Performance/other core pairs must sum exactly to their aggregate total")
+
+
+def _validate_stat(result):
+    counters, scope = result.get("counters"), result.get("scope")
+    _validate_stat_counters(counters)
+    if not isinstance(scope, dict) or not _uint(scope.get("pid")) or not scope["pid"]:
+        raise AppleProfileError("Process counters require an explicit positive PID")
+    for key, allowed in [("descendants", (False,)), ("threads", ("all",)),
+                         ("execution_levels", ("user-and-kernel",)),
+                         ("window", ("process-lifetime", "observed-interval"))]:
+        if key in scope and (scope[key] not in allowed or (key == "descendants" and scope[key] is not False)):
+            raise AppleProfileError("Process scope must retain all threads, user/kernel execution and no descendants")
+    measured = counters if scope.get("window") == "process-lifetime" else None
+    if "snapshot_before" in result or "snapshot_after" in result:
+        if scope.get("window") != "observed-interval":
+            raise AppleProfileError("Process snapshots require observed-interval scope")
+        before, after = result.get("snapshot_before"), result.get("snapshot_after")
+        _validate_stat_counters(before)
+        _validate_stat_counters(after)
+        if (set(before) != set(after) or not before.get("process_start_mach")
+                or before["process_start_mach"] != after.get("process_start_mach")
+                or before.get("process_exit_mach") != 0 or "process_exit_mach" not in after):
+            raise AppleProfileError("Process snapshots must retain one live process identity and counter layout")
+        if after["process_exit_mach"] and after["process_exit_mach"] < after["process_start_mach"]:
+            raise AppleProfileError("Process snapshot exit precedes its start")
+        fields = set(before) - {"process_start_mach", "process_exit_mach"}
+        if set(counters) != fields or any(after[key] - before[key] != counters[key] for key in fields):
+            raise AppleProfileError("Process interval counters must match their native snapshot differences")
+        measured = after
+    if "observed_duration_ns" in result and (not _nonnegative(result["observed_duration_ns"]) or not result["observed_duration_ns"]):
+        raise AppleProfileError("Process observation duration must be a positive native nanosecond count")
+    if "counters_available" in result:
+        available = result["counters_available"]
+        if (type(available) is not bool or (measured is not None
+                and available is not (measured["instructions"] > 0 and measured["cycles"] > 0))):
+            raise AppleProfileError("Process counter availability disagrees with native observations")
+
+
+def _validate_soc(result):
+    channels = result.get("channels")
+    if not isinstance(channels, list) or not channels or not all(isinstance(c, dict) for c in channels):
+        raise AppleProfileError("Require native SoC channel observations")
+    if not isinstance(result.get("scope"), str) or not result["scope"].startswith("system-and-cluster"):
+        raise AppleProfileError("SoC observations require explicit system-and-cluster scope without PID attribution")
+    if "channel_count" in result and (type(result["channel_count"]) is not int or result["channel_count"] != len(channels)):
+        raise AppleProfileError("SoC channel count must match its native channels")
+    identities, totals = set(), []
+    for channel in channels:
+        if (not all(isinstance(channel.get(key), str) for key in ["group", "subgroup", "name", "unit_label"])
+                or not channel["group"] or not channel["name"]
+                or not _uint(channel.get("id")) or not _uint(channel.get("unit"))):
+            raise AppleProfileError("Require native SoC channel identities, units and labels")
+        identity = channel["group"], channel["subgroup"], channel["id"]
+        if identity in identities:
+            raise AppleProfileError("Duplicate native SoC channel identity")
+        identities.add(identity)
+        states = channel.get("states")
+        if (not isinstance(states, list) or not states
+                or not all(isinstance(s, dict) and _uint(s.get("id")) and isinstance(s.get("label"), str)
+                           and _uint(s.get("value")) and _uint(s.get("intransitions")) for s in states)):
+            raise AppleProfileError("Require native SoC state identities, labels and unsigned values/transitions")
+        if len({s["id"] for s in states}) != len(states):
+            raise AppleProfileError("Duplicate native SoC state identity")
+        total = sum(s["value"] for s in states)
+        totals.append(total)
+        if "native_value_total" in channel and (type(channel["native_value_total"]) is not int or channel["native_value_total"] != total):
+            raise AppleProfileError("SoC channel total must match its native state values")
+        if "observations_available" in channel and channel["observations_available"] is not (total > 0):
+            raise AppleProfileError("SoC observation availability must match its native state values")
+        for state in states:
+            if "share_of_reported_values" not in state:
+                continue
+            share = state["share_of_reported_values"]
+            if not total:
+                valid = share is None
+            else:
+                valid = (type(share) in (int, float) and 0 <= share <= 1
+                         and math.isclose(share, state["value"] / total, rel_tol=1e-12, abs_tol=1e-12))
+            if not valid:
+                raise AppleProfileError("SoC state shares must match native values; unobserved states require null shares")
+    if "observations_available" in result and result["observations_available"] is not any(totals):
+        raise AppleProfileError("SoC observation availability must match its native channels")
+
+
 def _validate_profile(result, rows):
     scope = result.get("scope")
     if (not isinstance(scope, dict) or not _nonnegative(scope.get("pid")) or not scope["pid"]
@@ -134,21 +228,9 @@ def validate_result(result: dict) -> None:
         raise AppleProfileError("Apple results must retain unavailable Intel TMA fields as null")
     kind = result["measurement_kind"]
     if kind == STAT_KIND:
-        counters = result.get("counters")
-        if (not isinstance(counters, dict) or not {"instructions", "cycles"}.issubset(counters)
-                or not all(_uint(value) for value in counters.values())):
-            raise AppleProfileError("Require observed unsigned process counters")
-        if not isinstance(result.get("scope"), dict) or not _uint(result["scope"].get("pid")) or not result["scope"]["pid"]:
-            raise AppleProfileError("Process counters require an explicit positive PID")
+        _validate_stat(result)
     elif kind == SOC_KIND:
-        channels = result.get("channels")
-        if not isinstance(channels, list) or not channels or not all(isinstance(c, dict) for c in channels):
-            raise AppleProfileError("Require native SoC channel observations")
-        for channel in channels:
-            states = channel.get("states")
-            if (not isinstance(states, list) or not states
-                    or not all(isinstance(s, dict) and _uint(s.get("value")) for s in states)):
-                raise AppleProfileError("Require native unsigned SoC state values")
+        _validate_soc(result)
     elif kind in PROFILE_SCHEMAS:
         if result.get("schema") != PROFILE_SCHEMAS[kind]:
             raise AppleProfileError("Apple measurement kind and schema disagree")
@@ -171,10 +253,30 @@ def validate_result(result: dict) -> None:
         raise AppleProfileError(f"Invalid native Apple JSON: {exc}") from exc
 
 
+def _json_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"Duplicate Apple JSON field: {key}")
+        result[key] = value
+    return result
+
+
+def _json_constant(value):
+    raise ValueError(f"Non-finite Apple JSON number: {value}")
+
+
+def _json_float(value):
+    number = float(value)
+    if not math.isfinite(number):
+        _json_constant(value)
+    return number
+
+
 def _read_json(path):
     try:
         data = path.read_bytes()
-        value = json.loads(data)
+        value = json.loads(data, object_pairs_hook=_json_object, parse_constant=_json_constant, parse_float=_json_float)
     except (OSError, ValueError) as exc:
         raise AppleProfileError(f"Cannot read Apple artifact {path}: {exc}") from exc
     if not isinstance(value, dict):
@@ -184,12 +286,24 @@ def _read_json(path):
 
 def _date(value):
     try:
+        if isinstance(value, str) and value.endswith("Z"):
+            value = value[:-1] + "+00:00"
         date = datetime.fromisoformat(value)
         if date.tzinfo is None:
             raise ValueError("timezone required")
         return date.astimezone(timezone.utc)
-    except (ValueError, TypeError) as exc:
+    except (ValueError, TypeError, OverflowError) as exc:
         raise AppleProfileError("Apple artifact timestamps must be timezone-aware ISO dates") from exc
+
+
+def _timestamps(document):
+    if "ended_at" in document and "started_at" not in document:
+        raise AppleProfileError("Apple artifact end timestamp requires a start timestamp")
+    started = _date(document["started_at"]) if "started_at" in document else None
+    ended = _date(document["ended_at"]) if "ended_at" in document else None
+    if ended is not None and ended < started:
+        raise AppleProfileError("Apple artifact ends before it starts")
+    return started, ended
 
 
 def validate_run_options(process_name: str | None, labels: dict | None) -> None:
@@ -213,14 +327,14 @@ def store_apple_result(backend, path: Path, process_name: str | None = None, lab
     capture_path = path.parent / "capture.json"
     capture = _read_json(capture_path)[0] if path.name == "profile.json" and capture_path.is_file() else {}
     imported = datetime.now(timezone.utc)
-    times = result if result.get("started_at") else capture
-    started = _date(times["started_at"]) if times.get("started_at") else imported
-    ended = _date(times["ended_at"]) if times.get("started_at") and times.get("ended_at") else None
-    if ended is not None and ended < started:
-        raise AppleProfileError("Apple artifact ends before it starts")
-    time_basis = "result_timestamps" if times is result else "capture_metadata"
-    if not times.get("started_at"):
-        time_basis = "import_time"
+    result_started, result_ended = _timestamps(result)
+    capture_started, capture_ended = _timestamps(capture)
+    if result_started is not None:
+        started, ended, time_basis = result_started, result_ended, "result_timestamps"
+    elif capture_started is not None:
+        started, ended, time_basis = capture_started, capture_ended, "capture_metadata"
+    else:
+        started, ended, time_basis = imported, None, "import_time"
     command = result.get("command") or capture.get("command")
     scope = result.get("scope", {})
     pid = scope.get("pid") if isinstance(scope, dict) else None
