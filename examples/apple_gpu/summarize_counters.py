@@ -133,7 +133,6 @@ def summarize(source: bytes, gpu_intervals: bytes | None = None, pid: int | None
     if pid is not None and gpu_intervals is None:
         raise ValueError("probe PID requires GPU intervals")
     names = Counter()
-    starts = set()
     samples = set()
     values = []
     for columns, row in _table(source, "metal-gpu-counter-intervals"):
@@ -153,7 +152,6 @@ def summarize(source: bytes, gpu_intervals: bytes | None = None, pid: int | None
         duration = _integer(duration_cell, "counter duration")
         if duration == 0:
             raise ValueError("counter duration must be positive")
-        starts.add(start)
         samples.add((start, start + duration))
         names[name_cell.text] += 1
         if {"name", "value", "label", "is-percentage"}.issubset(columns):
@@ -174,7 +172,7 @@ def summarize(source: bytes, gpu_intervals: bytes | None = None, pid: int | None
         "schema": "metal-gpu-counter-intervals",
         "counter_scope": "device-wide",
         "counter_rows": sum(names.values()),
-        "sample_intervals": len(starts),
+        "sample_intervals": len(samples),
         "counter_names": dict(sorted(names.items())),
     }
     if gpu_intervals is None:
@@ -286,11 +284,18 @@ def summarize(source: bytes, gpu_intervals: bytes | None = None, pid: int | None
 
     result["sampled_counter_means"] = summarize_means(means)
     result["top_limiter_categories"] = summarize_categories(top_categories)
+    result["top_limiter_unparsed_sampled_time_ns"] = (
+        means.get("Top Performance Limiter", {}).get("sampled_time_ns", 0) - sum(top_categories.values())
+    )
     result["sampled_counter_means_without_observed_other_activity"] = (
         summarize_means(clean_means) if state_available else None
     )
     result["top_limiter_categories_without_observed_other_activity"] = (
         summarize_categories(clean_top_categories) if state_available else None
+    )
+    result["top_limiter_unparsed_clean_sampled_time_ns"] = (
+        clean_means.get("Top Performance Limiter", {}).get("sampled_time_ns", 0)
+        - sum(clean_top_categories.values()) if state_available else None
     )
     return result
 

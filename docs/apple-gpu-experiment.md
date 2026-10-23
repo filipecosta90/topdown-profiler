@@ -277,6 +277,9 @@ time, while Buffer Write was highest for 99.98% of the corresponding stream run.
 Those are shares of **sampled top-limiter labels**, not shares of GPU time or
 pipeline slots. Apple demonstrates this highest-limiter track in its GPU counter
 walkthrough.
+The summarizer reports unparsed top-limiter sampled time separately. Check that
+it is zero before treating the listed category shares as representative of all
+sampled top-limiter intervals; it was zero in all six replicated captures.
 See Apple's
 [GPU counter walkthrough](https://developer.apple.com/videos/play/wwdc2020/10603/),
 [Metal compute guidance](https://developer.apple.com/videos/play/tech-talks/10580/),
@@ -343,6 +346,8 @@ selected the requested counter profile, exports both tables, and requires
 counter overlap with labeled probe passes. It saves the trace, XML, command
 logs and `profile.json`. `--profile 4` selects Performance Utilizations.
 Failed checks leave the artifacts for inspection in the new output directory.
+This experimental M1 summary is separate from the packaged GPU replay profile
+format used by the database and MCP commands above.
 On this M1, a four-pass profile-3 ALU smoke check sampled all four passes;
 a 100-pass profile-4 stream capture sampled all 100 and reported 1.77% ALU
 Utilization and 28.18 GB/s GPU Read Bandwidth. The checked-runner hashes and
