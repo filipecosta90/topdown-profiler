@@ -263,6 +263,13 @@ Intel TMA. Default runs were performance-core dominant; background runs were
 other-core dominant. Separate-run startup variation can make a small
 per-core-kind *difference* negative without any cumulative counter decrease.
 The result checks process accounting within startup variation, not slot-TMA.
+A further 16-case startup-barrier run used the same M6 validation script on M1.
+After subtracting the zero-loop interval median, the instruction ratio to the
+planned loop was 1.00021–1.00109 for default QoS and 0.99997–1.00392 for
+background QoS across one, ten, and 100 million iterations. These intervals
+remove most startup work but still include the short measurement protocol and
+kernel activity. The raw-result hash, native counter splits and per-case counts
+are retained in the M1 evidence file.
 
 ## Xcode's four-category M1 bottlenecks
 

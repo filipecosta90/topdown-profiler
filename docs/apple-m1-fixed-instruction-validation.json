@@ -84,5 +84,81 @@
       "other_instruction_delta": 301391469,
       "cycle_delta": 101402341
     }
-  ]
+  ],
+  "barrier_interval_validation": {
+    "validation_script_sha256": "c1ae212d8432bd8f7695371e34dcd72d35d2c15f211374907f959d917b1e7498",
+    "results_json_sha256": "e843c236f2d61c80d1f8cd987802f60a29cc62ed1da68c0bb3d061e751f9a6b2",
+    "binary_sha256": "2f3b90577607c46afc56f0f68a352db43694a2e1a22d47339e9c4f5dfcb983ef",
+    "cases": 16,
+    "all_v6_partitions_exact_and_tma_unavailable": true,
+    "method": "Each case samples proc_pid_rusage after the child startup barrier and immediately after the counted loop, before child shutdown. Two observations per iteration count and QoS.",
+    "by_qos_and_iterations": {
+      "default": {
+        "0": {
+          "instruction_counts": [
+            17656,
+            19305
+          ],
+          "median_instructions": 18480.5
+        },
+        "1000000": {
+          "instruction_counts": [
+            3019691,
+            3019224
+          ],
+          "median_instructions": 3019457.5,
+          "baseline_subtracted_ratio_to_planned_loop": 1.00032567
+        },
+        "10000000": {
+          "instruction_counts": [
+            30019219,
+            30030213
+          ],
+          "median_instructions": 30024716.0,
+          "baseline_subtracted_ratio_to_planned_loop": 1.00020785
+        },
+        "100000000": {
+          "instruction_counts": [
+            300282890,
+            300410135
+          ],
+          "median_instructions": 300346512.5,
+          "baseline_subtracted_ratio_to_planned_loop": 1.00109344
+        }
+      },
+      "background": {
+        "0": {
+          "instruction_counts": [
+            19641,
+            19072
+          ],
+          "median_instructions": 19356.5
+        },
+        "1000000": {
+          "instruction_counts": [
+            3019172,
+            3019373
+          ],
+          "median_instructions": 3019272.5,
+          "baseline_subtracted_ratio_to_planned_loop": 0.999972
+        },
+        "10000000": {
+          "instruction_counts": [
+            30206459,
+            30067441
+          ],
+          "median_instructions": 30136950.0,
+          "baseline_subtracted_ratio_to_planned_loop": 1.00391978
+        },
+        "100000000": {
+          "instruction_counts": [
+            300943157,
+            301179997
+          ],
+          "median_instructions": 301061577.0,
+          "baseline_subtracted_ratio_to_planned_loop": 1.00347407
+        }
+      }
+    }
+  }
 }
