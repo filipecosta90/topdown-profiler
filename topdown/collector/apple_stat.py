@@ -267,6 +267,7 @@ def stat_process(output: Path, command: list[str], timeout: float = 30) -> dict:
     reaped = False
     try:
         with (output / "target.stdout").open("w") as stdout, (output / "target.stderr").open("w") as stderr:
+            check_cancelled()
             process = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=stdout, stderr=stderr,
                                        start_new_session=True)
             result["scope"] = {"pid": process.pid, "threads": "all", "descendants": False,
@@ -300,6 +301,8 @@ def stat_process(output: Path, command: list[str], timeout: float = 30) -> dict:
                 result.update(status="completed", exit_code=target_exit if target_exit >= 0 else 128 - target_exit)
     except (OSError, AppleProfileError, subprocess.SubprocessError) as exc:
         result["error"] = str(exc)
+        if isinstance(exc, AppleProfileError) and exc.code == "interrupted":
+            result.update(status="interrupted", exit_code=130)
     finally:
         if process is not None and not reaped:
             try:
