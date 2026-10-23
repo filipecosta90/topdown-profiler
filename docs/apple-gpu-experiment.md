@@ -437,6 +437,29 @@ to the kernel change alone. The checksums, source and XML hashes, pass coverage,
 both counter sets, and reordered replication are in
 [the width-control evidence](apple-gpu-m1-packaged-width-control.json).
 
+Four further M1 traces placed both matched-width packaged kernels in each
+capture, then reversed their order under each counter profile. The two probe
+processes ran sequentially, and the same device-wide counter export was
+summarized once per recorded PID:
+
+| Counter profile and order | Clean ALU Limiter, compute / optimized ALU | Clean F32 Utilization, compute / optimized ALU | Passes with counter samples, compute / optimized ALU |
+|---|---:|---:|---:|
+| Limiters, compute first | 89.64% / 70.82% | 14.22% / 64.74% | 100 / 99 |
+| Limiters, ALU first | 89.22% / 69.43% | 14.17% / 63.45% | 100 / 100 |
+| Utilizations, compute first | — | 14.22% / 64.32% | 100 / 100 |
+| Utilizations, ALU first | — | 14.16% / 64.57% | 100 / 100 |
+
+Both modes returned the same checksum in every trace. The first limiter trace
+missed counter overlap on one short optimized-ALU pass; all other passes had
+samples for the required metrics. Observed other activity overlapped 3.6–9.9%
+of sampled probe work across these summaries. Compute/ALU command GPU-time
+ratios ranged from 3.07 to 4.26, so this control supports the direction of the
+kernel effect rather than a fixed speedup. ALU remained the most frequent
+*top-limiter label* for both kernels, showing why that label alone cannot
+describe F32 utilization or the size of the ALU limiter. The same-trace
+checksums, PID matches, counter coverage, sampled and clean means, and hashes
+are in [the paired-trace evidence](apple-gpu-m1-packaged-paired-traces.json).
+
 ## Reproduce the Instruments comparison
 
 For a checked M1 capture in one command, set the full Xcode developer directory
