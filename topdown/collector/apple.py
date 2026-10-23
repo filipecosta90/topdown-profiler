@@ -140,6 +140,8 @@ def doctor() -> dict:
         "arch": platform.machine(),
         "os_version": platform.mac_ver()[0],
         "xctrace": None,
+        "gpudebug": None,
+        "gpu_replay": {"status": "unsupported_host"},
         "templates": [],
         "hardware_access": "unverified",
         "tma": dict.fromkeys(TMA_ROOTS),
@@ -154,6 +156,7 @@ def doctor() -> dict:
         "os_build": ["sysctl", "-n", "kern.osversion"],
         "kernel_uuid": ["sysctl", "-n", "kern.uuid"],
         "xctrace": ["xcrun", "xctrace", "version"],
+        "gpudebug": ["xcrun", "gpudebug", "--version"],
         "templates": ["xcrun", "xctrace", "list", "templates"],
         "developer_tools_security": ["/usr/sbin/DevToolsSecurity", "-status"],
     }
@@ -170,6 +173,12 @@ def doctor() -> dict:
                 result[key] = (proc.stdout or proc.stderr).strip()
         except (OSError, subprocess.TimeoutExpired) as exc:
             result.setdefault("errors", {})[key] = str(exc)
+    result["gpu_replay"] = {
+        "status": "unverified",
+        "reason": "GPU replay access requires a successful native profile; debugger metadata and CPU "
+                  "programmable-counter policy do not verify it.",
+        "next_step": "topdown apple gpu record --output <new-directory>",
+    }
     result["programmable_counters"] = {
         "status": "unverified",
         "reason": "Counter access requires a successful native probe; installed templates do not verify access.",

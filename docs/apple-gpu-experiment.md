@@ -90,6 +90,9 @@ both values and does not derive cost from duration.
 
 Install the project and use full Xcode. Replay profiling requires M3/A17 Pro or
 later; the M1 Instruments experiment below uses a different collection path.
+`topdown apple doctor` reports the GPU debugger version separately from CPU
+programmable-counter diagnostics. GPU access remains unverified until a native
+profile succeeds; a CPU kernel restriction does not establish GPU availability.
 
 ```sh
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
