@@ -129,6 +129,12 @@ def report(profile: dict) -> dict:
                 or not math.isfinite(category["share_of_top_limiter_samples_percent"])
                 or not 0 <= category["share_of_top_limiter_samples_percent"] <= 100):
             raise ValueError("Invalid M1 GPU top-limiter category")
+    top_metric = means.get("Top Performance Limiter")
+    if (top_metric is None and (categories or unparsed)
+            or top_metric is not None and (not isinstance(top_metric, dict)
+                or sum(category["sampled_time_ns"] for category in categories) + unparsed
+                != _sampled_time(top_metric, "Top Performance Limiter"))):
+        raise ValueError("M1 GPU top-limiter sample time does not match its categories")
 
     return {
         "measurement_kind": "m1-instruments-device-wide-sampled-gpu",
