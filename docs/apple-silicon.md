@@ -130,6 +130,10 @@ The MCP server must run on macOS to collect, and resolves executable/file paths
 on that host. Imports, database queries, and reports can run on other supported
 OSes. The summary omits bulk arrays; use `section=samples`, `intervals`, `gaps`,
 `channels`, `leaf_sample_counts`, or GPU `encoders` to page through the relevant native data.
+SQLite and PostgreSQL project summaries and native array pages inside the
+database, avoiding full-document loads into the server for each small query.
+The complete document remains available for reporting and provenance, and
+pages retain original order, native integer precision and their full-array total.
 `list_profiling_runs` discovers both Linux and Apple runs. Linux metric
 comparisons and funnels continue to operate on Linux TMA rows.
 

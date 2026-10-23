@@ -438,17 +438,18 @@ def query_apple_result(backend, run_id: str, section: str = "summary", offset: i
     if section not in {"summary", *BULK_FIELDS} or type(offset) is not int or offset < 0 or type(limit) is not int or not 1 <= limit <= 1000:
         raise AppleProfileError("Choose summary/samples/intervals/gaps/channels/leaf_sample_counts/encoders, offset >= 0 and limit 1–1000")
     run = backend.get_run(run_id)
-    document = backend.get_apple_result(run_id)
+    document = backend.get_apple_result_page(run_id, tuple(sorted(BULK_FIELDS)),
+                                             None if section == "summary" else section, offset, limit)
     if run is None or document is None:
         raise AppleProfileError(f"No stored Apple result for run {run_id}")
     result = document["result"]
     response = {"run_id": run_id, "process_name": run.process_name, "labels": run.labels,
                 "metadata": document["metadata"], "result": {k: v for k, v in result.items() if k not in BULK_FIELDS}}
     if section != "summary":
-        rows = result.get(section)
+        rows = document["rows"]
         if not isinstance(rows, list):
             raise AppleProfileError(f"This Apple result has no {section} section")
-        response.update(section=section, offset=offset, limit=limit, total=len(rows), rows=rows[offset:offset + limit])
+        response.update(section=section, offset=offset, limit=limit, total=document["total"], rows=rows)
     return response
 
 
