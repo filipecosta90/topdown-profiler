@@ -91,6 +91,8 @@ def test_summary_checks_probe_counter_overlap():
         "status": "sampled",
         "workloads_observed": ["burn"],
         "passes_observed": 2,
+        "pass_index_min": 0,
+        "pass_index_max": 1,
         "passes_with_counter_samples": 1,
         "passes_with_counter_samples_by_metric": {},
         "sampled_pass_fraction_min": 0,
@@ -106,6 +108,25 @@ def test_summary_checks_probe_counter_overlap():
         "observed_other_activity_fraction_of_sampled_gpu_work": None,
         "last_counter_end_minus_last_probe_end_ns": -65,
     }
+
+
+@pytest.mark.parametrize("mode", ["compute", "alu", "memory", "stream"])
+def test_summary_recognizes_packaged_probe_labels(mode):
+    counters = b"""<trace-query-result><node><schema name="metal-gpu-counter-intervals"/>
+    <row><start-time>100</start-time><duration>10</duration><uint32>0</uint32>
+    <gpu-counter-name>ALU Limiter</gpu-counter-name></row></node></trace-query-result>"""
+    gpu = (f'<trace-query-result><node><schema name="metal-gpu-intervals">'
+           '<col><mnemonic>start</mnemonic></col><col><mnemonic>duration</mnemonic></col>'
+           '<col><mnemonic>event-label</mnemonic></col></schema>'
+           f'<row><start-time>100</start-time><duration>10</duration>'
+           f'<formatted-label fmt="topdown GPU {mode} pass 0:{mode} compute pass 0 (probe)"/></row>'
+           f'<row><start-time>200</start-time><duration>10</duration>'
+           f'<formatted-label fmt="topdown GPU {mode} pass 1:{mode} compute pass 2 (probe)"/></row>'
+           '</node></trace-query-result>').encode()
+    coverage = MODULE.summarize(counters, gpu)["probe_coverage"]
+    assert coverage["workloads_observed"] == [mode]
+    assert coverage["passes_observed"] == 1
+    assert coverage["passes_with_counter_samples"] == 1
 
 
 def test_summary_reports_counter_rows_without_probe_coverage():

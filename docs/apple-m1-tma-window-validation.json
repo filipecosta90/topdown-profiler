@@ -462,5 +462,62 @@
       "matches_exported_rounding": true,
       "windows_with_overlapping_guided_intervals": 0
     }
+  },
+  "mixed_core_control": {
+    "counter_xml_sha256": "43e86387390677cccc89fde15e459b47d9a3bbe1fef08bd923bdcca9e0daa176",
+    "metric_xml_sha256": "315d6e9da2dee0272886f095808c8b915bfe1eaafaf9b23e9b88cd42050c99ad",
+    "exact_join_guided_cycle_fraction": 0.816719065482323,
+    "windows_with_guided_intervals": 3545,
+    "windows_with_boundary_straddle": 0,
+    "windows_with_overlapping_guided_intervals": 0,
+    "windows_with_cycle_mismatch": 183,
+    "cycle_aligned_windows": 3362,
+    "cycle_aligned_multi_interval_windows": 819,
+    "windows_matching_exported_rounding": 3362,
+    "guided_cycles_in_cycle_aligned_windows": 8075483015,
+    "guided_cycle_fraction_in_cycle_aligned_windows": 0.9518501503952568,
+    "max_absolute_difference_percentage_points": {
+      "useful": 9.999694405848913e-08,
+      "processing": 9.998741556938029e-08,
+      "discarded": 9.999325726965918e-08,
+      "delivery": 9.998790684306869e-08
+    },
+    "matches_exported_rounding": true,
+    "core_kind_validation": {
+      "guided_threads_observed_on_both_core_kinds": 2,
+      "exact_joins": {
+        "E": {
+          "guided_intervals": 2320,
+          "guided_cycles": 1638768517,
+          "matched_intervals": 759,
+          "matched_guided_cycles": 824460461,
+          "matched_guided_cycle_fraction": 0.5030975714064196
+        },
+        "P": {
+          "guided_intervals": 2437,
+          "guided_cycles": 6845217131,
+          "matched_intervals": 1962,
+          "matched_guided_cycles": 6104572369,
+          "matched_guided_cycle_fraction": 0.8918011294856032
+        }
+      },
+      "cycle_aligned_windows": {
+        "E": {
+          "guided_cycles": 1638768517,
+          "guided_cycles_in_cycle_aligned_windows": 1471138121,
+          "guided_cycle_fraction_in_cycle_aligned_windows": 0.8977095335545795,
+          "cycle_aligned_windows": 1287,
+          "windows_matching_exported_rounding": 1287
+        },
+        "P": {
+          "guided_cycles": 6845217131,
+          "guided_cycles_in_cycle_aligned_windows": 6604344894,
+          "guided_cycle_fraction_in_cycle_aligned_windows": 0.9648116002180326,
+          "cycle_aligned_windows": 2075,
+          "windows_matching_exported_rounding": 2075
+        }
+      },
+      "guided_core_kind_transitions_observed": 12
+    }
   }
 }

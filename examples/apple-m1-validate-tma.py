@@ -13,6 +13,10 @@ from topdown.collector.apple import _resolve_ids, parse_apple_bottlenecks
 CATEGORIES = ("useful", "processing", "discarded", "delivery")
 
 
+def _core_kind(core: int) -> str:
+    return "E" if core < 4 else "P"
+
+
 def _candidate(values: list[int], core: int) -> dict[str, float]:
     active = values[2]
     width = 4 if core < 4 else 8
@@ -32,9 +36,15 @@ def _aggregate_windows(raw_by_scope: dict, guided_samples: list[dict], guided_cy
     for row in guided_samples:
         guided_by_scope[(row["tid"], row["core"])].append(row)
     counts = Counter()
+    kind_counts = defaultdict(Counter)
     maximum = dict.fromkeys(CATEGORIES, 0.0)
     aligned_cycles = 0
+    aligned_by_kind = Counter()
+    guided_by_kind = Counter()
+    for row in guided_samples:
+        guided_by_kind[_core_kind(row["core"])] += row["cycles"]
     for (tid, core), samples in raw_by_scope.items():
+        kind = _core_kind(core)
         samples.sort()
         rows = sorted(guided_by_scope[(tid, core)], key=lambda row: row["time_ns"] + row["duration_ns"])
         ends = [row["time_ns"] + row["duration_ns"] for row in rows]
@@ -56,14 +66,18 @@ def _aggregate_windows(raw_by_scope: dict, guided_samples: list[dict], guided_cy
                 continue
             counts["cycle_aligned_windows"] += 1
             counts["cycle_aligned_multi_interval_windows"] += len(window) > 1
+            kind_counts[kind]["cycle_aligned_windows"] += 1
             aligned_cycles += active
+            aligned_by_kind[kind] += active
             estimate = _candidate(values, core)
             differences = {category: abs(estimate[category] - sum(
                 row["shares"][category] * row["cycles"] for row in window) / active) * 100
                 for category in CATEGORIES}
             for category, difference in differences.items():
                 maximum[category] = max(maximum[category], difference)
-            counts["windows_matching_exported_rounding"] += max(differences.values()) < 1e-7
+            matched = max(differences.values()) < 1e-7
+            counts["windows_matching_exported_rounding"] += matched
+            kind_counts[kind]["windows_matching_exported_rounding"] += matched
     return {
         **{name: counts[name] for name in (
             "windows_with_guided_intervals", "windows_with_boundary_straddle",
@@ -72,6 +86,13 @@ def _aggregate_windows(raw_by_scope: dict, guided_samples: list[dict], guided_cy
             "cycle_aligned_multi_interval_windows", "windows_matching_exported_rounding")},
         "guided_cycles_in_cycle_aligned_windows": aligned_cycles,
         "guided_cycle_fraction_in_cycle_aligned_windows": aligned_cycles / guided_cycles,
+        "by_core_kind": {kind: {
+            "guided_cycles": guided_by_kind[kind],
+            "guided_cycles_in_cycle_aligned_windows": aligned_by_kind[kind],
+            "guided_cycle_fraction_in_cycle_aligned_windows": aligned_by_kind[kind] / guided_by_kind[kind],
+            "cycle_aligned_windows": kind_counts[kind]["cycle_aligned_windows"],
+            "windows_matching_exported_rounding": kind_counts[kind]["windows_matching_exported_rounding"],
+        } for kind in sorted(guided_by_kind)},
         "max_absolute_difference_percentage_points": maximum,
         "matches_exported_rounding": (counts["cycle_aligned_windows"] > 0
                                       and counts["windows_matching_exported_rounding"] == counts["cycle_aligned_windows"]),
@@ -100,6 +121,18 @@ def validate(counters: Path, metrics: Path, pid: int) -> dict:
     raw_scopes = set()
     raw_by_scope = defaultdict(list)
     matched_keys = set()
+    guided_by_kind = defaultdict(Counter)
+    matched_by_kind = defaultdict(Counter)
+    thread_kinds = defaultdict(set)
+    thread_samples = defaultdict(list)
+    for row in guided["samples"]:
+        if not 0 <= row["core"] <= 7:
+            raise ValueError("Expected M1 guided core number 0 through 7")
+        kind = _core_kind(row["core"])
+        guided_by_kind[kind]["intervals"] += 1
+        guided_by_kind[kind]["cycles"] += row["cycles"]
+        thread_kinds[row["tid"]].add(kind)
+        thread_samples[row["tid"]].append((row["time_ns"], kind))
     maximum = dict.fromkeys(CATEGORIES, 0.0)
     for row in tables[0].findall("row"):
         if len(row) != len(columns):
@@ -114,6 +147,8 @@ def validate(counters: Path, metrics: Path, pid: int) -> dict:
         values = [int(value) for value in vector.text.split()]
         if len(values) != 12 or values[10:] != [0, 0]:
             raise ValueError("Unexpected combined guided/custom vector layout")
+        if any(value < 0 for value in values):
+            raise ValueError("Negative M1 counter value")
         core = int(cells["core"].text)
         if not 0 <= core <= 7:
             raise ValueError("Expected M1 core number 0 through 7")
@@ -137,6 +172,9 @@ def validate(counters: Path, metrics: Path, pid: int) -> dict:
         matched_keys.add(key)
         matched_count += 1
         matched_cycles += interval["cycles"]
+        kind = _core_kind(core)
+        matched_by_kind[kind]["intervals"] += 1
+        matched_by_kind[kind]["cycles"] += interval["cycles"]
         estimate = _candidate(values, core)
         for category in CATEGORIES:
             difference = abs(estimate[category] - interval["shares"][category]) * 100
@@ -162,6 +200,19 @@ def validate(counters: Path, metrics: Path, pid: int) -> dict:
             "unmatched_guided_intervals": len(guided["samples"]) - matched_count,
             "guided_sampled_cycles": guided_cycles, "matched_guided_cycles": matched_cycles,
             "matched_guided_cycle_fraction": matched_cycles / guided_cycles,
+            "guided_threads_observed_on_both_core_kinds": sum(len(kinds) == 2 for kinds in thread_kinds.values()),
+            "guided_core_kind_transitions_observed": sum(
+                first[1] != second[1]
+                for ordered in (sorted(samples) for samples in thread_samples.values())
+                for first, second in zip(ordered, ordered[1:])
+            ),
+            "by_core_kind": {kind: {
+                "guided_intervals": counts["intervals"],
+                "guided_cycles": counts["cycles"],
+                "matched_intervals": matched_by_kind[kind]["intervals"],
+                "matched_guided_cycles": matched_by_kind[kind]["cycles"],
+                "matched_guided_cycle_fraction": matched_by_kind[kind]["cycles"] / counts["cycles"],
+            } for kind, counts in sorted(guided_by_kind.items())},
             "unmatched_guided_intervals_by_reason": dict(sorted(unmatched_intervals.items())),
             "unmatched_guided_cycles_by_reason": dict(sorted(unmatched_cycles.items())),
             "aggregated_raw_windows": aggregated,

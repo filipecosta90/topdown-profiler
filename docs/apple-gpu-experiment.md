@@ -170,7 +170,15 @@ The packaged replay probe and the M1 Instruments probe use different controls;
 `alu` reduces loop overhead in the replay probe, while the Instruments `alu`
 control retains the original loop. Their `stream` controls also differ: the replay
 probe uses vectorized FMAs, while the Instruments probe uses scalar addition.
-Use the matching source and measurement path when reproducing each result.
+The packaged probe was also run through the M1 Instruments path below. Use the
+matching source and measurement path when reproducing each result.
+The one-command M1 runner completed native packaged-probe limiter checks for
+all four modes, plus a utilization check for compute. Every requested pass and
+required metric was sampled. The 100-pass ALU check still had 13 passes with
+less than 10% sampled duration, and the eight-pass stream check had observed
+other GPU activity during 33% of sampled probe time. The capture hashes and
+coverage are in
+[the M1 packaged-probe artifact](apple-gpu-m1-packaged-probe.json).
 Use a fresh directory and full Xcode:
 
 ```sh
@@ -385,6 +393,50 @@ per-pass coverage and native summaries are in
 two same-trace orderings support a repeatable workload contrast, within the
 limits of sampled, device-wide counters.
 
+### Same Metal kernels on M1 and M6
+
+The M6 replay probe compiled and checksum-verified on M1 under Instruments.
+The M1 summarizer now recognizes its command-buffer and encoder labels as
+well as the original M1 probe labels. Four Performance Limiters captures used
+the same packaged kernels and item counts as the M6 controls:
+
+| Packaged mode | Passes × items | M1 command GPU time | Passes sampled | Clean ALU Limiter | Clean Buffer Write Limiter |
+|---|---:|---:|---:|---:|---:|
+| Compute | 100 × 16,384 | 34.43 ms | 100/100 | 72.30% | 0.10% |
+| ALU | 100 × 16,384 | 7.02 ms | 76/100 | 23.02% | 0.20% |
+| Memory | 8 × 16,777,216 | 19.50 ms | 8/8 | 2.50% | 98.39% |
+| Stream | 8 × 16,777,216 | 20.09 ms | 8/8 | 1.61% | 99.17% |
+
+Compute and optimized ALU returned the same checksum. Their original-command
+GPU times differed by 4.90× in these separate M1 captures. The optimized
+ALU commands were short enough that 24 passes had no counter overlap and 37
+had under 10% sampled coverage, so its limiter mean needs caution. Memory
+and stream also returned the same checksum; their clean sampled GPU Read
+Bandwidth means were 27.51 and 26.41 GB/s. Observed other activity overlapped
+13.30% and 30.83% of their sampled work, respectively. The selected template,
+probe, TOC and XML hashes, checksums, per-metric coverage and unfiltered means
+are in [the packaged-probe evidence](apple-gpu-m1-packaged-probe.json).
+The kernels now match across hosts, but M1's device-wide Instruments samples
+and M6's captured-workload replay counters have different scopes and native
+limiter meanings. Their percentages cannot be compared as one TMA scale.
+
+A matched-width control increased both packaged compute and ALU commands to
+65,536 items for 100 passes. In the Performance Limiters pair, all passes
+overlapped the required metrics; original-command GPU time was 66.66 versus
+22.71 ms, and clean ALU Limiter was 89.72% versus 71.17%. The independent
+Performance Utilizations set showed a different direction: clean F32
+Utilization was 14.26% for compute and 64.33% for optimized ALU, while total
+ALU Utilization was 42.85% and 68.65%. A reversed-order utilization pair
+repeated the F32 split at 14.21% versus 65.76%; all its passes were sampled.
+The first utilization pair sampled 100 compute and 99 ALU passes. The three
+separate capture pairs gave compute/ALU GPU-time ratios of 2.93, 3.39, and
+3.33. Native limiter and utilization percentages have different meanings,
+and the shorter 16,384-item ALU control had 24 unsampled passes and a much
+lower ALU Limiter. The earlier limiter difference therefore cannot be assigned
+to the kernel change alone. The checksums, source and XML hashes, pass coverage,
+both counter sets, and reordered replication are in
+[the width-control evidence](apple-gpu-m1-packaged-width-control.json).
+
 ## Reproduce the Instruments comparison
 
 For a checked M1 capture in one command, set the full Xcode developer directory
@@ -396,6 +448,17 @@ python3 examples/apple_gpu/record_instruments.py \
   --output /tmp/m1-gpu-alu-001 --mode alu --passes 100 --profile 3
 python3 examples/apple_gpu/record_instruments.py \
   --output /tmp/m1-gpu-stream-001 --mode stream --passes 100 --profile 3
+
+# Use the packaged M6 probe kernels on M1's sampled counter timeline.
+python3 examples/apple_gpu/record_instruments.py \
+  --probe-source packaged --mode compute --passes 100 --items 65536 \
+  --output /tmp/m1-gpu-packaged-compute-001
+python3 examples/apple_gpu/record_instruments.py \
+  --probe-source packaged --mode memory --passes 8 --items 16777216 \
+  --output /tmp/m1-gpu-packaged-memory-001
+python3 examples/apple_gpu/report_instruments.py \
+  /tmp/m1-gpu-packaged-compute-001/profile.json
+# Use --json for a compact machine-readable report.
 ```
 
 The runner verifies the M1 probe checksum and target exit, checks that Xcode
@@ -404,9 +467,22 @@ counter overlap with every requested probe pass. It also requires each expected
 counter metric to overlap every pass, checks units, and verifies decoded
 top-limiter labels for profile 3. It saves the trace, XML, command logs and
 `profile.json`. `--profile 4` selects Performance Utilizations.
+For the packaged probe, it also validates the saved `probe.json` checksum,
+mode, item count, and ordered command labels. It requires the observed pass
+indices to run from zero through the requested last pass. The packaged default
+is 100 passes and 65,536 items for compute/ALU, or 8 passes and 16,777,216
+items for memory/stream; the original M1 probe keeps its existing defaults.
+Very short packaged ALU commands can miss individual counter samples, causing
+the checked runner to reject an otherwise completed probe.
 Failed checks leave the artifacts for inspection in the new output directory.
 This experimental M1 summary is separate from the packaged GPU replay profile
 format used by the database and MCP commands above.
+The saved-profile report ranks the sampled limiter and utilization means within
+each counter type, shows bandwidth separately, and prints the sampled fraction,
+sparse-pass count, and overlap with observed other GPU activity. Its clean means
+exclude counter intervals that overlap observed other activity and show how
+much sampled time remains for each metric; they do not make device-wide
+counters process-specific.
 On this M1, a four-pass profile-3 ALU smoke check sampled all four passes;
 a fresh four-pass check covered 16.28% of GPU work time with counter samples.
 A 100-pass profile-4 stream capture sampled all 100 and reported 1.77% ALU

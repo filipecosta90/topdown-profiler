@@ -337,6 +337,42 @@ in [M1 Xcode validation](apple-m1-xcode27-validation.json). Apple's [Processor T
 requirements](https://developer.apple.com/documentation/xcode/analyzing-cpu-usage-with-processor-trace)
 start at M4 for Mac recording, so Processor Trace cannot supply a hardware
 execution trace on this M1.
+Fresh Instruction Delivery captures broadened that check. All three exported
+complete cycle, Delivery Bandwidth, and Delivery Latency intervals on the
+intended M1 core kind:
+
+| Control | Bandwidth | Latency | Sum | Root Delivery in an earlier run |
+|---|---:|---:|---:|---:|
+| E-core random branch | 19.52% | 24.33% | 43.85% | 43.85% |
+| P-core large executed NOP stream | 0.01% | 73.37% | 73.38% | 72.82% |
+| E-core large executed NOP stream | 0.01% | 47.94% | 47.96% | 47.79% |
+
+The differences from the separate root captures were 0.007, 0.554, and
+0.163 percentage points, respectively. The large instruction streams were
+classified almost entirely as Delivery Latency in this mode, while the random
+branch control split its Delivery share between Bandwidth and Latency. These
+are Apple-native cycle ratios from separate recordings; they do not prove
+same-interval parent/child equality or Intel slot-TMA equivalence. The
+recording options, commands, checksums, XML hashes, and complete interval
+counts are in [M1 delivery subcategories](apple-m1-delivery-subcategories.json).
+Three other modes advertised by this M1's CPU Counters trace exported
+`MetricTable` rows, but their values were integer counts with `is-ratio=0`:
+
+| Mode and control | Sampled P-core intervals | Selected native counts |
+|---|---:|---|
+| Discarded sampling, random branch | 3,380 | 249,573,259 incorrectly predicted branches; 249,572,215 conditional and 1,044 other |
+| Discarded indirect sampling, random branch | 3,189 | 1,026 incorrectly predicted indirect branches; 495 indirect calls; 137 returns |
+| L1D miss sampling, pointer chase | 6,130 | 76,167,883 load misses; 18,141,988 store misses; 76,900,813 L1D TLB misses |
+
+The Discarded branch count equaled conditional plus other in every sampled
+interval. Indirect branch did not equal calls plus returns in four of 3,189
+intervals, so those names do not establish another additive split. All rows
+in these captures had complete event sets and no overlapping same-thread/core
+intervals. These counts are totals over sampled intervals, not a whole-run
+census or shares of the four bottleneck categories. They expose mechanisms
+without filling the missing Apple Processing breakdown or Intel slot-TMA
+mapping. Recording options, checksums and XML hashes are in
+[M1 deeper counting modes](apple-m1-deeper-counting-modes.json).
 Apple's [CPU counter subsystem overview](https://github.com/apple-oss-distributions/xnu/blob/main/doc/observability/cpu_counters.md)
 identifies KPC as the manager of configurable core counters; Monotonic and
 Recount expose fixed instructions/cycles. Those fixed-counter paths cannot
@@ -690,6 +726,18 @@ Its guided cycles split 80.7% P and 19.3% E. Applying the width for each
 matched interval's actual core reproduced all four shares for another 2,721
 intervals to export precision. This supports keeping P/E denominators
 separate within one process; the overall CLI summary remains cycle-weighted.
+The window check covered 95.19% of this mixed process's guided sampled cycles
+in 3,362 cycle-aligned raw windows, including 819 with multiple guided
+intervals; every window matched export rounding with its own core width. Exact
+single-interval joins covered 81.67%. The mixed result and XML hashes are in
+[the window validation](apple-m1-tma-window-validation.json).
+Both worker threads had guided samples on both P and E cores, with twelve
+observed transitions between core kinds. Split by core
+kind, exact joins covered 89.18% of P-core guided cycles and 50.31% of E-core
+guided cycles. Cycle-aligned windows raised that coverage to 96.48% and 89.77%;
+all 2,075 P windows and 1,287 E windows matched export rounding. The validator
+now reports these per-kind counts so migration cannot mask weaker E-core join
+coverage in the combined number.
 
 A new [dependent integer-division control](../examples/apple-m1-divide.c)
 adds an instruction class absent from the sixteen controls. The optimized

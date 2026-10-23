@@ -128,9 +128,37 @@ def test_calibration_uses_map_bubble_delivery_floor(tmp_path):
     assert result["guided_intervals"] == 1
     assert result["unmatched_raw_samples"] == result["unmatched_guided_intervals"] == 0
     assert result["matched_guided_cycle_fraction"] == 1
+    assert result["guided_threads_observed_on_both_core_kinds"] == 0
+    assert result["guided_core_kind_transitions_observed"] == 0
+    assert result["by_core_kind"]["P"]["matched_guided_cycle_fraction"] == 1
+    assert result["aggregated_raw_windows"]["by_core_kind"]["P"]["guided_cycles"] == 1000
     assert result["matches_exported_rounding"] is True
     counter_text = counters.read_text()
     duplicate = "<row>" + counter_text.split("<row>", 1)[1].split("</row>", 1)[0] + "</row>"
+    metric_text = metrics.read_text()
+    e_rows = metric_text.split("</schema>", 1)[1].split("</node>", 1)[0]
+    e_rows = e_rows.replace("<start-time>100</start-time>", "<start-time>2000</start-time>")
+    e_rows = e_rows.replace('<core fmt="CPU 7">7</core>', '<core fmt="CPU 0">0</core>')
+    e_raw = duplicate.replace("<sample-time>1100</sample-time>", "<sample-time>3000</sample-time>")
+    e_raw = e_raw.replace("<core>7</core>", "<core>0</core>")
+    e_raw = e_raw.replace("200 4800 0 4000", "200 2400 0 2000")
+    metrics.write_text(metric_text.replace("</node>", e_rows + "</node>"))
+    counters.write_text(counter_text.replace("</node>", e_raw + "</node>"))
+    migrated = validate(counters, metrics, 42)
+    assert migrated["guided_threads_observed_on_both_core_kinds"] == 1
+    assert migrated["guided_core_kind_transitions_observed"] == 1
+    assert {kind: row["matched_intervals"] for kind, row in migrated["by_core_kind"].items()} == {"E": 1, "P": 1}
+    assert migrated["matches_exported_rounding"] is True
+    metrics.write_text(metric_text)
+    counters.write_text(counter_text)
+    metrics.write_text(metric_text.replace('<core fmt="CPU 7">7</core>', '<core fmt="CPU 8">8</core>'))
+    with pytest.raises(ValueError, match="guided core"):
+        validate(counters, metrics, 42)
+    metrics.write_text(metric_text)
+    counters.write_text(counter_text.replace("1000 4000 1000", "-1 4000 1000"))
+    with pytest.raises(ValueError, match="Negative M1 counter"):
+        validate(counters, metrics, 42)
+    counters.write_text(counter_text)
     counters.write_text(counter_text.replace("</node>", duplicate + "</node>"))
     with pytest.raises(ValueError, match="duplicate end-time"):
         validate(counters, metrics, 42)
@@ -139,7 +167,6 @@ def test_calibration_uses_map_bubble_delivery_floor(tmp_path):
     with pytest.raises(ValueError, match="duplicate end-time"):
         validate(counters, metrics, 42)
     counters.write_text(counter_text)
-    metric_text = metrics.read_text()
     extra_rows = metric_text.split("</schema>", 1)[1].split("</node>", 1)[0]
     metrics.write_text(metric_text.replace("</node>", extra_rows.replace("<start-time>100</start-time>",
                                                             "<start-time>200</start-time>") + "</node>"))

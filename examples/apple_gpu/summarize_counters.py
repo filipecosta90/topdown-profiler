@@ -14,6 +14,9 @@ import xml.etree.ElementTree as ET
 
 
 PROBE_LABEL = re.compile(r"^topdown GPU probe pass (\d+):(burn|stream) compute pass \1(?:\s|$)")
+PACKAGED_PROBE_LABEL = re.compile(
+    r"^topdown GPU (compute|alu|memory|stream) pass (\d+):\1 compute pass \2(?:\s|$)"
+)
 
 
 class _Cell(NamedTuple):
@@ -195,7 +198,14 @@ def summarize(source: bytes, gpu_intervals: bytes | None = None, pid: int | None
             label_cell = row[columns.index("event-label")]
         except (ValueError, IndexError) as error:
             raise ValueError("GPU interval table lacks probe fields") from error
-        match = PROBE_LABEL.match(label_cell.fmt or label_cell.text or "")
+        label = label_cell.fmt or label_cell.text or ""
+        match = PROBE_LABEL.match(label)
+        if match:
+            workload, index = match.group(2), int(match.group(1))
+        else:
+            match = PACKAGED_PROBE_LABEL.match(label)
+            if match:
+                workload, index = match.group(1), int(match.group(2))
         process_pid = None
         if "process" in columns:
             process_pid = _process_pid(row[columns.index("process")])
@@ -206,7 +216,7 @@ def summarize(source: bytes, gpu_intervals: bytes | None = None, pid: int | None
             duration = _integer(duration_cell, "probe duration")
             if duration == 0:
                 raise ValueError("probe duration must be positive")
-            labeled.append((process_pid, match.group(2), int(match.group(1)), start, start + duration))
+            labeled.append((process_pid, workload, index, start, start + duration))
         if "state" in columns:
             state_available = True
             state_cell = row[columns.index("state")]
@@ -253,6 +263,8 @@ def summarize(source: bytes, gpu_intervals: bytes | None = None, pid: int | None
         "status": "no_probe_intervals" if not passes else "sampled" if covered else "no_counter_overlap",
         "workloads_observed": sorted({workload for workload, _ in passes}),
         "passes_observed": len(passes),
+        "pass_index_min": min(index for _, index in passes) if passes else None,
+        "pass_index_max": max(index for _, index in passes) if passes else None,
         "passes_with_counter_samples": covered,
         "passes_with_counter_samples_by_metric": dict(sorted(metric_coverage.items())),
         "sampled_pass_fraction_min": min(pass_fractions) if pass_fractions else None,
