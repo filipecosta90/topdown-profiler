@@ -15,6 +15,7 @@ import time
 from topdown.collector.apple import AppleProfileError, TMA_ROOTS
 from topdown.collector import apple_runtime
 from topdown.collector.apple_files import decode_json_object, read_regular_bytes
+from topdown.collector.apple_environment import capture_environment
 
 GPU_KIND = "apple-gpu-replay-profile"
 GPU_MODES = {"compute", "alu", "memory", "stream"}
@@ -68,7 +69,7 @@ def record(output: Path, mode="compute", passes=4, items=16384, execution="overl
         raise ValueError(f"GPU control failed checksum/configuration verification; artifacts: {output}")
     result = collect(trace, output / "replay", execution)
     result.update(started_at=started, ended_at=datetime.now(timezone.utc).isoformat(),
-                  probe=probe, environment={"arch": platform.machine(), "os_version": platform.mac_ver()[0]},
+                  probe=probe,
                   source_sha256=hashlib.sha256(source.read_bytes()).hexdigest())
     (output / "profile.json").write_text(json.dumps(result, indent=2, allow_nan=False) + "\n")
     return result
@@ -98,6 +99,7 @@ def collect(trace: Path, output: Path, execution: str = "overlapping") -> dict:
     session = None
     started = datetime.now(timezone.utc).isoformat()
     expires = time.monotonic() + 300
+    environment = capture_environment()
 
     def run(arguments, timeout=120):
         nonlocal sequence, session
@@ -181,6 +183,7 @@ def collect(trace: Path, output: Path, execution: str = "overlapping") -> dict:
             "scope": {"kind": "captured-metal-workload", "trace_name": trace.name},
             "settings": {"execution": execution, "gpu_state": "default", "replayed": True},
             "device": query("status").get("device"), "timeline": timeline, "encoders": encoders,
+            "environment": environment,
             "tma_available": False, "tma": dict.fromkeys(TMA_ROOTS),
             "started_at": started, "ended_at": datetime.now(timezone.utc).isoformat(),
             "limitations": [

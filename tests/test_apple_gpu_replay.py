@@ -287,3 +287,15 @@ def test_cleanup_failure_does_not_hide_the_original_error(tmp_path, fake_gpudebu
     with pytest.raises(ValueError, match="profiling is unavailable" if already_failing else "cleanup failed"):
         REPLAY.collect(trace, tmp_path / "cleanup")
     assert fake_gpudebug["commands"][-1][-2:] == ["--terminate", "42"]
+
+
+def test_gpu_collect_retains_capture_host_identity(tmp_path, fake_gpudebug, monkeypatch):
+    metadata = {"system": "Darwin", "arch": "arm64", "cpu": "Apple M6", "os_build": "26A434",
+                "kernel_uuid": "CAPTURE-KERNEL"}
+    monkeypatch.setattr(REPLAY, "capture_environment", lambda: metadata.copy())
+    trace = tmp_path / "native.gputrace"
+    trace.mkdir()
+    output = tmp_path / "replay"
+    result = REPLAY.collect(trace, output)
+    assert result["environment"] == metadata
+    assert json.loads((output / "profile.json").read_text())["environment"] == metadata

@@ -308,3 +308,14 @@ def check_mixed_profile(backend, tmp_path):
 
 def test_sqlite_measured_m6_mixed_encoder_profile(sqlite_backend, tmp_path):
     check_mixed_profile(sqlite_backend, tmp_path)
+
+
+def test_packaged_record_preserves_replay_host_identity(tmp_path, fake_capture, monkeypatch):
+    environment = {"cpu": "Apple M6", "arch": "arm64", "kernel_uuid": "REPLAY-KERNEL"}
+    def replay(trace, output, execution):
+        profile = write_profile(output)
+        profile["environment"] = environment.copy()
+        return profile
+    monkeypatch.setattr(apple_gpu, "collect", replay)
+    result = apple_gpu.record(tmp_path / "capture")
+    assert result["environment"] == environment

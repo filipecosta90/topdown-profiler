@@ -118,6 +118,11 @@ native Apple document table stores the complete GPU JSON atomically with its run
 no Linux metric samples are created. GPU runs have `collector=apple`,
 `processor=gpu`, `device`, and `measurement_kind=apple-gpu-replay-profile` labels.
 Native integer counters remain strings exactly as exported by the GPU debugger.
+
+New replay captures also retain the collection host's chip model, OS build and
+kernel UUID in `environment`. Stored `cpu` labels use that recorded identity;
+the debugger's native GPU `device` string remains separate. Imports preserve
+the captured provenance when read on another host.
 Imports without timestamps are explicitly labeled with an import-time basis.
 
 The MCP server exposes:
