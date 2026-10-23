@@ -269,6 +269,8 @@ def guided_result(tmp_path):
     {'invalid_cycles_with_known_count':-1}, {'invalid_cycles_with_known_count':True},
     {'invalid_intervals_without_cycle_count':1}, {'invalid_intervals_without_cycle_count':False},
     {'invalid_intervals':1,'invalid_cycles_with_known_count':100},
+    {'invalid_intervals':1,'invalid_cycles_with_known_count':2**64,
+     'valid_cycle_fraction_of_scoped_intervals':400/(400+2**64)},
     {'valid_cycle_fraction_of_scoped_intervals':.5}, {'valid_cycle_fraction_of_scoped_intervals':True},
     {'valid_cycle_fraction_of_scoped_intervals':None},
     {'invalid_intervals':1,'invalid_intervals_without_cycle_count':1,'valid_cycle_fraction_of_scoped_intervals':1},
