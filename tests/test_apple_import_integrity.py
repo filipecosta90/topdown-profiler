@@ -298,3 +298,14 @@ def test_guided_known_unknown_and_legacy_coverage_remain_distinct(guided_result)
                 'valid_cycle_fraction_of_scoped_intervals']:
         del guided_result[key]
     validate_result(guided_result)
+
+
+def test_nested_programmatic_native_json_fails_with_an_artifact_error(native_stat):
+    nested=[]
+    native_stat['metadata']=nested
+    for _ in range(20000):
+        child=[]
+        nested.append(child)
+        nested=child
+    with pytest.raises(AppleProfileError,match='Invalid native Apple JSON'):
+        validate_result(native_stat)
