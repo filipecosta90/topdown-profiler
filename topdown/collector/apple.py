@@ -179,6 +179,17 @@ def doctor() -> dict:
                   "programmable-counter policy do not verify it.",
         "next_step": "topdown apple gpu record --output <new-directory>",
     }
+    chip = (result.get("cpu") or "").split()
+    if (len(chip) >= 2 and chip[0] == "Apple" and chip[1] in ("M1", "M2")
+            and "27.1" in (result.get("xctrace") or "")):
+        result["gpu_replay"] = {
+            "status": "known_gpu_generation_limit",
+            "reason": "Xcode 27.1 GPU replay profiling requires Apple M3 / A17 Pro or later; "
+                      "a native M1 profile attempt returned this requirement.",
+            "next_step": "Use Instruments Metal System Trace with Performance Limiters or "
+                         "Performance Utilizations; source checkouts can run "
+                         "examples/apple_gpu/record_instruments.py.",
+        }
     result["programmable_counters"] = {
         "status": "unverified",
         "reason": "Counter access requires a successful native probe; installed templates do not verify access.",

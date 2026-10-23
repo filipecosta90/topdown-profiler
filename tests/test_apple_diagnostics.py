@@ -11,12 +11,13 @@ from topdown.cli import app
 from topdown.collector.apple import M6_BLOCKED_KERNEL_UUID, doctor
 
 
-def host_doctor(cpu="Apple M6", uuid=M6_BLOCKED_KERNEL_UUID, fail_uuid=False, gpu_error=None):
+def host_doctor(cpu="Apple M6", uuid=M6_BLOCKED_KERNEL_UUID, fail_uuid=False, gpu_error=None,
+                xcode_version="27.1"):
     outputs = {
         ("sysctl", "-n", "machdep.cpu.brand_string"): cpu,
         ("sysctl", "-n", "kern.osversion"): "26A434",
         ("sysctl", "-n", "kern.uuid"): uuid,
-        ("xcrun", "xctrace", "version"): "xctrace version 27.1 (27A9275)",
+        ("xcrun", "xctrace", "version"): f"xctrace version {xcode_version}",
         ("xcrun", "gpudebug", "--version"): "gpudebug 1.0",
         ("xcrun", "xctrace", "list", "templates"): "CPU Counters\nCPU Profiler\nTime Profiler\nProcessor Trace",
         ("/usr/sbin/DevToolsSecurity", "-status"): "Developer mode is currently enabled.",
@@ -60,6 +61,18 @@ def test_other_hosts_and_missing_metadata_remain_unverified(cpu, uuid, fail_uuid
     assert "probe --mode counters" in result["programmable_counters"]["next_step"]
     if fail_uuid:
         assert "kernel UUID unavailable" in result["errors"]["kernel_uuid"]
+
+
+@pytest.mark.parametrize("cpu", ["Apple M1", "Apple M1 Max", "Apple M2", "Apple M2 Ultra"])
+def test_doctor_routes_pre_m3_gpu_generations_to_instruments(cpu):
+    result = host_doctor(cpu=cpu, uuid="OTHER-KERNEL")
+    assert result["gpu_replay"]["status"] == "known_gpu_generation_limit"
+    assert "M3 / A17 Pro" in result["gpu_replay"]["reason"]
+    assert "record_instruments.py" in result["gpu_replay"]["next_step"]
+    assert result["programmable_counters"]["status"] == "unverified"
+    assert host_doctor(cpu="Apple M10", uuid="OTHER-KERNEL")["gpu_replay"]["status"] == "unverified"
+    assert host_doctor(cpu=cpu, uuid="OTHER-KERNEL", xcode_version="28")[
+        "gpu_replay"]["status"] == "unverified"
 
 
 def test_doctor_cli_retains_diagnostic_without_disabling_other_modes():

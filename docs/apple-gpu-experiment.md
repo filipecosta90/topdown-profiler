@@ -179,6 +179,15 @@ both values and does not derive cost from duration.
 
 Install the project and use full Xcode. Replay profiling requires M3/A17 Pro or
 later; the M1 Instruments experiment below uses a different collection path.
+A direct Xcode 27.1 attempt on this M1 first captured a checksum-verified
+four-pass `.gputrace`, then `gpudebug` explicitly rejected replay profiling
+with `GPU profiling requires Apple M3 / A17 Pro or later`. The collector
+terminated the session it had created and retained the command logs; the
+[M1 replay capability check](apple-gpu-m1-replay-capability.json) records hashes
+and the native response.
+For Xcode 27.1, `topdown apple doctor` now directs M1/M2 hosts to Instruments
+for GPU counters instead of suggesting replay profiling. On an untested Xcode
+version it leaves replay support unverified until a native attempt.
 `topdown apple doctor` reports the GPU debugger version separately from CPU
 programmable-counter diagnostics. GPU access remains unverified until a native
 profile succeeds; a CPU kernel restriction does not establish GPU availability.
