@@ -135,6 +135,7 @@ def summarize(source: bytes, gpu_intervals: bytes | None = None, pid: int | None
     names = Counter()
     samples = set()
     values = []
+    last_metric_end = {}
     for columns, row in _table(source, "metal-gpu-counter-intervals"):
         if columns:
             if not {"start", "duration", "name"}.issubset(columns):
@@ -156,6 +157,9 @@ def summarize(source: bytes, gpu_intervals: bytes | None = None, pid: int | None
         names[name_cell.text] += 1
         if {"name", "value", "label", "is-percentage"}.issubset(columns):
             name = row[columns.index("name")].fmt or row[columns.index("name")].text
+            if start < last_metric_end.get(name, -1):
+                raise ValueError(f"overlapping or out-of-order counter intervals for {name}")
+            last_metric_end[name] = start + duration
             label = row[columns.index("label")].fmt or ""
             try:
                 value = float(row[columns.index("value")].text)

@@ -54,6 +54,23 @@ def test_summary_distinguishes_counter_intervals_with_the_same_start():
     assert result["sample_intervals"] == 2
 
 
+@pytest.mark.parametrize("second_start", [90, 100, 105])
+def test_summary_rejects_overlapping_or_out_of_order_metric_samples(second_start):
+    source = f'''<trace-query-result><node><schema name="metal-gpu-counter-intervals">
+    <col><mnemonic>start</mnemonic></col><col><mnemonic>duration</mnemonic></col>
+    <col><mnemonic>name</mnemonic></col><col><mnemonic>label</mnemonic></col>
+    <col><mnemonic>value</mnemonic></col><col><mnemonic>is-percentage</mnemonic></col>
+    </schema><row><start-time>100</start-time><duration>10</duration>
+    <gpu-counter-name fmt="ALU Limiter">1.ALU Limiter</gpu-counter-name><formatted-label fmt="10%"/>
+    <fixed-decimal>10</fixed-decimal><boolean>1</boolean></row>
+    <row><start-time>{second_start}</start-time><duration>10</duration>
+    <gpu-counter-name fmt="ALU Limiter">1.ALU Limiter</gpu-counter-name><formatted-label fmt="20%"/>
+    <fixed-decimal>20</fixed-decimal><boolean>1</boolean></row>
+    </node></trace-query-result>'''.encode()
+    with pytest.raises(ValueError, match="overlapping or out-of-order"):
+        MODULE.summarize(source)
+
+
 def test_summary_checks_probe_counter_overlap():
     counters = b"""<trace-query-result><node><schema name="metal-gpu-counter-intervals"/>
     <row><start-time id="1">105</start-time><duration id="2">10</duration><uint32>0</uint32>
