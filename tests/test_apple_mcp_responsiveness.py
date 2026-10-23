@@ -310,3 +310,65 @@ async def test_cleanup_failure_does_not_hide_cancellation_and_is_retained_in_log
         await apple_runtime.worker(lambda:_run(['/native/tool'],tmp_path,'native',3),capture=True)()
     assert error.value.code == 'interrupted'
     assert 'ownership lost' in (tmp_path / 'native.cleanup.stderr').read_text()
+
+
+@pytest.mark.asyncio
+async def test_mcp_cancel_scope_waits_for_owned_worker_cleanup():
+    import anyio
+    from topdown.collector.apple_runtime import worker, sleep
+
+    started, release, finished = threading.Event(), threading.Event(), threading.Event()
+    returned = asyncio.Event()
+    scope = anyio.CancelScope()
+    def capture():
+        started.set()
+        try:
+            while True:
+                sleep(.01)
+        finally:
+            assert release.wait(2), 'cleanup was not allowed to finish'
+            finished.set()
+    async def request():
+        with scope:
+            await worker(capture, capture=True)()
+        returned.set()
+    async with anyio.create_task_group() as group:
+        group.start_soon(request)
+        try:
+            assert await asyncio.to_thread(started.wait, 2)
+            scope.cancel()
+            await asyncio.sleep(.02)
+            assert not returned.is_set(), 'request returned before its owned worker finished cleanup'
+        finally:
+            release.set()
+        await asyncio.wait_for(returned.wait(), 2)
+        assert finished.is_set()
+
+
+@pytest.mark.asyncio
+async def test_repeated_task_cancellation_waits_for_owned_worker_cleanup():
+    from topdown.collector.apple_runtime import worker, sleep
+
+    started, cleaning, release = threading.Event(), threading.Event(), threading.Event()
+    def capture():
+        started.set()
+        try:
+            while True:
+                sleep(.01)
+        finally:
+            cleaning.set()
+            assert release.wait(2)
+    task = asyncio.create_task(worker(capture, capture=True)())
+    try:
+        assert await asyncio.to_thread(started.wait, 2)
+        task.cancel()
+        assert await asyncio.to_thread(cleaning.wait, 2)
+        task.cancel()
+        await asyncio.sleep(.01)
+        assert not task.done()
+        release.set()
+        with pytest.raises(asyncio.CancelledError):
+            await asyncio.wait_for(task, 2)
+    finally:
+        release.set()
+        await asyncio.gather(task, return_exceptions=True)
