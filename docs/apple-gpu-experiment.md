@@ -465,6 +465,23 @@ The same-trace
 checksums, PID matches, counter coverage, sampled and clean means, and hashes
 are in [the paired-trace evidence](apple-gpu-m1-packaged-paired-traces.json).
 
+The packaged memory and vectorized stream controls also ran sequentially in
+one M1 trace in both orders, each with eight passes over 16,777,216 floats:
+
+| Order | Clean GPU Read Bandwidth, memory / stream | Clean Buffer Write Limiter, memory / stream | Command GPU time, memory / stream |
+|---|---:|---:|---:|
+| Memory first | 27.19 / 27.90 GB/s | 99.02% / 98.73% | 20.38 / 19.32 ms |
+| Stream first | 28.88 / 27.66 GB/s | 99.60% / 98.23% | 18.92 / 19.41 ms |
+
+Every requested pass and required metric had counter overlap, and both modes
+returned the same checksum in each trace. The similar native sampled bandwidth
+and limiter readings support the earlier separate-capture comparison. Observed
+other GPU activity still overlapped 6.9–17.9% of sampled work; clean means
+retain only intervals without that observed overlap. GPU Read Bandwidth is a
+native GPU counter, and these readings do not prove DRAM saturation or map to
+the M6 replay launch limiter. The checksums, PID matches, sample coverage and
+hashes are in [the memory/stream paired evidence](apple-gpu-m1-packaged-memory-stream-paired.json).
+
 ## Reproduce the Instruments comparison
 
 For a checked M1 capture in one command, set the full Xcode developer directory
