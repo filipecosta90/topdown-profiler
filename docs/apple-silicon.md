@@ -325,6 +325,24 @@ in [M1 Xcode validation](apple-m1-xcode27-validation.json). Apple's [Processor T
 requirements](https://developer.apple.com/documentation/xcode/analyzing-cpu-usage-with-processor-trace)
 start at M4 for Mac recording, so Processor Trace cannot supply a hardware
 execution trace on this M1.
+Fresh Instruction Delivery captures broadened that check. All three exported
+complete cycle, Delivery Bandwidth, and Delivery Latency intervals on the
+intended M1 core kind:
+
+| Control | Bandwidth | Latency | Sum | Root Delivery in an earlier run |
+|---|---:|---:|---:|---:|
+| E-core random branch | 19.52% | 24.33% | 43.85% | 43.85% |
+| P-core large executed NOP stream | 0.01% | 73.37% | 73.38% | 72.82% |
+| E-core large executed NOP stream | 0.01% | 47.94% | 47.96% | 47.79% |
+
+The differences from the separate root captures were 0.007, 0.554, and
+0.163 percentage points, respectively. The large instruction streams were
+classified almost entirely as Delivery Latency in this mode, while the random
+branch control split its Delivery share between Bandwidth and Latency. These
+are Apple-native cycle ratios from separate recordings; they do not prove
+same-interval parent/child equality or Intel slot-TMA equivalence. The
+recording options, commands, checksums, XML hashes, and complete interval
+counts are in [M1 delivery subcategories](apple-m1-delivery-subcategories.json).
 Apple's [CPU counter subsystem overview](https://github.com/apple-oss-distributions/xnu/blob/main/doc/observability/cpu_counters.md)
 identifies KPC as the manager of configurable core counters; Monotonic and
 Recount expose fixed instructions/cycles. Those fixed-counter paths cannot
