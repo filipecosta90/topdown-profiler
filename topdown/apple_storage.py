@@ -242,6 +242,9 @@ def store_apple_result(backend, path: Path, process_name: str | None = None, lab
               process_name=process_name, level=0, system_wide=system_wide, labels=all_labels)
     metadata = {"imported_at": imported.isoformat(), "source_sha256": source_sha256, "time_basis": time_basis,
                 "source_filename": path.name, "capture": capture}
+    from topdown.collector.apple_runtime import check_cancelled
+
+    check_cancelled()
     backend.insert_apple_result(run, {"schema_version": 1, "result": result, "metadata": metadata})
     return run
 

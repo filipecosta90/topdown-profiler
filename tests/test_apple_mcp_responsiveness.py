@@ -372,3 +372,45 @@ async def test_repeated_task_cancellation_waits_for_owned_worker_cleanup():
     finally:
         release.set()
         await asyncio.gather(task, return_exceptions=True)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('tool', ['import_apple_result','collect_apple_profile'])
+async def test_cancellation_during_artifact_read_prevents_database_insert(tmp_path,monkeypatch,tool):
+    import sqlite3
+    from topdown import apple_storage
+    from topdown.collector.apple import TMA_ROOTS
+    from topdown.config import TopdownConfig
+
+    path=tmp_path/'stat.json'
+    path.write_text(json.dumps({'measurement_kind':'process-accounted-fixed-counters',
+        'scope':{'pid':42},'counters':{'instructions':100,'cycles':200},
+        'tma_available':False,'tma':dict.fromkeys(TMA_ROOTS)}))
+    started,release=threading.Event(),threading.Event()
+    original=apple_storage._read_json
+    def read(artifact):
+        value=original(artifact)
+        started.set()
+        assert release.wait(3)
+        return value
+    monkeypatch.setattr(apple_storage,'_read_json',read)
+    monkeypatch.setattr(mcp_server,'get_config',lambda:TopdownConfig(db_path=tmp_path/'native.db'))
+    monkeypatch.setattr(apple_storage,'collect_apple_result',lambda *args:path)
+    arguments={'path':str(path)} if tool=='import_apple_result' else {'command':['/usr/bin/true']}
+    task=asyncio.create_task(mcp_server.mcp.call_tool(tool,arguments))
+    try:
+        assert await asyncio.to_thread(started.wait,2)
+        task.cancel()
+        await asyncio.sleep(0)
+        release.set()
+        with pytest.raises(asyncio.CancelledError):
+            await asyncio.wait_for(task,3)
+    finally:
+        release.set()
+        await asyncio.gather(task,return_exceptions=True)
+    db=sqlite3.connect(tmp_path/'native.db')
+    try:
+        assert db.execute('SELECT count(*) FROM runs').fetchone()[0]==0
+        assert db.execute('SELECT count(*) FROM apple_results').fetchone()[0]==0
+    finally:
+        db.close()
