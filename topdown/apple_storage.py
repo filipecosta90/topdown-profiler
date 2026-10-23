@@ -76,7 +76,7 @@ def _validate_guided_coverage(result, rows):
     invalid_cycles, unknown = result["invalid_cycles_with_known_count"], result["invalid_intervals_without_cycle_count"]
     invalid = result.get("invalid_intervals", 0)
     if (not _nonnegative(invalid_cycles) or not _nonnegative(unknown) or unknown > invalid
-            or (invalid_cycles and invalid <= unknown)):
+            or invalid_cycles > (invalid - unknown) * (2**64 - 1)):
         raise AppleProfileError("Guided cycle coverage disagrees with its invalid native intervals")
     fraction = result["valid_cycle_fraction_of_scoped_intervals"]
     if unknown:
