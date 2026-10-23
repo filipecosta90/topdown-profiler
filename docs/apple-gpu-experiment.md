@@ -685,6 +685,12 @@ The same runner completed a fresh Performance Utilizations capture with all
 median was 14.20%, with p10–p90 of 13.71–14.73%; 5.72% of sampled work
 overlapped observed other GPU activity. The same evidence file includes its
 separate capture and XML hashes.
+Reanalyzing the earlier eight-pass packaged memory and stream captures with the
+same code retained all eight sampled and clean passes for both workloads.
+Their clean GPU Read Bandwidth pass medians were 29.29 and 26.96 GB/s, with
+Buffer Write Limiter medians of 98.83% and 99.45%, respectively. The original
+means and coverage remained unchanged; the source-profile and XML hashes are
+recorded in the fresh M1 validation file.
 On this M1, a four-pass profile-3 ALU smoke check sampled all four passes;
 a fresh four-pass check covered 16.28% of GPU work time with counter samples.
 A 100-pass profile-4 stream capture sampled all 100 and reported 1.77% ALU

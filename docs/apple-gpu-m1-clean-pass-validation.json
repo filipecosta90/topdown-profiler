@@ -212,5 +212,52 @@
         }
       }
     }
+  },
+  "recomputed_memory_stream_controls": {
+    "method": "Reanalyze earlier checked packaged eight-pass captures with current per-pass summarizer; original means and coverage were unchanged.",
+    "captures": {
+      "memory": {
+        "profile_json_sha256": "542b55c3aaaacdb5f8e44a7dd7cd26f919e37072c92142a8468cb85936e1475d",
+        "counter_xml_sha256": "1ded4ea1336b91c5907ae2a326bebc72f9e6ae744a586fd8a0b272bfde9f3e68",
+        "gpu_xml_sha256": "03f3d7b0459e9c2d8edc7c52dfe4ca48caedb9eb734c4581392dc35b5e4da890",
+        "passes_observed": 8,
+        "observed_other_activity_fraction_of_sampled_gpu_work": 0.13560518384023684,
+        "metrics": {
+          "Buffer Write Limiter": {
+            "sampled_passes": 8,
+            "clean_sampled_passes": 8,
+            "sampled_pass_median": 98.267397,
+            "clean_sampled_pass_median": 98.827691
+          },
+          "GPU Read Bandwidth": {
+            "sampled_passes": 8,
+            "clean_sampled_passes": 8,
+            "sampled_pass_median": 29.289336,
+            "clean_sampled_pass_median": 29.289336
+          }
+        }
+      },
+      "stream": {
+        "profile_json_sha256": "25a88464c8a82f94292bbcca0b8729f843cef46c2a4d2d6476e2ab5bb8553fb7",
+        "counter_xml_sha256": "8d1f1091943010d68147cb11b21102effefdd817d2bc71efbc317dab8d1b8d23",
+        "gpu_xml_sha256": "c39746258b8741e2bab582d6cb5bce078b6b39386ef5b7c2e7939199be2d3c80",
+        "passes_observed": 8,
+        "observed_other_activity_fraction_of_sampled_gpu_work": 0.3315712744169658,
+        "metrics": {
+          "Buffer Write Limiter": {
+            "sampled_passes": 8,
+            "clean_sampled_passes": 8,
+            "sampled_pass_median": 97.132362,
+            "clean_sampled_pass_median": 99.448858
+          },
+          "GPU Read Bandwidth": {
+            "sampled_passes": 8,
+            "clean_sampled_passes": 8,
+            "sampled_pass_median": 27.014681,
+            "clean_sampled_pass_median": 26.957254
+          }
+        }
+      }
+    }
   }
 }
