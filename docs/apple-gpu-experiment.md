@@ -475,7 +475,9 @@ one M1 trace in both orders, each with eight passes over 16,777,216 floats:
 
 Every requested pass and required metric had counter overlap, and both modes
 returned the same checksum in each trace. The similar native sampled bandwidth
-and limiter readings support the earlier separate-capture comparison. Observed
+and limiter readings support the earlier separate-capture comparison. Which
+mode had higher sampled read bandwidth changed with execution order, so these
+traces do not show a consistent M1 bandwidth advantage for either kernel. Observed
 other GPU activity still overlapped 6.9–17.9% of sampled work; clean means
 retain only intervals without that observed overlap. GPU Read Bandwidth is a
 native GPU counter, and these readings do not prove DRAM saturation or map to

@@ -245,6 +245,12 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 
 The tested host still has Command Line Tools selected, so these commands set
 `DEVELOPER_DIR` for one process without changing the system-wide selection.
+After the shared M6 GPU and host-provenance changes, a fresh M1 wide-ALU CLI
+capture still exported 4,062 valid guided intervals and left all Intel `tma`
+roots null. SQLite stored the profile unchanged, retained the recorded M1,
+kernel and Xcode labels, and created zero Linux metric samples. Its command,
+hashes, cycle-weighted shares and round-trip check are in
+[the post-sync M1 smoke](apple-m1-post-sync-smoke.json).
 After the user accepted Xcode's license, the guided probe returned
 `counters_present`; the earlier CLI rejected this Xcode version because it
 looked only for `cpu-pmc-value`. Controlled Xcode captures yielded:
