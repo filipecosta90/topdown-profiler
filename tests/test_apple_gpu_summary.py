@@ -92,6 +92,11 @@ def test_summary_checks_probe_counter_overlap():
         "workloads_observed": ["burn"],
         "passes_observed": 2,
         "passes_with_counter_samples": 1,
+        "passes_with_counter_samples_by_metric": {},
+        "sampled_pass_fraction_min": 0,
+        "sampled_pass_fraction_median": 0.25,
+        "sampled_pass_fraction_max": 0.5,
+        "passes_below_10_percent_sampled": 1,
         "gpu_work_time_ns": 40,
         "sampled_gpu_work_time_ns": 10,
         "sampled_gpu_work_fraction": 0.25,
@@ -117,10 +122,57 @@ def test_summary_reports_counter_rows_without_probe_coverage():
     assert result["passes_observed"] == 1
     assert result["workloads_observed"] == ["burn"]
     assert result["passes_with_counter_samples"] == 0
+    assert result["sampled_pass_fraction_min"] == 0
+    assert result["passes_below_10_percent_sampled"] == 1
     assert result["status"] == "no_counter_overlap"
     assert result["sampled_gpu_work_time_ns"] == 0
     assert result["sampled_gpu_work_fraction"] == 0
     assert result["observed_other_activity_fraction_of_sampled_gpu_work"] is None
+
+
+def test_one_nanosecond_overlap_does_not_hide_sparse_pass_sampling():
+    counters = b"""<trace-query-result><node><schema name="metal-gpu-counter-intervals"/>
+    <row><start-time>199</start-time><duration>2</duration><uint32>0</uint32>
+    <gpu-counter-name>ALU Limiter</gpu-counter-name></row></node></trace-query-result>"""
+    gpu = b"""<trace-query-result><node><schema name="metal-gpu-intervals">
+    <col><mnemonic>start</mnemonic></col><col><mnemonic>duration</mnemonic></col>
+    <col><mnemonic>event-label</mnemonic></col></schema>
+    <row><start-time>100</start-time><duration>100</duration>
+    <formatted-label fmt="topdown GPU probe pass 0:burn compute pass 0"/></row>
+    </node></trace-query-result>"""
+    coverage = MODULE.summarize(counters, gpu)["probe_coverage"]
+    assert coverage["passes_with_counter_samples"] == 1
+    assert coverage["sampled_pass_fraction_min"] == 0.01
+    assert coverage["sampled_pass_fraction_median"] == 0.01
+    assert coverage["sampled_pass_fraction_max"] == 0.01
+    assert coverage["passes_below_10_percent_sampled"] == 1
+
+
+def test_summary_exposes_missing_metric_on_a_sampled_pass():
+    counters = b"""<trace-query-result><node><schema name="metal-gpu-counter-intervals">
+    <col><mnemonic>start</mnemonic></col><col><mnemonic>duration</mnemonic></col>
+    <col><mnemonic>name</mnemonic></col><col><mnemonic>label</mnemonic></col>
+    <col><mnemonic>value</mnemonic></col><col><mnemonic>is-percentage</mnemonic></col></schema>
+    <row><start-time>100</start-time><duration>10</duration>
+    <gpu-counter-name fmt="ALU Limiter">1.ALU Limiter</gpu-counter-name><formatted-label fmt="10%"/>
+    <fixed-decimal>10</fixed-decimal><boolean>1</boolean></row>
+    <row><start-time>200</start-time><duration>10</duration>
+    <gpu-counter-name fmt="Buffer Write Limiter">2.Buffer Write Limiter</gpu-counter-name><formatted-label fmt="20%"/>
+    <fixed-decimal>20</fixed-decimal><boolean>1</boolean></row>
+    </node></trace-query-result>"""
+    gpu = b"""<trace-query-result><node><schema name="metal-gpu-intervals">
+    <col><mnemonic>start</mnemonic></col><col><mnemonic>duration</mnemonic></col>
+    <col><mnemonic>event-label</mnemonic></col></schema>
+    <row><start-time>100</start-time><duration>10</duration>
+    <formatted-label fmt="topdown GPU probe pass 0:burn compute pass 0"/></row>
+    <row><start-time>200</start-time><duration>10</duration>
+    <formatted-label fmt="topdown GPU probe pass 1:burn compute pass 1"/></row>
+    </node></trace-query-result>"""
+    coverage = MODULE.summarize(counters, gpu)["probe_coverage"]
+    assert coverage["passes_with_counter_samples"] == 2
+    assert coverage["passes_with_counter_samples_by_metric"] == {
+        "ALU Limiter": 1, "Buffer Write Limiter": 1,
+    }
 
 
 def test_idle_counter_rows_do_not_claim_probe_work():
@@ -137,6 +189,7 @@ def test_idle_counter_rows_do_not_claim_probe_work():
     assert result["counter_rows"] == 1
     assert result["probe_coverage"]["status"] == "no_probe_intervals"
     assert result["probe_coverage"]["passes_observed"] == 0
+    assert result["probe_coverage"]["sampled_pass_fraction_min"] is None
     assert result["sampled_counter_means"] == {}
 
 
@@ -193,6 +246,9 @@ def test_summary_weights_sampled_values_and_keeps_units():
         "counter_intervals": 2,
     }
     assert means["GPU Read Bandwidth"]["unit"] == "GB/s"
+    assert summary["probe_coverage"]["passes_with_counter_samples_by_metric"] == {
+        "ALU Limiter": 1, "GPU Read Bandwidth": 1, "Top Performance Limiter": 1,
+    }
     assert summary["top_limiter_categories"] == [{
         "name": "ALU Limiter",
         "sampled_time_ns": 30,

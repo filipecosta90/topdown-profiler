@@ -78,12 +78,20 @@ def test_runner_rejects_partial_counter_coverage(tmp_path, runner):
     with pytest.raises(ValueError, match="Incomplete M1 probe counter coverage"):
         runner["_verify_coverage"](result, "alu", 4, 3, tmp_path)
     result["probe_coverage"]["passes_with_counter_samples"] = 4
+    result["probe_coverage"]["passes_with_counter_samples_by_metric"] = {
+        name: 4 for name in runner["REQUIRED_COUNTERS"][3]
+    }
     runner["_verify_coverage"](result, "alu", 4, 3, tmp_path)
+    result["probe_coverage"]["passes_with_counter_samples_by_metric"]["ALU Limiter"] = 3
+    with pytest.raises(ValueError, match="Incomplete M1 probe metric coverage"):
+        runner["_verify_coverage"](result, "alu", 4, 3, tmp_path)
 
 
 def test_runner_requires_expected_metrics_units_and_top_limiter_labels(tmp_path, runner):
     result = {"probe_coverage": {"workloads_observed": ["burn"], "passes_observed": 4,
-                                 "passes_with_counter_samples": 4},
+                                 "passes_with_counter_samples": 4,
+                                 "passes_with_counter_samples_by_metric": {
+                                     name: 4 for name in runner["REQUIRED_COUNTERS"][3]}},
               "sampled_counter_means": {name: {"unit": unit} for name, unit
                                         in runner["REQUIRED_COUNTERS"][3].items()},
               "top_limiter_categories": [{"name": "ALU Limiter"}],
@@ -99,7 +107,9 @@ def test_runner_requires_expected_metrics_units_and_top_limiter_labels(tmp_path,
 
 def test_runner_accepts_utilization_profile_metrics(tmp_path, runner):
     result = {"probe_coverage": {"workloads_observed": ["stream"], "passes_observed": 4,
-                                 "passes_with_counter_samples": 4},
+                                 "passes_with_counter_samples": 4,
+                                 "passes_with_counter_samples_by_metric": {
+                                     name: 4 for name in runner["REQUIRED_COUNTERS"][4]}},
               "sampled_counter_means": {name: {"unit": unit} for name, unit
                                         in runner["REQUIRED_COUNTERS"][4].items()}}
     runner["_verify_coverage"](result, "stream", 4, 4, tmp_path)

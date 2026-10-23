@@ -8,6 +8,7 @@ import json
 import math
 from pathlib import Path
 import re
+from statistics import median
 from typing import NamedTuple
 import xml.etree.ElementTree as ET
 
@@ -134,6 +135,7 @@ def summarize(source: bytes, gpu_intervals: bytes | None = None, pid: int | None
         raise ValueError("probe PID requires GPU intervals")
     names = Counter()
     samples = set()
+    metric_samples = {}
     values = []
     last_metric_end = {}
     for columns, row in _table(source, "metal-gpu-counter-intervals"):
@@ -171,6 +173,7 @@ def summarize(source: bytes, gpu_intervals: bytes | None = None, pid: int | None
             if percentage not in {"0", "1"}:
                 raise ValueError(f"invalid percentage flag for {name}")
             unit = "%" if percentage == "1" else "GB/s" if " GB/s" in label else "native"
+            metric_samples.setdefault(name, []).append((start, start + duration))
             values.append((start, start + duration, name, value, unit, label))
     result = {
         "schema": "metal-gpu-counter-intervals",
@@ -233,13 +236,29 @@ def summarize(source: bytes, gpu_intervals: bytes | None = None, pid: int | None
     gpu_work_time = sum(end - start for start, end in windows)
     sampled_gpu_time = sum(end - start for start, end in sampled_probe)
     sampled_other_time = sum(end - start for start, end in _intersection(sampled_probe, other_windows))
-    covered = sum(any(_overlap(*sample, pieces) for sample in sampled) for pieces in pass_windows.values())
+    pass_fractions = []
+    for pieces in pass_windows.values():
+        pass_time = sum(end - start for start, end in pieces)
+        sampled_time = sum(end - start for start, end in _intersection(sampled, pieces))
+        pass_fractions.append(sampled_time / pass_time)
+    covered = sum(fraction > 0 for fraction in pass_fractions)
+    metric_coverage = {}
+    for name, intervals in metric_samples.items():
+        metric_coverage[name] = sum(
+            any(_overlap(start, end, intervals) for start, end in pieces)
+            for pieces in pass_windows.values()
+        )
     result["probe_coverage"] = {
         "selected_pid": selected_pid,
         "status": "no_probe_intervals" if not passes else "sampled" if covered else "no_counter_overlap",
         "workloads_observed": sorted({workload for workload, _ in passes}),
         "passes_observed": len(passes),
         "passes_with_counter_samples": covered,
+        "passes_with_counter_samples_by_metric": dict(sorted(metric_coverage.items())),
+        "sampled_pass_fraction_min": min(pass_fractions) if pass_fractions else None,
+        "sampled_pass_fraction_median": median(pass_fractions) if pass_fractions else None,
+        "sampled_pass_fraction_max": max(pass_fractions) if pass_fractions else None,
+        "passes_below_10_percent_sampled": sum(fraction < 0.1 for fraction in pass_fractions),
         "gpu_work_time_ns": gpu_work_time,
         "sampled_gpu_work_time_ns": sampled_gpu_time,
         "sampled_gpu_work_fraction": sampled_gpu_time / gpu_work_time if gpu_work_time else None,
