@@ -96,9 +96,10 @@ def _signal_owned(process, sig):
         process.kill()
 
 
-def run(command, *, timeout, check=False, env=None):
+def run(command, *, timeout, check=False, env=None, start_new_session=False):
     if _STOP.get() is None:
-        return subprocess.run(command, capture_output=True, text=True, timeout=timeout, check=check, env=env)
+        options = {"start_new_session": True} if start_new_session else {}
+        return subprocess.run(command, capture_output=True, text=True, timeout=timeout, check=check, env=env, **options)
     check_cancelled()
     deadline = time.monotonic() + timeout
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,

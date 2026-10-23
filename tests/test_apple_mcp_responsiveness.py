@@ -478,3 +478,15 @@ async def test_strict_mcp_duration_still_accepts_json_integer_and_fractional_num
     await mcp_server.mcp.call_tool("collect_apple_profile", {"pid": 42, "duration_seconds": seconds})
     assert capture.call_args.args[3] == 42
     assert capture.call_args.args[4] == seconds and type(capture.call_args.args[4]) is float
+
+
+@pytest.mark.skipif(__import__("os").name != "posix", reason="requires POSIX process groups")
+def test_native_command_can_request_process_isolation_outside_mcp():
+    import os
+    import sys
+    from topdown.collector.apple_runtime import run
+
+    result = run([sys.executable, "-c", "import os;print(os.getpid(),os.getpgrp())"],
+                 timeout=3, start_new_session=True)
+    pid, group = map(int, result.stdout.split())
+    assert result.returncode == 0 and pid == group and group != os.getpgrp()
